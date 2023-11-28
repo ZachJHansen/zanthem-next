@@ -13,6 +13,8 @@ readme = "README.md"
 license = "MIT"
 
 [dependencies]
+anyhow = "1"
+clap = { version = "4", features = ["derive"] }
 lazy_static = "1"
 pest = "2"
 pest_derive = "2"
