@@ -362,3 +362,36 @@ impl Program {
         functions
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use {
+        super::{
+            PrecomputedTerm, Term, Atom, AtomicFormula, Relation, Comparison, Head, Body, Rule, Program,
+        },
+        std::collections::HashSet
+    };
+
+    #[test]
+    fn program_function_constants() {
+        // p :- b != a.
+        let program = Program {
+            rules: vec![
+                Rule {
+                    head: Head::Basic(Atom {
+                        predicate: "p".into(),
+                        terms: vec![],
+                    }),
+                    body: Body {
+                        formulas: vec![AtomicFormula::Comparison(Comparison {
+                            lhs: Term::PrecomputedTerm(PrecomputedTerm::Symbol("a".into())),
+                            rhs: Term::PrecomputedTerm(PrecomputedTerm::Symbol("b".into())),
+                            relation: Relation::NotEqual,
+                        })],
+                    },
+                },
+            ],
+        };
+        assert_eq!(program.function_constants(), HashSet::from(["a".into(), "b".into()]))
+    }
+}
