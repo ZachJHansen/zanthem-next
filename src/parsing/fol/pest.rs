@@ -2,8 +2,9 @@ use crate::{
     parsing::PestParser,
     syntax_tree::fol::{
         Atom, AtomicFormula, BasicIntegerTerm, BinaryConnective, BinaryOperator, Comparison,
-        Formula, GeneralTerm, Guard, IntegerTerm, Predicate, Quantification, Quantifier, Relation,
-        Sort, Theory, UnaryConnective, UnaryOperator, Variable,
+        Direction, Formula, GeneralTerm, Guard, IntegerTerm, Lemma, Placeholder, Predicate,
+        Quantification, Quantifier, Relation, Sort, Spec, Specification, Theory, UnaryConnective,
+        UnaryOperator, Variable,
     },
 };
 
@@ -501,6 +502,211 @@ impl PestParser for TheoryParser {
                 .into_inner()
                 .map(FormulaParser::translate_pair)
                 .collect(),
+        }
+    }
+}
+
+pub struct PlaceholderParser;
+
+impl PestParser for PlaceholderParser {
+    type Node = Placeholder;
+
+    type InternalParser = internal::Parser;
+    type Rule = internal::Rule;
+    const RULE: Self::Rule = internal::Rule::placeholder;
+
+    fn translate_pair(pair: pest::iterators::Pair<'_, Self::Rule>) -> Self::Node {
+        if pair.as_rule() != internal::Rule::placeholder {
+            Self::report_unexpected_pair(pair)
+        }
+
+        let mut pairs = pair.into_inner();
+        let name = pairs
+            .next()
+            .unwrap_or_else(|| Self::report_missing_pair())
+            .as_str()
+            .into();
+
+        Placeholder { name }
+    }
+}
+
+pub struct LemmaParser;
+
+impl PestParser for LemmaParser {
+    type Node = Lemma;
+
+    type InternalParser = internal::Parser;
+    type Rule = internal::Rule;
+    const RULE: Self::Rule = internal::Rule::lemma;
+
+    fn translate_pair(pair: pest::iterators::Pair<'_, Self::Rule>) -> Self::Node {
+        println!("check 0");
+        match pair.as_rule() {
+            internal::Rule::lemma => Self::translate_pairs(pair.into_inner()),
+            internal::Rule::forward_lemma => {
+                if pair.as_rule() != internal::Rule::forward_lemma {
+                    Self::report_unexpected_pair(pair)
+                }
+
+                let mut pairs = pair.into_inner();
+
+                let formula = FormulaParser::translate_pair(
+                    pairs.next().unwrap_or_else(|| Self::report_missing_pair()),
+                );
+
+                Lemma {
+                    direction: Direction::Forward,
+                    formula,
+                }
+            }
+            internal::Rule::backward_lemma => {
+                if pair.as_rule() != internal::Rule::backward_lemma {
+                    Self::report_unexpected_pair(pair)
+                }
+
+                let mut pairs = pair.into_inner();
+
+                let formula = FormulaParser::translate_pair(
+                    pairs.next().unwrap_or_else(|| Self::report_missing_pair()),
+                );
+
+                Lemma {
+                    direction: Direction::Backward,
+                    formula,
+                }
+            }
+            internal::Rule::universal_lemma => {
+                if pair.as_rule() != internal::Rule::universal_lemma {
+                    Self::report_unexpected_pair(pair)
+                }
+
+                println!("check 1");
+
+                let mut pairs = pair.into_inner();
+
+                let formula = FormulaParser::translate_pair(
+                    pairs.next().unwrap_or_else(|| Self::report_missing_pair()),
+                );
+
+                Lemma {
+                    direction: Direction::Universal,
+                    formula,
+                }
+            }
+            _ => Self::report_unexpected_pair(pair),
+        }
+    }
+}
+
+pub struct SpecParser;
+
+impl PestParser for SpecParser {
+    type Node = Spec;
+
+    type InternalParser = internal::Parser;
+    type Rule = internal::Rule;
+    const RULE: Self::Rule = internal::Rule::spec;
+
+    fn translate_pair(pair: pest::iterators::Pair<'_, Self::Rule>) -> Self::Node {
+        match pair.as_rule() {
+            internal::Rule::spec => SpecParser::translate_pairs(pair.into_inner()),
+
+            internal::Rule::input => {
+                if pair.as_rule() != internal::Rule::input {
+                    Self::report_unexpected_pair(pair)
+                }
+
+                let mut pairs = pair.into_inner();
+
+                let first_predicate = pairs.next().unwrap_or_else(|| Self::report_missing_pair());
+                let remaining_predicates: Vec<_> =
+                    pairs.map(PredicateParser::translate_pair).collect();
+
+                let mut predicates = vec![PredicateParser::translate_pair(first_predicate)];
+                predicates.extend(remaining_predicates);
+
+                Spec::Input { predicates }
+            }
+            internal::Rule::output => {
+                if pair.as_rule() != internal::Rule::output {
+                    Self::report_unexpected_pair(pair)
+                }
+
+                let mut pairs = pair.into_inner();
+
+                let first_predicate = pairs.next().unwrap_or_else(|| Self::report_missing_pair());
+                let remaining_predicates: Vec<_> =
+                    pairs.map(PredicateParser::translate_pair).collect();
+
+                let mut predicates = vec![PredicateParser::translate_pair(first_predicate)];
+                predicates.extend(remaining_predicates);
+
+                Spec::Output { predicates }
+            }
+            internal::Rule::placeholder_declaration => {
+                if pair.as_rule() != internal::Rule::placeholder_declaration {
+                    Self::report_unexpected_pair(pair)
+                }
+
+                let mut pairs = pair.into_inner();
+
+                let first_placeholder = pairs.next().unwrap_or_else(|| Self::report_missing_pair());
+                let remaining_placeholders: Vec<_> =
+                    pairs.map(PlaceholderParser::translate_pair).collect();
+
+                let mut placeholders = vec![PlaceholderParser::translate_pair(first_placeholder)];
+                placeholders.extend(remaining_placeholders);
+
+                Spec::PlaceholderDeclaration { placeholders }
+            }
+            internal::Rule::assumption => {
+                if pair.as_rule() != internal::Rule::assumption {
+                    Self::report_unexpected_pair(pair)
+                }
+
+                let mut pairs = pair.into_inner();
+
+                let formula = FormulaParser::translate_pair(
+                    pairs.next().unwrap_or_else(|| Self::report_missing_pair()),
+                );
+
+                Spec::Assumption { formula }
+            }
+            internal::Rule::conjecture => {
+                if pair.as_rule() != internal::Rule::conjecture {
+                    Self::report_unexpected_pair(pair)
+                }
+
+                let mut pairs = pair.into_inner();
+
+                let formula = FormulaParser::translate_pair(
+                    pairs.next().unwrap_or_else(|| Self::report_missing_pair()),
+                );
+
+                Spec::Conjecture { formula }
+            }
+            internal::Rule::lemma => Spec::Lemma(LemmaParser::translate_pair(pair)),
+            _ => Self::report_unexpected_pair(pair),
+        }
+    }
+}
+
+pub struct SpecificationParser;
+
+impl PestParser for SpecificationParser {
+    type Node = Specification;
+
+    type InternalParser = internal::Parser;
+    type Rule = internal::Rule;
+    const RULE: Self::Rule = internal::Rule::specification;
+
+    fn translate_pair(pair: pest::iterators::Pair<'_, Self::Rule>) -> Self::Node {
+        if pair.as_rule() != internal::Rule::specification {
+            Self::report_unexpected_pair(pair)
+        }
+        Specification {
+            specs: pair.into_inner().map(SpecParser::translate_pair).collect(),
         }
     }
 }

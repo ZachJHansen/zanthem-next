@@ -4,8 +4,9 @@ use {
         parsing::fol::pest::{
             AtomParser, AtomicFormulaParser, BasicIntegerTermParser, BinaryConnectiveParser,
             BinaryOperatorParser, ComparisonParser, FormulaParser, GeneralTermParser, GuardParser,
-            IntegerTermParser, PredicateParser, QuantificationParser, QuantifierParser,
-            RelationParser, TheoryParser, UnaryConnectiveParser, UnaryOperatorParser,
+            IntegerTermParser, LemmaParser, PlaceholderParser, PredicateParser,
+            QuantificationParser, QuantifierParser, RelationParser, SpecParser,
+            SpecificationParser, TheoryParser, UnaryConnectiveParser, UnaryOperatorParser,
             VariableParser,
         },
         syntax_tree::{impl_node, Node},
@@ -392,6 +393,47 @@ pub struct Theory {
 }
 
 impl_node!(Theory, Format, TheoryParser);
+
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+pub struct Placeholder {
+    pub name: String,
+}
+
+impl_node!(Placeholder, Format, PlaceholderParser);
+
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+pub enum Direction {
+    Forward,
+    Backward,
+    Universal,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+pub struct Lemma {
+    pub direction: Direction,
+    pub formula: Formula,
+}
+
+impl_node!(Lemma, Format, LemmaParser);
+
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+pub enum Spec {
+    Input { predicates: Vec<Predicate> },
+    Output { predicates: Vec<Predicate> },
+    PlaceholderDeclaration { placeholders: Vec<Placeholder> },
+    Assumption { formula: Formula },
+    Conjecture { formula: Formula },
+    Lemma(Lemma),
+}
+
+impl_node!(Spec, Format, SpecParser);
+
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+pub struct Specification {
+    pub specs: Vec<Spec>,
+}
+
+impl_node!(Specification, Format, SpecificationParser);
 
 #[cfg(test)]
 mod tests {

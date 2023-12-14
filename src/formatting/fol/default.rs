@@ -4,8 +4,9 @@ use {
         syntax_tree::{
             fol::{
                 Atom, AtomicFormula, BasicIntegerTerm, BinaryConnective, BinaryOperator,
-                Comparison, Formula, GeneralTerm, Guard, IntegerTerm, Predicate, Quantification,
-                Quantifier, Relation, Sort, Theory, UnaryConnective, UnaryOperator, Variable,
+                Comparison, Direction, Formula, GeneralTerm, Guard, IntegerTerm, Lemma,
+                Placeholder, Predicate, Quantification, Quantifier, Relation, Sort, Spec,
+                Specification, Theory, UnaryConnective, UnaryOperator, Variable,
             },
             Node,
         },
@@ -321,6 +322,77 @@ impl Display for Format<'_, Theory> {
         let iter = formulas.iter().map(Format);
         for form in iter {
             writeln!(f, "{form}.")?;
+        }
+        Ok(())
+    }
+}
+
+impl Display for Format<'_, Placeholder> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        let name = &self.0.name;
+        write!(f, "{name}")?;
+        Ok(())
+    }
+}
+
+impl Display for Format<'_, Lemma> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self.0.direction {
+            Direction::Forward => {
+                writeln!(f, "lemma(forward): {}.", Format(&self.0.formula))?;
+            }
+            Direction::Backward => {
+                writeln!(f, "lemma(backward): {}.", Format(&self.0.formula))?;
+            }
+            Direction::Universal => {
+                writeln!(f, "lemma: {}.", Format(&self.0.formula))?;
+            }
+        }
+        Ok(())
+    }
+}
+
+impl Display for Format<'_, Spec> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self.0 {
+            Spec::Input { predicates } => {
+                let iter = predicates.iter().map(Format);
+                for pred in iter {
+                    writeln!(f, "input: {pred}.")?;
+                }
+                Ok(())
+            }
+            Spec::Output { predicates } => {
+                let iter = predicates.iter().map(Format);
+                for pred in iter {
+                    writeln!(f, "output: {pred}.")?;
+                }
+                Ok(())
+            }
+            Spec::PlaceholderDeclaration { placeholders } => {
+                let iter = placeholders.iter().map(Format);
+                for place in iter {
+                    writeln!(f, "input: {place} -> integer.")?;
+                }
+                Ok(())
+            }
+            Spec::Assumption { formula } => {
+                writeln!(f, "assumption: {}.", Format(formula))
+            }
+            Spec::Conjecture { formula } => {
+                writeln!(f, "conjecture: {}.", Format(formula))
+            }
+            Spec::Lemma(l) => Format(l).fmt(f),
+        }
+    }
+}
+
+impl Display for Format<'_, Specification> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        let specs = &self.0.specs;
+        let iter = specs.iter().map(Format);
+        for spec in iter {
+            writeln!(f, "{spec}")?;
         }
         Ok(())
     }
