@@ -1,13 +1,16 @@
 pub mod convenience;
 pub mod formatting;
 pub mod parsing;
+pub mod proof_search;
 pub mod simplifying;
 pub mod syntax_tree;
 pub mod translating;
-pub mod proof_search;
 
 use {
-    crate::syntax_tree::{asp, fol},
+    crate::{
+        proof_search::{problem, vampire},
+        syntax_tree::{asp, fol},
+    },
     anyhow::{Context, Error, Result},
     clap::{Parser, Subcommand, ValueEnum},
     std::{fs::read_to_string, path::PathBuf},
@@ -28,12 +31,27 @@ enum Commands {
 
         input: PathBuf,
     },
+    Verify {
+        #[arg(long, value_enum)]
+        with: Verification,
+
+        program: PathBuf,
+
+        specification: PathBuf,
+
+        user_guide: PathBuf,
+    },
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
 enum Translation {
     TauStar,
     Completion,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
+enum Verification {
+    Default,
 }
 
 fn try_main() -> Result<()> {
@@ -63,6 +81,66 @@ fn try_main() -> Result<()> {
                         println!("Not a completable theory.")
                     }
                 }
+            }
+        },
+        Commands::Verify {
+            with,
+            program,
+            specification,
+            user_guide,
+        } => match with {
+            Verification::Default => {
+                let spec = match specification.extension() {
+                    Some(extension) => match extension.to_str() {
+                        Some(ext) => match ext {
+                            "lp" => {
+                                let prog2: asp::Program = read_to_string(&specification)
+                                    .with_context(|| {
+                                        format!("failed to read '{}'", &specification.display())
+                                    })?
+                                    .parse()
+                                    .with_context(|| {
+                                        format!("failed to parse '{}'", &specification.display())
+                                    })?;
+                                problem::FileType::MiniGringoProgram { program: prog2 }
+                            }
+                            "spec" => {
+                                let specification: fol::Specification =
+                                    read_to_string(&specification)
+                                        .with_context(|| {
+                                            format!("failed to read '{}'", &specification.display())
+                                        })?
+                                        .parse()
+                                        .with_context(|| {
+                                            format!(
+                                                "failed to parse '{}'",
+                                                &specification.display()
+                                            )
+                                        })?;
+
+                                problem::FileType::FirstOrderSpecification { specification }
+                            }
+                            _ => {
+                                todo!()
+                            }
+                        },
+                        None => todo!(),
+                    },
+                    None => {
+                        todo!()
+                    }
+                };
+                let prog: asp::Program = read_to_string(&program)
+                    .with_context(|| format!("failed to read '{}'", &program.display()))?
+                    .parse()
+                    .with_context(|| format!("failed to parse '{}'", &program.display()))?;
+
+                let ug: fol::Specification = read_to_string(&user_guide)
+                    .with_context(|| format!("failed to read '{}'", &user_guide.display()))?
+                    .parse()
+                    .with_context(|| format!("failed to parse '{}'", &user_guide.display()))?;
+
+                vampire::default_verification(&prog, &spec, &ug);
             }
         },
     }
