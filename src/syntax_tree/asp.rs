@@ -314,6 +314,14 @@ impl Body {
         }
         functions
     }
+
+    pub fn predicates(&self) -> HashSet<Predicate> {
+        let mut preds = HashSet::new();
+        for formula in self.formulas.iter() {
+            preds.extend(formula.predicates())
+        }
+        preds
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
@@ -335,6 +343,18 @@ impl Rule {
         let mut functions = self.head.function_constants();
         functions.extend(self.body.function_constants());
         functions
+    }
+
+    pub fn predicates(&self) -> HashSet<Predicate> {
+        let mut preds = HashSet::new();
+        match self.head.predicate() {
+            Some(p) => {
+                preds.insert(p);
+            }
+            None => (),
+        }
+        preds.extend(self.body.predicates());
+        preds
     }
 }
 
@@ -360,6 +380,14 @@ impl Program {
             functions.extend(rule.function_constants());
         }
         functions
+    }
+
+    pub fn predicates(&self) -> HashSet<Predicate> {
+        let mut preds = HashSet::new();
+        for rule in self.rules.iter() {
+            preds.extend(rule.predicates());
+        }
+        preds
     }
 }
 
