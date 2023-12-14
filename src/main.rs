@@ -4,6 +4,7 @@ pub mod parsing;
 pub mod simplifying;
 pub mod syntax_tree;
 pub mod translating;
+pub mod proof_search;
 
 use {
     crate::syntax_tree::{asp, fol},
