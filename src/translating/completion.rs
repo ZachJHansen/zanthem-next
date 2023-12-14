@@ -1,10 +1,9 @@
-use crate::simplifying::fol::ht;
-use crate::syntax_tree::fol;
+use {
+    crate::{simplifying::fol::ht, syntax_tree::fol},
+    indexmap::{map::Entry, IndexMap},
+};
 
-use std::collections::hash_map::Entry;
-use std::collections::HashMap;
-
-// A sentence is completable if it has the form "forall (F -> G)", 
+// A sentence is completable if it has the form "forall (F -> G)",
 // where G contains no intensional symbols OR has the form "p(V)"".
 // If a sentence is completable, this function returns "G"
 pub fn completable_beheader(sentence: fol::Formula) -> Option<fol::AtomicFormula> {
@@ -100,7 +99,7 @@ pub fn head_mismatch(s1: &fol::AtomicFormula, s2: &fol::AtomicFormula) -> bool {
 // Otherwise returns None
 pub fn completable_theory(
     theory: &fol::Theory,
-) -> Option<HashMap<fol::Formula, fol::AtomicFormula>> {
+) -> Option<IndexMap<fol::Formula, fol::AtomicFormula>> {
     if theory.formulas.len() > 0 {
         let mut formulas = Vec::<fol::Formula>::new();
         let mut rule_heads = Vec::<fol::AtomicFormula>::new();
@@ -116,7 +115,7 @@ pub fn completable_theory(
                 }
             }
         }
-        let mut formula_heads = HashMap::<fol::Formula, fol::AtomicFormula>::new();
+        let mut formula_heads = IndexMap::<fol::Formula, fol::AtomicFormula>::new();
         for (i, s) in formulas.iter().enumerate() {
             formula_heads.insert(s.clone(), rule_heads[i].clone());
         }
@@ -135,8 +134,8 @@ pub fn completable_theory(
 }
 
 // Create a map from each unique head to a vector of F_i formula bodies (definitions)
-pub fn definitions(theory: &fol::Theory) -> HashMap<fol::AtomicFormula, Vec<fol::Formula>> {
-    let mut definitions = HashMap::<fol::AtomicFormula, Vec<fol::Formula>>::new();
+pub fn definitions(theory: &fol::Theory) -> IndexMap<fol::AtomicFormula, Vec<fol::Formula>> {
+    let mut definitions = IndexMap::<fol::AtomicFormula, Vec<fol::Formula>>::new();
     for sentence in theory.formulas.iter() {
         match sentence {
             fol::Formula::QuantifiedFormula {
