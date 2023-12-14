@@ -110,6 +110,8 @@ mod tests {
             ("a or a", "a"),
             ("#true and #true and a", "a"),
             ("#true and (#true and a)", "a"),
+            ("forall X ((#true and p and q(X)) or (p or #true))", "forall X #true"),
+            ("forall X (q(X) or (p or #true))", "forall X #true"),
         ] {
             assert_eq!(simplify(src.parse().unwrap()), target.parse().unwrap())
         }
