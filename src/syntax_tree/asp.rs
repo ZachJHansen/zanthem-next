@@ -87,6 +87,19 @@ impl Term {
             }
         }
     }
+
+    pub fn function_constants(&self) -> HashSet<String> {
+        match &self {
+            Term::PrecomputedTerm(t) => t.function_constants(),
+            Term::Variable(_) => HashSet::new(),
+            Term::UnaryOperation { arg, .. } => arg.function_constants(),
+            Term::BinaryOperation { lhs, rhs, .. } => {
+                let mut functions = lhs.function_constants();
+                functions.extend(rhs.function_constants());
+                functions
+            }
+        }
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
