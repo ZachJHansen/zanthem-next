@@ -3,10 +3,10 @@ use {
         proof_search::problem::{FileType, ProblemHandler, ProblemStatus},
         syntax_tree::{asp, fol},
     },
+    anyhow::anyhow,
     lazy_static::lazy_static,
     regex::Regex,
     std::process,
-    anyhow::anyhow,
 };
 
 lazy_static! {
@@ -56,7 +56,7 @@ pub fn verify_with_vampire(handler: ProblemHandler) {
                         println!("Conjecture: {} \n\t| Status: Proven", p.conjecture);
                     }
                     _ => {
-                        claim_status = ProblemStatus::Timeout;  // TODO - Differentiate between different vampire errors/non-theorem results
+                        claim_status = ProblemStatus::Timeout; // TODO - Differentiate between different vampire errors/non-theorem results
                         println!("Conjecture: {} \n\t| Status: Not Proven", p.conjecture);
                         break;
                     }
@@ -72,7 +72,7 @@ pub fn verify_with_vampire(handler: ProblemHandler) {
         match claim_status {
             ProblemStatus::Theorem => {
                 println!("\n%%%%% Claim status: Theorem %%%%%\n");
-            },
+            }
             _ => {
                 task_status = ProblemStatus::Timeout;
                 println!("\n%%%%% Claim status: Not a Theorem %%%%%\n");
@@ -80,7 +80,9 @@ pub fn verify_with_vampire(handler: ProblemHandler) {
         }
     }
     match task_status {
-        ProblemStatus::Unknown => println!("\n%%%%% Task status: Successfully proved all claims. %%%%%\n"),
+        ProblemStatus::Unknown => {
+            println!("\n%%%%% Task status: Successfully proved all claims. %%%%%\n")
+        }
         _ => println!("\n%%%%% Task status: Failed to prove some claims. %%%%%\n"),
     }
 }
@@ -125,8 +127,6 @@ where
         return Err(anyhow!("Vampire exited with error code {}\n%%%%%% Vampire stdout %%%%%%\n{}\n%%%%%% Vampire stderr %%%%%%\n{}%%%%%%\n",
             exit_code, stdout.to_string(), stderr.to_string()
         ));
-
-        
     }
 
     let proof_time = TIME
@@ -135,7 +135,7 @@ where
         .unwrap_or(None);
 
     if THRM.is_match(stdout) {
-        return Ok(ProblemStatus::Theorem)
+        return Ok(ProblemStatus::Theorem);
     }
 
     return Err(anyhow!("Unknown failure\n%%%%%% Vampire stdout %%%%%%\n{}\n%%%%%% Vampire stderr %%%%%%\n{}%%%%%%\n",

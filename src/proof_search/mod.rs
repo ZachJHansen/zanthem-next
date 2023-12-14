@@ -1,2 +1,2 @@
-pub mod vampire;
 pub mod problem;
+pub mod vampire;

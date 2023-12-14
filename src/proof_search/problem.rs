@@ -1,10 +1,6 @@
 use {
     crate::{
-        convenience::{
-            apply::Apply as _,
-            unbox::fol::UnboxedFormula,
-            unbox::Unbox,
-        },
+        convenience::{apply::Apply as _, unbox::fol::UnboxedFormula, unbox::Unbox},
         formatting::fol::tptp::Format,
         syntax_tree::{asp, fol},
         translating::{completion::completion, tau_star::tau_star},
@@ -278,10 +274,10 @@ impl ProblemHandler {
         let spec_private_predicates = match &specification {
             &FileType::MiniGringoProgram { program: p } => {
                 prog_private_predicates(p, &public_predicates, needs_renaming, true);
-            },
+            }
             &FileType::FirstOrderSpecification { specification: s } => {
                 spec_private_predicates(s, &public_predicates, needs_renaming);
-            },
+            }
         };
 
         let program_private_predicates =
@@ -717,10 +713,10 @@ pub fn spec_private_predicates(
                         }
                     }
                 }
-            },
+            }
             _ => {
                 println!("A specification should only contain assumptions and conjectures.");
-            },
+            }
         }
     }
     privates
@@ -755,10 +751,7 @@ pub fn formula_head(formula: &fol::Formula) -> Option<fol::Predicate> {
             },
             _ => todo!(),
         },
-        fol::Formula::BinaryFormula {
-            lhs,
-            ..
-        } => match lhs.clone().unbox() {
+        fol::Formula::BinaryFormula { lhs, .. } => match lhs.clone().unbox() {
             UnboxedFormula::AtomicFormula(a) => match a {
                 fol::AtomicFormula::Atom(af) => Some(af.predicate()),
                 _ => todo!(),
