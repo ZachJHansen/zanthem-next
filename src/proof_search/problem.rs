@@ -285,7 +285,7 @@ impl ProblemHandler {
         };
 
         let program_private_predicates =
-            prog_private_predicates(program, &public_predicates, needs_renaming);
+            prog_private_predicates(program, &public_predicates, needs_renaming, false);
 
         let problem_predicates = public_predicates.union(&program_private_predicates);
         //  TODO - how to handle spec private predicates? are they part of the problem types? or only for one direction?
@@ -703,13 +703,13 @@ pub fn spec_private_predicates(
         match spec {
             fol::Spec::Assumption { formula } | fol::Spec::Conjecture { formula } => {
                 for pred in formula.predicates() {
-                    if !publics.contains(pred) {
+                    if !publics.contains(&pred) {
                         if needs_renaming {
-                            let mut s = p.symbol.clone();
+                            let mut s = pred.symbol.clone();
                             s.push_str("_2");
                             let renamed_pred = fol::Predicate {
                                 symbol: s,
-                                arity: p.arity,
+                                arity: pred.arity,
                             };
                             privates.insert(renamed_pred);
                         } else {
@@ -739,7 +739,7 @@ pub fn formula_head(formula: &fol::Formula) -> Option<fol::Predicate> {
             } => match connective {
                 fol::BinaryConnective::Equivalence => match *lhs {
                     fol::Formula::AtomicFormula(a) => match a {
-                        fol::AtomicFormula::Atom(af) => Some(af.predicate),
+                        fol::AtomicFormula::Atom(af) => Some(af.predicate()),
                         _ => todo!(),
                     },
                     _ => todo!(),
@@ -760,7 +760,7 @@ pub fn formula_head(formula: &fol::Formula) -> Option<fol::Predicate> {
             ..
         } => match lhs.clone().unbox() {
             UnboxedFormula::AtomicFormula(a) => match a {
-                fol::AtomicFormula::Atom(af) => Some(af.predicate),
+                fol::AtomicFormula::Atom(af) => Some(af.predicate()),
                 _ => todo!(),
             },
             _ => todo!(),
@@ -776,8 +776,8 @@ fn append_predicate(
 ) -> fol::Formula {
     formula.apply(&mut |formula| match formula {
         fol::Formula::AtomicFormula(fol::AtomicFormula::Atom(mut a)) => {
-            if !publics.contains(&a.predicate) {
-                a.predicate.symbol.push_str(postfix);
+            if !publics.contains(&a.predicate()) {
+                a.predicate().symbol.push_str(postfix);
             }
             fol::Formula::AtomicFormula(fol::AtomicFormula::Atom(a))
         }
