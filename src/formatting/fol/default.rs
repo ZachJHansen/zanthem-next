@@ -404,8 +404,8 @@ mod tests {
         formatting::fol::default::Format,
         syntax_tree::fol::{
             Atom, AtomicFormula, BasicIntegerTerm, BinaryConnective, BinaryOperator, Comparison,
-            Formula, GeneralTerm, Guard, IntegerTerm, Quantification, Quantifier, Relation, Sort,
-            UnaryConnective, Variable,
+            Formula, GeneralTerm, Guard, IntegerTerm, Placeholder, Predicate, Quantification,
+            Quantifier, Relation, Sort, UnaryConnective, Variable,
         },
     };
 
@@ -809,6 +809,29 @@ mod tests {
             })
             .to_string(),
             "p <- (q -> r)"
+        );
+    }
+
+    #[test]
+    fn format_placeholder() {
+        assert_eq!(
+            Format(&Placeholder {
+                name: "n".to_string()
+            })
+            .to_string(),
+            "n"
+        );
+    }
+
+    #[test]
+    fn format_predicate() {
+        assert_eq!(
+            Format(&Predicate {
+                symbol: "p".to_string(),
+                arity: 5
+            })
+            .to_string(),
+            "p/5"
         );
     }
 }
