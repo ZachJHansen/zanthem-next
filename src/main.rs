@@ -1,7 +1,7 @@
 pub mod convenience;
-pub mod simplifying;
 pub mod formatting;
 pub mod parsing;
+pub mod simplifying;
 pub mod syntax_tree;
 pub mod translating;
 
@@ -44,7 +44,7 @@ fn try_main() -> Result<()> {
                     .parse()
                     .with_context(|| format!("failed to parse '{}'", &input.display()))?;
 
-                let theory = translating::tau_star::tau_star_program(program);
+                let theory = translating::tau_star::tau_star(program);
                 println!("{theory}")
             }
             Translation::Completion => {
@@ -53,7 +53,7 @@ fn try_main() -> Result<()> {
                     .parse()
                     .with_context(|| format!("failed to parse '{}'", &input.display()))?;
 
-                let theory = translating::tau_star::tau_star_program(program);
+                let theory = translating::tau_star::tau_star(program);
                 match translating::completion::completion(&theory) {
                     Some(completion) => {
                         println!("{completion}")
