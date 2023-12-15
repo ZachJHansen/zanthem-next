@@ -80,6 +80,18 @@ impl IntegerTerm {
             }
         }
     }
+
+    pub fn function_constants(&self) -> HashSet<String> {
+        match &self {
+            IntegerTerm::BasicIntegerTerm(_) => HashSet::new(),
+            IntegerTerm::UnaryOperation { arg: t, .. } => t.function_constants(),
+            IntegerTerm::BinaryOperation { lhs, rhs, .. } => {
+                let mut fns = lhs.function_constants();
+                fns.extend(rhs.function_constants());
+                fns
+            }
+        }
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
@@ -100,6 +112,14 @@ impl GeneralTerm {
                 sort: Sort::General,
             }]),
             GeneralTerm::IntegerTerm(t) => t.variables(),
+        }
+    }
+
+    pub fn function_constants(&self) -> HashSet<String> {
+        match &self {
+            GeneralTerm::Symbol(s) => HashSet::from([s.to_string()]),
+            GeneralTerm::GeneralVariable(v) => HashSet::new(),
+            GeneralTerm::IntegerTerm(t) => t.function_constants(),
         }
     }
 }
@@ -153,6 +173,10 @@ impl Guard {
     pub fn variables(&self) -> HashSet<Variable> {
         self.term.variables()
     }
+
+    pub fn function_constants(&self) -> HashSet<String> {
+        self.term.function_constants()
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
@@ -200,6 +224,26 @@ impl AtomicFormula {
                 HashSet::new()
             }
             AtomicFormula::Atom(a) => HashSet::from([a.predicate()]),
+        }
+    }
+
+    pub fn function_constants(&self) -> HashSet<String> {
+        match &self {
+            AtomicFormula::Falsity | AtomicFormula::Truth => HashSet::new(),
+            AtomicFormula::Atom(a) => {
+                let mut fns = HashSet::new();
+                for t in a.terms.iter() {
+                    fns.extend(t.function_constants());
+                }
+                fns
+            },
+            AtomicFormula::Comparison(c) => {
+                let mut fns = c.term.function_constants();
+                for guard in c.guards.iter() {
+                    fns.extend(guard.function_constants())
+                }
+                fns
+            },
         }
     }
 
@@ -364,6 +408,19 @@ impl Formula {
                 vars
             }
             Formula::QuantifiedFormula { formula, .. } => formula.predicates(),
+        }
+    }
+
+    pub fn function_constants(&self) -> HashSet<String> {
+        match &self {
+            Formula::AtomicFormula(f) => f.function_constants(),
+            Formula::UnaryFormula { formula, .. } => formula.function_constants(),
+            Formula::BinaryFormula { lhs, rhs, .. } => {
+                let mut fns = lhs.function_constants();
+                fns.extend(rhs.function_constants());
+                fns
+            }
+            Formula::QuantifiedFormula { formula, .. } => formula.function_constants(),
         }
     }
 
