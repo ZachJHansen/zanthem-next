@@ -80,18 +80,6 @@ impl IntegerTerm {
             }
         }
     }
-
-    pub fn function_constants(&self) -> HashSet<String> {
-        match &self {
-            IntegerTerm::BasicIntegerTerm(_) => HashSet::new(),
-            IntegerTerm::UnaryOperation { arg: t, .. } => t.function_constants(),
-            IntegerTerm::BinaryOperation { lhs, rhs, .. } => {
-                let mut fns = lhs.function_constants();
-                fns.extend(rhs.function_constants());
-                fns
-            }
-        }
-    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
@@ -118,8 +106,7 @@ impl GeneralTerm {
     pub fn function_constants(&self) -> HashSet<String> {
         match &self {
             GeneralTerm::Symbol(s) => HashSet::from([s.to_string()]),
-            GeneralTerm::GeneralVariable(v) => HashSet::new(),
-            GeneralTerm::IntegerTerm(t) => t.function_constants(),
+            GeneralTerm::GeneralVariable(_) | GeneralTerm::IntegerTerm(_) => HashSet::new(),
         }
     }
 }
