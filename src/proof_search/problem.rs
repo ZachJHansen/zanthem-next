@@ -271,19 +271,23 @@ impl ProblemHandler {
 
         let public_predicates = public_predicates(specification, user_guide);
 
-        let spec_private_predicates = match &specification {
+        let specification_private_predicates = match &specification {
             &FileType::MiniGringoProgram { program: p } => {
-                prog_private_predicates(p, &public_predicates, needs_renaming, true);
+                prog_private_predicates(p, &public_predicates, needs_renaming, true)
             }
             &FileType::FirstOrderSpecification { specification: s } => {
-                spec_private_predicates(s, &public_predicates, needs_renaming);
+                spec_private_predicates(s, &public_predicates, needs_renaming)
             }
         };
 
         let program_private_predicates =
             prog_private_predicates(program, &public_predicates, needs_renaming, false);
 
-        let problem_predicates = public_predicates.union(&program_private_predicates);
+        let mut private_predicates: HashSet<fol::Predicate> = HashSet::new();
+        private_predicates.extend(specification_private_predicates);
+        private_predicates.extend(program_private_predicates);
+
+        let problem_predicates = public_predicates.union(&private_predicates);
         //  TODO - how to handle spec private predicates? are they part of the problem types? or only for one direction?
 
         let mut forward_premises = Vec::<fol::Formula>::new();
@@ -292,7 +296,9 @@ impl ProblemHandler {
         let mut backward_premises = Vec::<fol::Formula>::new();
         let mut backward_conclusions = Vec::<fol::Formula>::new();
 
-        let mut functions = Vec::<Statement>::new();
+        let mut placeholders = HashSet::<String>::new();            // Placeholders, disjoint from functions
+        let mut functions = HashSet::<String>::new();               // Function constants occurring in the problem
+
         let mut predicates = Vec::<Statement>::new();
         for (i, p) in problem_predicates.enumerate() {
             predicates.push(Statement::TypedAtom {
@@ -311,6 +317,7 @@ impl ProblemHandler {
             &mut backward_premises,
             &mut backward_conclusions,
             &public_predicates,
+            &mut functions,
             needs_renaming,
         );
 
@@ -319,7 +326,7 @@ impl ProblemHandler {
             &mut forward_premises,
             &mut backward_premises,
             &mut predicates,
-            &mut functions,
+            &mut placeholders,
         );
 
         parse_specification(
@@ -347,19 +354,44 @@ impl ProblemHandler {
             status: ProblemStatus::Unknown,
         };
 
+        let mut function_statements = Vec::<Statement>::new();
+        for ph in placeholders.iter() {
+            function_statements.push(Statement::TypedAtom {
+                name: "placeholder".to_string(),
+                atom: ph.to_string(),
+                spec: TypeSpec {
+                    return_type: VampireTypes::Int,
+                    args: vec![],
+                },
+            });
+        }
+
+        let ground_function_constants: Vec<&String> = functions.difference(&placeholders).collect();
+        let mut uniqueness_axioms = axiomatize_partial_order(ground_function_constants);
+
+        for ax in uniqueness_axioms.iter() {
+            function_statements.push(
+                Statement::AnnotatedFormula {
+                    formula: ax.clone(),
+                    role: Role::Axiom,
+                    name: "uniqueness_axiom".into(),
+                }
+            );
+        }
+
         let mut goals: HashMap<Claim, Vec<Problem>> = HashMap::new();
         goals.insert(
             forward.clone(),
-            forward.decompose_claim(&predicates, &functions),
+            forward.decompose_claim(&predicates, &function_statements),
         );
         goals.insert(
             backward.clone(),
-            backward.decompose_claim(&predicates, &functions),
+            backward.decompose_claim(&predicates, &function_statements),
         );
 
         ProblemHandler {
             predicates,
-            functions,
+            functions: function_statements,
             interpretation: Interpretation::Standard,
             memory: vec![],
             goals,
@@ -389,13 +421,18 @@ impl ProblemHandler {
     }
 }
 
+pub fn axiomatize_partial_order(function_constants: Vec<&String>) -> Vec<fol::Formula> {
+    let mut axioms = Vec::new();
+    axioms
+}
+
 pub fn parse_specification(
     specification: &FileType,
     forward_premises: &mut Vec<fol::Formula>,
     backward_premises: &mut Vec<fol::Formula>,
     forward_conclusions: &mut Vec<fol::Formula>,
     predicates: &mut Vec<Statement>,
-    functions: &mut Vec<Statement>,
+    functions: &mut HashSet<String>,
     public_predicates: &HashSet<fol::Predicate>,
     needs_renaming: bool,
 ) {
@@ -411,6 +448,11 @@ pub fn parse_specification(
                         } else {
                             f.clone()
                         };
+
+                        for function in formula.function_constants() {
+                            functions.insert(function);
+                        }
+
                         let head_symbol = formula_head(&formula);
                         match head_symbol {
                             Some(s) => {
@@ -438,18 +480,18 @@ pub fn parse_specification(
         FileType::FirstOrderSpecification { specification: s } => {
             for (i, spec) in s.specs.iter().enumerate() {
                 match spec {
-                    fol::Spec::PlaceholderDeclaration { placeholders } => {
-                        for ph in placeholders.iter() {
-                            functions.push(Statement::TypedAtom {
-                                name: ["statement", i.to_string().as_str()].join("_"),
-                                atom: ph.name.clone(),
-                                spec: TypeSpec {
-                                    return_type: VampireTypes::Int,
-                                    args: vec![],
-                                },
-                            });
-                        }
-                    }
+                    // fol::Spec::PlaceholderDeclaration { placeholders } => {
+                    //     for ph in placeholders.iter() {
+                    //         functions.push(Statement::TypedAtom {
+                    //             name: ["statement", i.to_string().as_str()].join("_"),
+                    //             atom: ph.name.clone(),
+                    //             spec: TypeSpec {
+                    //                 return_type: VampireTypes::Int,
+                    //                 args: vec![],
+                    //             },
+                    //         });
+                    //     }
+                    // }
                     fol::Spec::Input { predicates: preds }
                     | fol::Spec::Output { predicates: preds } => {
                         for (i, p) in preds.iter().enumerate() {
@@ -466,10 +508,18 @@ pub fn parse_specification(
                     fol::Spec::Assumption { formula } => {
                         forward_premises.push(formula.clone());
                         backward_premises.push(formula.clone());
+
+                        for function in formula.function_constants() {
+                            functions.insert(function);
+                        }
                     }
                     fol::Spec::Conjecture { formula } => {
                         forward_conclusions.push(formula.clone());
                         backward_premises.push(formula.clone());
+
+                        for function in formula.function_constants() {
+                            functions.insert(function);
+                        }
                     }
                     _ => todo!(),
                 }
@@ -484,6 +534,7 @@ pub fn parse_program(
     backward_premises: &mut Vec<fol::Formula>,
     backward_conclusions: &mut Vec<fol::Formula>,
     public_predicates: &HashSet<fol::Predicate>,
+    functions: &mut HashSet<String>,
     needs_renaming: bool,
 ) {
     let gamma = completion(&tau_star(program.clone()));
@@ -495,6 +546,11 @@ pub fn parse_program(
                 } else {
                     f.clone()
                 };
+
+                for function in formula.function_constants() {
+                    functions.insert(function);
+                }
+
                 let head_symbol = formula_head(&formula);
                 match head_symbol {
                     Some(s) => {
@@ -525,9 +581,8 @@ pub fn parse_user_guide(
     forward_premises: &mut Vec<fol::Formula>,
     backward_premises: &mut Vec<fol::Formula>,
     predicates: &mut Vec<Statement>,
-    functions: &mut Vec<Statement>,
+    placeholder_fns: &mut HashSet<String>,
 ) {
-    let mut fns = Vec::<Statement>::new();
     let mut preds = Vec::<Statement>::new();
     let mut axioms = Vec::<fol::Formula>::new();
 
@@ -535,14 +590,7 @@ pub fn parse_user_guide(
         match spec {
             fol::Spec::PlaceholderDeclaration { placeholders } => {
                 for ph in placeholders.iter() {
-                    fns.push(Statement::TypedAtom {
-                        name: ["statement", i.to_string().as_str()].join("_"),
-                        atom: ph.name.clone(),
-                        spec: TypeSpec {
-                            return_type: VampireTypes::Int,
-                            args: vec![],
-                        },
-                    });
+                    placeholder_fns.insert(ph.name.clone());
                 }
             }
             fol::Spec::Input { predicates } | fol::Spec::Output { predicates } => {
@@ -574,7 +622,6 @@ pub fn parse_user_guide(
     forward_premises.extend(axioms.clone());
     backward_premises.extend(axioms);
     predicates.extend(preds);
-    functions.extend(fns);
 }
 
 pub fn public_predicates(
