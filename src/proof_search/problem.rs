@@ -367,7 +367,7 @@ impl ProblemHandler {
         }
 
         let ground_function_constants: Vec<&String> = functions.difference(&placeholders).collect();
-        let mut uniqueness_axioms = axiomatize_partial_order(ground_function_constants);
+        let uniqueness_axioms = axiomatize_partial_order(ground_function_constants);
 
         for ax in uniqueness_axioms.iter() {
             function_statements.push(
@@ -422,7 +422,26 @@ impl ProblemHandler {
 }
 
 pub fn axiomatize_partial_order(function_constants: Vec<&String>) -> Vec<fol::Formula> {
+    let mut sorted_fns = Vec::new();
+    for f in function_constants.iter() {
+        sorted_fns.push(f.to_string());
+    }
+    sorted_fns.sort();
+
+    let n = sorted_fns.len();
     let mut axioms = Vec::new();
+    for i in 1..n {
+        let ax = fol::Formula::AtomicFormula(fol::AtomicFormula::Comparison(
+            fol::Comparison {
+                term: fol::GeneralTerm::Symbol(sorted_fns[i].clone()),
+                guards: vec![fol::Guard {
+                    relation: fol::Relation::Less,
+                    term: fol::GeneralTerm::Symbol(sorted_fns[i+1].clone())
+                }]
+            }
+        ));
+        axioms.push(ax);
+    }
     axioms
 }
 
@@ -541,11 +560,13 @@ pub fn parse_program(
     match gamma {
         Some(completion) => {
             for f in completion.formulas.iter() {
+                println!("formula before: {f}");
                 let formula = if needs_renaming {
                     rename_predicates(f.clone(), "_1", public_predicates)
                 } else {
                     f.clone()
                 };
+                println!("formula after: {formula}");
 
                 for function in formula.function_constants() {
                     functions.insert(function);
@@ -817,7 +838,7 @@ fn append_predicate(
     formula.apply(&mut |formula| match formula {
         fol::Formula::AtomicFormula(fol::AtomicFormula::Atom(mut a)) => {
             if !publics.contains(&a.predicate()) {
-                a.predicate().symbol.push_str(postfix);
+                a.predicate_symbol.push_str(postfix);
             }
             fol::Formula::AtomicFormula(fol::AtomicFormula::Atom(a))
         }

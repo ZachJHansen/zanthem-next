@@ -1,1 +1,1 @@
-input: n -> integer. output: prime/1. assumption: forall X p(X).
+input: n -> integer. output: prime/1.

@@ -58,7 +58,6 @@ fn try_main() -> Result<()> {
     match Cli::parse().command {
         Commands::Translate { with, input } => match with {
             Translation::TauStar => {
-                let test: fol::GeneralTerm = "a+1".parse().unwrap();
                 let program: asp::Program = read_to_string(&input)
                     .with_context(|| format!("failed to read '{}'", &input.display()))?
                     .parse()
