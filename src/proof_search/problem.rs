@@ -7,6 +7,7 @@ use {
     },
     std::collections::{HashMap, HashSet},
     std::fs,
+    regex::Regex,
 };
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -96,7 +97,14 @@ impl Statement {
                 role,
                 formula,
             } => {
-                format!("\ntff({}, {}, {}).", name, role.display(), Format(formula))
+                let intermediate = format!("\ntff({}, {}, {}).", name, role.display(), Format(formula));        // Placeholders special chars need to be replaced with actual names
+                let re = Regex::new(r"%-(?P<ph>[[:alpha:]]+)-%").unwrap();
+                let mut modified = intermediate.clone();
+                for caps in re.captures_iter(&intermediate) {
+                    let ph_specific_re = Regex::new(format!(r"%-{}-%", &caps["ph"]).as_str()).unwrap();
+                    modified = ph_specific_re.replace_all(&modified, &caps["ph"].to_lowercase()).to_string();
+                }
+                modified
             }
             Statement::TypedAtom { atom, name, spec } => {
                 format!("\ntff({}, type, {}: {}).", name, atom, spec.display())
@@ -296,8 +304,8 @@ impl ProblemHandler {
         let mut backward_premises = Vec::<fol::Formula>::new();
         let mut backward_conclusions = Vec::<fol::Formula>::new();
 
-        let mut placeholders = HashSet::<String>::new();            // Placeholders, disjoint from functions
-        let mut functions = HashSet::<String>::new();               // Function constants occurring in the problem
+        let mut placeholders = HashSet::<String>::new(); // Placeholders, disjoint from functions
+        let mut functions = HashSet::<String>::new(); // Function constants occurring in the problem
 
         let mut predicates = Vec::<Statement>::new();
         for (i, p) in problem_predicates.enumerate() {
@@ -340,6 +348,15 @@ impl ProblemHandler {
             needs_renaming,
         );
 
+        placeholder_replacements(&mut forward_premises, &placeholders);
+        // for formula in forward_premises.iter() {
+        //     println!("\nNew formula: {formula}\n");
+        // }
+        //println!("placeholders: {:?}", placeholders);
+        placeholder_replacements(&mut forward_conclusions, &placeholders);
+        placeholder_replacements(&mut backward_premises, &placeholders);
+        placeholder_replacements(&mut backward_conclusions, &placeholders);
+
         let forward = Claim {
             name: "forward".to_string(),
             premises: forward_premises,
@@ -370,13 +387,11 @@ impl ProblemHandler {
         let uniqueness_axioms = axiomatize_partial_order(ground_function_constants);
 
         for ax in uniqueness_axioms.iter() {
-            function_statements.push(
-                Statement::AnnotatedFormula {
-                    formula: ax.clone(),
-                    role: Role::Axiom,
-                    name: "uniqueness_axiom".into(),
-                }
-            );
+            function_statements.push(Statement::AnnotatedFormula {
+                formula: ax.clone(),
+                role: Role::Axiom,
+                name: "uniqueness_axiom".into(),
+            });
         }
 
         let mut goals: HashMap<Claim, Vec<Problem>> = HashMap::new();
@@ -430,17 +445,17 @@ pub fn axiomatize_partial_order(function_constants: Vec<&String>) -> Vec<fol::Fo
 
     let n = sorted_fns.len();
     let mut axioms = Vec::new();
-    for i in 1..n {
-        let ax = fol::Formula::AtomicFormula(fol::AtomicFormula::Comparison(
-            fol::Comparison {
+    if n > 1 {
+        for i in 0..n - 2 {
+            let ax = fol::Formula::AtomicFormula(fol::AtomicFormula::Comparison(fol::Comparison {
                 term: fol::GeneralTerm::Symbol(sorted_fns[i].clone()),
                 guards: vec![fol::Guard {
                     relation: fol::Relation::Less,
-                    term: fol::GeneralTerm::Symbol(sorted_fns[i+1].clone())
-                }]
-            }
-        ));
-        axioms.push(ax);
+                    term: fol::GeneralTerm::Symbol(sorted_fns[i + 1].clone()),
+                }],
+            }));
+            axioms.push(ax);
+        }
     }
     axioms
 }
@@ -560,13 +575,11 @@ pub fn parse_program(
     match gamma {
         Some(completion) => {
             for f in completion.formulas.iter() {
-                println!("formula before: {f}");
                 let formula = if needs_renaming {
                     rename_predicates(f.clone(), "_1", public_predicates)
                 } else {
                     f.clone()
                 };
-                println!("formula after: {formula}");
 
                 for function in formula.function_constants() {
                     functions.insert(function);
@@ -879,5 +892,93 @@ pub fn rename_predicates(
             quantification,
             formula: append_predicate(*formula, postfix, publics).into(),
         },
+    }
+}
+
+fn insert_replacement(formula: fol::Formula, placeholder: &str) -> fol::Formula {
+    let mut replacement_name = format!("%-{}-%", placeholder.to_uppercase().to_string());
+    let replacement = fol::GeneralTerm::IntegerTerm(fol::IntegerTerm::BasicIntegerTerm(
+        fol::BasicIntegerTerm::IntegerVariable(replacement_name.clone()),
+    ));
+    let original = fol::GeneralTerm::Symbol(placeholder.to_string());
+
+    formula.apply(&mut |formula| match formula {
+        fol::Formula::AtomicFormula(fol::AtomicFormula::Atom(mut a)) => {
+            let n = a.terms.len();
+            for i in 0..n - 1 {
+                if a.terms[i] == original {
+                    a.terms[i] = replacement.clone();
+                }
+            }
+            fol::Formula::AtomicFormula(fol::AtomicFormula::Atom(a))
+        },
+        fol::Formula::AtomicFormula(fol::AtomicFormula::Comparison(mut c)) => {
+            if c.term == original {
+                c.term = replacement.clone();
+            }
+            let n = c.guards.len();
+            if n == 1 {
+                if c.guards[0].term == original {
+                    c.guards[0].term = replacement.clone();
+                }
+            } else {
+                for i in 0..n-1 {
+                    if c.guards[i].term == original {
+                        c.guards[i].term = replacement.clone();
+                    }
+                }
+            }
+            fol::Formula::AtomicFormula(fol::AtomicFormula::Comparison(c))
+        },
+        x => x,
+    })
+}
+
+pub fn replace_placeholders(formula: fol::Formula, placeholder: &str) -> fol::Formula {
+    //println!("Replacing {placeholder} within {formula}");
+    match formula {
+        x @ fol::Formula::AtomicFormula(_) => insert_replacement(x, placeholder),
+
+        fol::Formula::UnaryFormula {
+            connective: connective @ fol::UnaryConnective::Negation,
+            formula,
+        } => fol::Formula::UnaryFormula {
+            connective,
+            formula: insert_replacement(*formula, placeholder).into(),
+        },
+
+        fol::Formula::BinaryFormula {
+            connective,
+            lhs,
+            rhs,
+        } => fol::Formula::BinaryFormula {
+            connective,
+            lhs: insert_replacement(*lhs, placeholder).into(),
+            rhs: insert_replacement(*rhs, placeholder).into(),
+        },
+
+        fol::Formula::QuantifiedFormula {
+            quantification,
+            formula,
+        } => fol::Formula::QuantifiedFormula {
+            quantification,
+            formula: insert_replacement(*formula, placeholder).into(),
+        },
+    }
+}
+
+pub fn placeholder_replacements(formulas: &mut Vec<fol::Formula>, placeholders: &HashSet<String>) {
+    
+    let mut borrow_nightmare = HashSet::new();
+    for ph in placeholders.iter() {
+        borrow_nightmare.insert(ph.clone());
+    }
+    //println!("Replacing {} placeholders within {} formulas", placeholders.len(), formulas.len());
+    let n = formulas.len();
+    for i in 0..=n-1 {
+        for ph in borrow_nightmare.iter() {
+            formulas[i] = replace_placeholders(formulas[i].clone(), ph);
+            //println!("\n\n%%%%%\nNew formula: {}\n%%%%%%", formulas[i]);
+        }
     }
 }

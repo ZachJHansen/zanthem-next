@@ -223,14 +223,14 @@ impl AtomicFormula {
                     fns.extend(t.function_constants());
                 }
                 fns
-            },
+            }
             AtomicFormula::Comparison(c) => {
                 let mut fns = c.term.function_constants();
                 for guard in c.guards.iter() {
                     fns.extend(guard.function_constants())
                 }
                 fns
-            },
+            }
         }
     }
 

@@ -122,23 +122,125 @@ impl Display for Format<'_, Comparison> {
         let mut previous_term = &self.0.term;
         for (counter, g) in guards.iter().enumerate() {
             if counter > 0 {
-                write!(f, " and ")?;
+                write!(f, " & ")?;
             }
             match g.relation {
-                Relation::Equal | Relation::NotEqual => write!(
-                    f,
-                    "{} {} {}",
-                    Format(previous_term),
-                    Format(&g.relation),
-                    Format(&g.term)
-                ),
-                _ => write!(
-                    f,
-                    "{}({}, {})",
-                    Format(&g.relation),
-                    Format(previous_term),
-                    Format(&g.term)
-                ),
+                Relation::Equal | Relation::NotEqual => {
+                    match previous_term {
+                        GeneralTerm::IntegerTerm(_) => {
+                            match g.term {
+                                GeneralTerm::IntegerTerm(_) => {
+                                    write!(
+                                        f,
+                                        "{} {} {}",
+                                        Format(previous_term),
+                                        Format(&g.relation),
+                                        Format(&g.term)
+                                    )
+                                }
+                                _ => {
+                                    // previous term needs to be typecast to an object type for comparison with g.term
+                                    write!(
+                                        f,
+                                        "f__integer__({}) {} {}",
+                                        Format(previous_term),
+                                        Format(&g.relation),
+                                        Format(&g.term)
+                                    )
+                                }
+                            }
+                        }
+                        _ => {
+                            match g.term {
+                                GeneralTerm::IntegerTerm(_) => {
+                                    // g.term needs to be typecast to an object type for comparison with previous term
+                                    write!(
+                                        f,
+                                        "{} {} f__integer__({})",
+                                        Format(previous_term),
+                                        Format(&g.relation),
+                                        Format(&g.term)
+                                    )
+                                }
+                                _ => {
+                                    write!(
+                                        f,
+                                        "{} {} {}",
+                                        Format(previous_term),
+                                        Format(&g.relation),
+                                        Format(&g.term)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+                _ => {
+                    match previous_term {
+                        GeneralTerm::IntegerTerm(_) => {
+                            match g.term {
+                                GeneralTerm::IntegerTerm(_) => {
+                                    write!(
+                                        f,
+                                        "{}({}, {})",
+                                        Format(&g.relation),
+                                        Format(previous_term),
+                                        Format(&g.term)
+                                    )
+                                }
+                                _ => {
+                                    // previous term needs to be typecast to an object type for comparison with g.term
+                                    let object_relation = match &g.relation {
+                                        // Custom object-to-object relation needed
+                                        Relation::GreaterEqual => "p__greater_equal__",
+                                        Relation::LessEqual => "p__less_equal__",
+                                        Relation::Greater => "p__greater__",
+                                        Relation::Less => "p__less__",
+                                        _ => panic!(),
+                                    };
+                                    write!(
+                                        f,
+                                        "{}(f__integer__({}), {})",
+                                        object_relation,
+                                        Format(previous_term),
+                                        Format(&g.term)
+                                    )
+                                }
+                            }
+                        }
+                        _ => {
+                            let object_relation = match &g.relation {
+                                // Custom object-to-object relation needed
+                                Relation::GreaterEqual => "p__greater_equal__",
+                                Relation::LessEqual => "p__less_equal__",
+                                Relation::Greater => "p__greater__",
+                                Relation::Less => "p__less__",
+                                _ => panic!(),
+                            };
+                            match g.term {
+                                GeneralTerm::IntegerTerm(_) => {
+                                    // g.term needs to be typecast to an object type for comparison with previous term
+                                    write!(
+                                        f,
+                                        "{}({}, f__integer__({}))",
+                                        object_relation,
+                                        Format(previous_term),
+                                        Format(&g.term)
+                                    )
+                                }
+                                _ => {
+                                    write!(
+                                        f,
+                                        "{}({}, {})",
+                                        object_relation,
+                                        Format(previous_term),
+                                        Format(&g.term)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
             }?;
             previous_term = &g.term;
         }
@@ -461,7 +563,7 @@ mod tests {
                 ]
             })
             .to_string(),
-            "$lesseq(5, 3) and 3 = 4"
+            "$lesseq(5, 3) & 3 = 4"
         );
         assert_eq!(
             Format(&Comparison {
@@ -490,7 +592,34 @@ mod tests {
                 ]
             })
             .to_string(),
-            "$lesseq(5, 3) and $less(3, 6) and 6 != 5"
+            "$lesseq(5, 3) & $less(3, 6) & 6 != 5"
+        );
+        assert_eq!(
+            Format(&Comparison {
+                term: GeneralTerm::IntegerTerm(IntegerTerm::BasicIntegerTerm(
+                    BasicIntegerTerm::Numeral(5)
+                )),
+                guards: vec![
+                    Guard {
+                        relation: Relation::LessEqual,
+                        term: GeneralTerm::IntegerTerm(IntegerTerm::BasicIntegerTerm(
+                            BasicIntegerTerm::Numeral(3)
+                        )),
+                    },
+                    Guard {
+                        relation: Relation::Less,
+                        term: GeneralTerm::Symbol("b".to_string()),
+                    },
+                    Guard {
+                        relation: Relation::NotEqual,
+                        term: GeneralTerm::IntegerTerm(IntegerTerm::BasicIntegerTerm(
+                            BasicIntegerTerm::Numeral(5)
+                        )),
+                    }
+                ]
+            })
+            .to_string(),
+            "$lesseq(5, 3) & p__less__(f__integer__(3), b) & b != f__integer__(5)"
         );
     }
 
@@ -594,6 +723,33 @@ mod tests {
             })
             .to_string(),
             "![X: $int, Y1: object]: (p & q)"
+        );
+        assert_eq!(
+            Format(&Formula::QuantifiedFormula {
+                quantification: Quantification {
+                    quantifier: Quantifier::Forall,
+                    variables: vec![
+                        Variable {
+                            name: "X".into(),
+                            sort: Sort::General,
+                        },
+                        Variable {
+                            name: "Y".into(),
+                            sort: Sort::General,
+                        },
+                    ]
+                },
+                formula: Formula::AtomicFormula(AtomicFormula::Comparison(Comparison {
+                    term: GeneralTerm::GeneralVariable("X".to_string()),
+                    guards: vec![Guard {
+                        relation: Relation::LessEqual,
+                        term: GeneralTerm::GeneralVariable("Y".to_string()),
+                    }],
+                }))
+                .into()
+            })
+            .to_string(),
+            "![X: object, Y: object]: (p__less_equal__(X, Y))"
         );
     }
 }
