@@ -271,7 +271,7 @@ pub struct ProblemHandler {
 // Forward direction: assume program publics, prove spec publics
 // Backward direction: assume spec publics, prove program publics
 impl ProblemHandler {
-    pub fn init(
+    pub fn new(
         program: &asp::Program,
         specification: &FileType,
         user_guide: &fol::Specification,
@@ -437,6 +437,10 @@ impl ProblemHandler {
             }
             println!("");
         }
+    }
+
+    pub fn make_sequential(&mut self) {
+        todo!();
     }
 }
 

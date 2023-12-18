@@ -25,7 +25,7 @@ pub fn default_verification(
     specification: &FileType,
     user_guide: &fol::Specification,
 ) {
-    let h = ProblemHandler::init(program, specification, user_guide);
+    let h = ProblemHandler::new(program, specification, user_guide);
     //h.display();
     h.generate_problem_files();
     verify_with_vampire(h);
@@ -36,7 +36,8 @@ pub fn sequential_verification(
     specification: &FileType,
     user_guide: &fol::Specification,
 ) {
-    let h = ProblemHandler::init(program, specification, user_guide);
+    let mut h = ProblemHandler::new(program, specification, user_guide);
+    h.make_sequential();
     h.generate_problem_files();
     verify_with_vampire(h);
 }
