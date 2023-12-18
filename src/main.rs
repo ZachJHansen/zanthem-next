@@ -52,6 +52,7 @@ enum Translation {
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
 enum Verification {
     Default,
+    Sequential,
 }
 
 fn try_main() -> Result<()> {
@@ -88,61 +89,63 @@ fn try_main() -> Result<()> {
             program,
             specification,
             user_guide,
-        } => match with {
-            Verification::Default => {
-                let spec = match specification.extension() {
-                    Some(extension) => match extension.to_str() {
-                        Some(ext) => match ext {
-                            "lp" => {
-                                let prog2: asp::Program = read_to_string(&specification)
-                                    .with_context(|| {
-                                        format!("failed to read '{}'", &specification.display())
-                                    })?
-                                    .parse()
-                                    .with_context(|| {
-                                        format!("failed to parse '{}'", &specification.display())
-                                    })?;
-                                problem::FileType::MiniGringoProgram { program: prog2 }
-                            }
-                            "spec" => {
-                                let specification: fol::Specification =
-                                    read_to_string(&specification)
-                                        .with_context(|| {
-                                            format!("failed to read '{}'", &specification.display())
-                                        })?
-                                        .parse()
-                                        .with_context(|| {
-                                            format!(
-                                                "failed to parse '{}'",
-                                                &specification.display()
-                                            )
-                                        })?;
+        } => {
+            let spec = match specification.extension() {
+                Some(extension) => match extension.to_str() {
+                    Some(ext) => match ext {
+                        "lp" => {
+                            let prog2: asp::Program = read_to_string(&specification)
+                                .with_context(|| {
+                                    format!("failed to read '{}'", &specification.display())
+                                })?
+                                .parse()
+                                .with_context(|| {
+                                    format!("failed to parse '{}'", &specification.display())
+                                })?;
+                            problem::FileType::MiniGringoProgram { program: prog2 }
+                        }
+                        "spec" => {
+                            let specification: fol::Specification = read_to_string(&specification)
+                                .with_context(|| {
+                                    format!("failed to read '{}'", &specification.display())
+                                })?
+                                .parse()
+                                .with_context(|| {
+                                    format!("failed to parse '{}'", &specification.display())
+                                })?;
 
-                                problem::FileType::FirstOrderSpecification { specification }
-                            }
-                            _ => {
-                                todo!()
-                            }
-                        },
-                        None => todo!(),
+                            problem::FileType::FirstOrderSpecification { specification }
+                        }
+                        _ => {
+                            todo!()
+                        }
                     },
-                    None => {
-                        todo!()
-                    }
-                };
-                let prog: asp::Program = read_to_string(&program)
-                    .with_context(|| format!("failed to read '{}'", &program.display()))?
-                    .parse()
-                    .with_context(|| format!("failed to parse '{}'", &program.display()))?;
+                    None => todo!(),
+                },
+                None => {
+                    todo!()
+                }
+            };
 
-                let ug: fol::Specification = read_to_string(&user_guide)
-                    .with_context(|| format!("failed to read '{}'", &user_guide.display()))?
-                    .parse()
-                    .with_context(|| format!("failed to parse '{}'", &user_guide.display()))?;
+            let prog: asp::Program = read_to_string(&program)
+                .with_context(|| format!("failed to read '{}'", &program.display()))?
+                .parse()
+                .with_context(|| format!("failed to parse '{}'", &program.display()))?;
 
-                vampire::default_verification(&prog, &spec, &ug);
+            let ug: fol::Specification = read_to_string(&user_guide)
+                .with_context(|| format!("failed to read '{}'", &user_guide.display()))?
+                .parse()
+                .with_context(|| format!("failed to parse '{}'", &user_guide.display()))?;
+
+            match with {
+                Verification::Default => {
+                    vampire::default_verification(&prog, &spec, &ug);
+                }
+                Verification::Sequential => {
+                    vampire::sequential_verification(&prog, &spec, &ug);
+                }
             }
-        },
+        }
     }
     Ok(())
 }

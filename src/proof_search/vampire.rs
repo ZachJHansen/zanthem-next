@@ -31,6 +31,16 @@ pub fn default_verification(
     verify_with_vampire(h);
 }
 
+pub fn sequential_verification(
+    program: &asp::Program,
+    specification: &FileType,
+    user_guide: &fol::Specification,
+) {
+    let h = ProblemHandler::init(program, specification, user_guide);
+    h.generate_problem_files();
+    verify_with_vampire(h);
+}
+
 pub fn verify_with_vampire(handler: ProblemHandler) {
     let mut task_status = ProblemStatus::Unknown;
     for (claim, problems) in handler.goals.iter() {

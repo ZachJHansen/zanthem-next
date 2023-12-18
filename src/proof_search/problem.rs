@@ -5,9 +5,9 @@ use {
         syntax_tree::{asp, fol},
         translating::{completion::completion, tau_star::tau_star},
     },
+    regex::Regex,
     std::collections::{HashMap, HashSet},
     std::fs,
-    regex::Regex,
 };
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -97,12 +97,16 @@ impl Statement {
                 role,
                 formula,
             } => {
-                let intermediate = format!("\ntff({}, {}, {}).", name, role.display(), Format(formula));        // Placeholders special chars need to be replaced with actual names
+                let intermediate =
+                    format!("\ntff({}, {}, {}).", name, role.display(), Format(formula)); // Placeholders special chars need to be replaced with actual names
                 let re = Regex::new(r"%-(?P<ph>[[:alpha:]]+)-%").unwrap();
                 let mut modified = intermediate.clone();
                 for caps in re.captures_iter(&intermediate) {
-                    let ph_specific_re = Regex::new(format!(r"%-{}-%", &caps["ph"]).as_str()).unwrap();
-                    modified = ph_specific_re.replace_all(&modified, &caps["ph"].to_lowercase()).to_string();
+                    let ph_specific_re =
+                        Regex::new(format!(r"%-{}-%", &caps["ph"]).as_str()).unwrap();
+                    modified = ph_specific_re
+                        .replace_all(&modified, &caps["ph"].to_lowercase())
+                        .to_string();
                 }
                 modified
             }
@@ -911,7 +915,7 @@ fn insert_replacement(formula: fol::Formula, placeholder: &str) -> fol::Formula 
                 }
             }
             fol::Formula::AtomicFormula(fol::AtomicFormula::Atom(a))
-        },
+        }
         fol::Formula::AtomicFormula(fol::AtomicFormula::Comparison(mut c)) => {
             if c.term == original {
                 c.term = replacement.clone();
@@ -922,14 +926,14 @@ fn insert_replacement(formula: fol::Formula, placeholder: &str) -> fol::Formula 
                     c.guards[0].term = replacement.clone();
                 }
             } else {
-                for i in 0..n-1 {
+                for i in 0..n - 1 {
                     if c.guards[i].term == original {
                         c.guards[i].term = replacement.clone();
                     }
                 }
             }
             fol::Formula::AtomicFormula(fol::AtomicFormula::Comparison(c))
-        },
+        }
         x => x,
     })
 }
@@ -968,14 +972,13 @@ pub fn replace_placeholders(formula: fol::Formula, placeholder: &str) -> fol::Fo
 }
 
 pub fn placeholder_replacements(formulas: &mut Vec<fol::Formula>, placeholders: &HashSet<String>) {
-    
     let mut borrow_nightmare = HashSet::new();
     for ph in placeholders.iter() {
         borrow_nightmare.insert(ph.clone());
     }
     //println!("Replacing {} placeholders within {} formulas", placeholders.len(), formulas.len());
     let n = formulas.len();
-    for i in 0..=n-1 {
+    for i in 0..=n - 1 {
         for ph in borrow_nightmare.iter() {
             formulas[i] = replace_placeholders(formulas[i].clone(), ph);
             //println!("\n\n%%%%%\nNew formula: {}\n%%%%%%", formulas[i]);
