@@ -156,7 +156,7 @@ where
         ));
     }
 
-    let proof_time = TIME
+    let _proof_time = TIME
         .captures(stdout)
         .map(|captures| captures.get(1).unwrap().as_str().parse::<f32>().ok())
         .unwrap_or(None);

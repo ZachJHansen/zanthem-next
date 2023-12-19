@@ -462,7 +462,7 @@ impl ProblemHandler {
     pub fn default_decomposition(&mut self) {
         let mut goals: HashMap<Claim, Vec<Problem>> = HashMap::new();
         for c in self.goals.keys() {
-            let mut claim = c.clone();
+            let claim = c.clone();
             goals.insert(
                 claim.clone(),
                 claim.decompose_claim_default(&self.predicates, &self.functions),
@@ -474,7 +474,7 @@ impl ProblemHandler {
     pub fn sequential_decomposition(&mut self) {
         let mut goals: HashMap<Claim, Vec<Problem>> = HashMap::new();
         for c in self.goals.keys() {
-            let mut claim = c.clone();
+            let claim = c.clone();
             goals.insert(
                 claim.clone(),
                 claim.decompose_claim_sequential(&self.predicates, &self.functions),
@@ -657,7 +657,7 @@ pub fn parse_specification(
             }
         }
         FileType::FirstOrderSpecification { specification: s } => {
-            for (i, spec) in s.specs.iter().enumerate() {
+            for (_i, spec) in s.specs.iter().enumerate() {
                 match spec {
                     // fol::Spec::PlaceholderDeclaration { placeholders } => {
                     //     for ph in placeholders.iter() {
@@ -765,7 +765,7 @@ pub fn parse_user_guide(
     let mut preds = Vec::<Statement>::new();
     let mut axioms = Vec::<fol::Formula>::new();
 
-    for (i, spec) in user_guide.specs.iter().enumerate() {
+    for (_i, spec) in user_guide.specs.iter().enumerate() {
         match spec {
             fol::Spec::PlaceholderDeclaration { placeholders } => {
                 for ph in placeholders.iter() {
@@ -1041,7 +1041,7 @@ pub fn rename_predicates(
 }
 
 fn insert_replacement(formula: fol::Formula, placeholder: &str) -> fol::Formula {
-    let mut replacement_name = format!("%-{}-%", placeholder.to_uppercase().to_string());
+    let replacement_name = format!("%-{}-%", placeholder.to_uppercase().to_string());
     let replacement = fol::GeneralTerm::IntegerTerm(fol::IntegerTerm::BasicIntegerTerm(
         fol::BasicIntegerTerm::IntegerVariable(replacement_name.clone()),
     ));

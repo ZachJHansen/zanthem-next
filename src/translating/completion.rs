@@ -296,11 +296,7 @@ pub fn completion(theory: &fol::Theory) -> Option<fol::Theory> {
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        formatting,
-        syntax_tree::{asp, fol},
-        translating::{completion::completion, tau_star::tau_star},
-    };
+    use crate::translating::{completion::completion, tau_star::tau_star};
 
     #[test]
     fn test_completion() {
