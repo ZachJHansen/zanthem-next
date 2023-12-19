@@ -96,10 +96,10 @@ impl Display for Format<'_, Atom> {
             match t {
                 GeneralTerm::Symbol(_) => {
                     write!(f, "{}", Format(t))?;
-                },
+                }
                 GeneralTerm::GeneralVariable(_) => {
                     write!(f, "{}", Format(t))?;
-                },
+                }
                 GeneralTerm::IntegerTerm(_) => {
                     write!(f, "f__integer__({})", Format(t))?;
                 }
@@ -108,17 +108,17 @@ impl Display for Format<'_, Atom> {
                 match t {
                     GeneralTerm::Symbol(_) => {
                         write!(f, ", {}", Format(t))?;
-                    },
+                    }
                     GeneralTerm::GeneralVariable(_) => {
                         write!(f, ", {}", Format(t))?;
-                    },
+                    }
                     GeneralTerm::IntegerTerm(_) => {
                         write!(f, ", f__integer__({})", Format(t))?;
                     }
                 }
             }
+            write!(f, ")")?;
         }
-        write!(f, ")")?;
 
         // if !terms.is_empty() {
         //     let mut iter = terms.iter().map(Format);
@@ -522,7 +522,7 @@ mod tests {
                 ]
             })
             .to_string(),
-            "prime($sum(N1, 3), 5)"
+            "prime(f__integer__($sum(N1, 3)), f__integer__(5))"
         )
     }
 

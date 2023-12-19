@@ -31,8 +31,8 @@ pub fn default_verification(
         Some(l) => {
             println!("Warning - adding lemmas to default verification is useless. Try --with sequential.");
             h.add_lemmas(l);
-        },
-        None => () 
+        }
+        None => (),
     }
     h.default_decomposition();
     //h.display();
@@ -50,8 +50,8 @@ pub fn sequential_verification(
     match lemmas {
         Some(l) => {
             h.add_lemmas(l);
-        },
-        None => () 
+        }
+        None => (),
     }
     h.sequential_decomposition();
     h.generate_problem_files();

@@ -1694,7 +1694,7 @@ mod tests {
                 ),
                 (
                     "lemma: forall X (p(X) <-> q(X)).",
-                    Spec::Lemma( Lemma {
+                    Spec::Lemma(Lemma {
                         direction: Direction::Universal,
                         formula: Formula::QuantifiedFormula {
                             quantification: Quantification {
@@ -1719,7 +1719,7 @@ mod tests {
                             }
                             .into(),
                         },
-                    })
+                    }),
                 ),
             ])
             .should_reject(["p/0", "input: p/1 q/2."]);

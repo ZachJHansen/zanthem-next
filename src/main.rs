@@ -143,14 +143,12 @@ fn try_main() -> Result<()> {
             let lem = match lemmas {
                 Some(l) => {
                     let lem: fol::Specification = read_to_string(&l)
-                    .with_context(|| format!("failed to read '{}'", &l.display()))?
-                    .parse()
-                    .with_context(|| format!("failed to parse '{}'", &l.display()))?;
+                        .with_context(|| format!("failed to read '{}'", &l.display()))?
+                        .parse()
+                        .with_context(|| format!("failed to parse '{}'", &l.display()))?;
                     Some(lem)
                 }
-                None => {
-                    None
-                }
+                None => None,
             };
 
             match with {

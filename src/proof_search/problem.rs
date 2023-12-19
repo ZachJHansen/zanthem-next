@@ -419,7 +419,8 @@ impl ProblemHandler {
         }
 
         let mut ground_function_constants = Vec::new();
-        let placeholder_names: Vec<String> = placeholders.iter().map(|ph| ph.name.clone()).collect();
+        let placeholder_names: Vec<String> =
+            placeholders.iter().map(|ph| ph.name.clone()).collect();
         for f in functions.iter() {
             if !placeholder_names.contains(f) {
                 ground_function_constants.push(f);
@@ -462,7 +463,10 @@ impl ProblemHandler {
         let mut goals: HashMap<Claim, Vec<Problem>> = HashMap::new();
         for c in self.goals.keys() {
             let mut claim = c.clone();
-            goals.insert(claim.clone(), claim.decompose_claim_default(&self.predicates, &self.functions));
+            goals.insert(
+                claim.clone(),
+                claim.decompose_claim_default(&self.predicates, &self.functions),
+            );
         }
         self.goals = goals;
     }
@@ -471,11 +475,13 @@ impl ProblemHandler {
         let mut goals: HashMap<Claim, Vec<Problem>> = HashMap::new();
         for c in self.goals.keys() {
             let mut claim = c.clone();
-            goals.insert(claim.clone(), claim.decompose_claim_sequential(&self.predicates, &self.functions));
+            goals.insert(
+                claim.clone(),
+                claim.decompose_claim_sequential(&self.predicates, &self.functions),
+            );
         }
         self.goals = goals;
     }
-
 
     pub fn display(&self) {
         println!("Goals:\n");
@@ -515,19 +521,28 @@ impl ProblemHandler {
 
         for lemma in lemmas.specs.iter() {
             match lemma {
-                fol::Spec::Lemma(fol::Lemma { direction: fol::Direction::Forward, formula }) => {
+                fol::Spec::Lemma(fol::Lemma {
+                    direction: fol::Direction::Forward,
+                    formula,
+                }) => {
                     forward_lemmas.push(formula.clone());
-                },
-                fol::Spec::Lemma(fol::Lemma { direction: fol::Direction::Backward, formula }) => {
+                }
+                fol::Spec::Lemma(fol::Lemma {
+                    direction: fol::Direction::Backward,
+                    formula,
+                }) => {
                     backward_lemmas.push(formula.clone());
-                },
-                fol::Spec::Lemma(fol::Lemma { direction: fol::Direction::Universal, formula }) => {
+                }
+                fol::Spec::Lemma(fol::Lemma {
+                    direction: fol::Direction::Universal,
+                    formula,
+                }) => {
                     forward_lemmas.push(formula.clone());
                     backward_lemmas.push(formula.clone());
-                },
+                }
                 _ => {
                     panic!("Only lemmas should occur in helper lemmas file");
-                },
+                }
             }
         }
 
@@ -536,7 +551,7 @@ impl ProblemHandler {
 
         forward_lemmas.extend(problem_claims[1].conclusions.clone());
         backward_lemmas.extend(problem_claims[0].conclusions.clone());
-    
+
         let forward = Claim {
             name: "forward".to_string(),
             premises: problem_claims[1].premises.clone(),
@@ -552,14 +567,8 @@ impl ProblemHandler {
         };
 
         let mut goals: HashMap<Claim, Vec<Problem>> = HashMap::new();
-        goals.insert(
-            forward.clone(),
-            Vec::new(),
-        );
-        goals.insert(
-            backward.clone(),
-            Vec::new(),
-        );
+        goals.insert(forward.clone(), Vec::new());
+        goals.insert(backward.clone(), Vec::new());
 
         self.goals = goals;
     }
@@ -580,14 +589,15 @@ pub fn axiomatize_partial_order(function_constants: Vec<&String>) -> Vec<fol::Fo
     let mut axioms = Vec::new();
     if n > 1 {
         for i in 0..(n - 1) {
-            for j in (i+1)..n {
-                let ax = fol::Formula::AtomicFormula(fol::AtomicFormula::Comparison(fol::Comparison {
-                    term: fol::GeneralTerm::Symbol(sorted_fns[i].clone()),
-                    guards: vec![fol::Guard {
-                        relation: fol::Relation::Less,
-                        term: fol::GeneralTerm::Symbol(sorted_fns[j].clone()),
-                    }],
-                }));
+            for j in (i + 1)..n {
+                let ax =
+                    fol::Formula::AtomicFormula(fol::AtomicFormula::Comparison(fol::Comparison {
+                        term: fol::GeneralTerm::Symbol(sorted_fns[i].clone()),
+                        guards: vec![fol::Guard {
+                            relation: fol::Relation::Less,
+                            term: fol::GeneralTerm::Symbol(sorted_fns[j].clone()),
+                        }],
+                    }));
                 axioms.push(ax);
             }
         }
@@ -1102,7 +1112,10 @@ pub fn replace_placeholders(formula: fol::Formula, placeholder: &str) -> fol::Fo
     }
 }
 
-pub fn placeholder_replacements(formulas: &mut Vec<fol::Formula>, placeholders: &HashSet<fol::Placeholder>) {
+pub fn placeholder_replacements(
+    formulas: &mut Vec<fol::Formula>,
+    placeholders: &HashSet<fol::Placeholder>,
+) {
     let mut borrow_nightmare = HashSet::new();
     for ph in placeholders.iter() {
         borrow_nightmare.insert(ph.name.clone());
