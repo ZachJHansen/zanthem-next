@@ -55,7 +55,7 @@ pub fn sequential_verification(
     }
     h.sequential_decomposition();
     h.generate_problem_files();
-    //verify_with_vampire(h);
+    verify_with_vampire(h);
 }
 
 pub fn verify_with_vampire(handler: ProblemHandler) {

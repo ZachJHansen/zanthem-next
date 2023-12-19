@@ -90,13 +90,44 @@ impl Display for Format<'_, Atom> {
         write!(f, "{predicate}")?;
 
         if !terms.is_empty() {
-            let mut iter = terms.iter().map(Format);
-            write!(f, "({}", iter.next().unwrap())?;
-            for term in iter {
-                write!(f, ", {term}")?;
+            write!(f, "(")?;
+            let mut iter = terms.iter();
+            let t = iter.next().unwrap();
+            match t {
+                GeneralTerm::Symbol(_) => {
+                    write!(f, "{}", Format(t))?;
+                },
+                GeneralTerm::GeneralVariable(_) => {
+                    write!(f, "{}", Format(t))?;
+                },
+                GeneralTerm::IntegerTerm(_) => {
+                    write!(f, "f__integer__({})", Format(t))?;
+                }
             }
-            write!(f, ")")?;
+            for t in iter {
+                match t {
+                    GeneralTerm::Symbol(_) => {
+                        write!(f, ", {}", Format(t))?;
+                    },
+                    GeneralTerm::GeneralVariable(_) => {
+                        write!(f, ", {}", Format(t))?;
+                    },
+                    GeneralTerm::IntegerTerm(_) => {
+                        write!(f, ", f__integer__({})", Format(t))?;
+                    }
+                }
+            }
         }
+        write!(f, ")")?;
+
+        // if !terms.is_empty() {
+        //     let mut iter = terms.iter().map(Format);
+        //     write!(f, "({}", iter.next().unwrap())?;
+        //     for term in iter {
+        //         write!(f, ", {term}")?;
+        //     }
+        //     write!(f, ")")?;
+        // }
 
         Ok(())
     }
