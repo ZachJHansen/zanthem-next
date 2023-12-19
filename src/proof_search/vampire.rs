@@ -24,8 +24,16 @@ pub fn default_verification(
     program: &asp::Program,
     specification: &FileType,
     user_guide: &fol::Specification,
+    lemmas: Option<fol::Specification>,
 ) {
-    let h = ProblemHandler::new(program, specification, user_guide);
+    let mut h = ProblemHandler::new(program, specification, user_guide);
+    match lemmas {
+        Some(l) => {
+            h.add_lemmas(l);
+        },
+        None => () 
+    }
+    h.default_decomposition();
     //h.display();
     h.generate_problem_files();
     verify_with_vampire(h);
@@ -35,11 +43,21 @@ pub fn sequential_verification(
     program: &asp::Program,
     specification: &FileType,
     user_guide: &fol::Specification,
+    lemmas: Option<fol::Specification>,
 ) {
     let mut h = ProblemHandler::new(program, specification, user_guide);
-    h.make_sequential();
-    h.generate_problem_files();
-    verify_with_vampire(h);
+    match lemmas {
+        Some(l) => {
+            h.add_lemmas(l);
+        },
+        None => () 
+    }
+    // for (c, p) in h.goals.iter() {
+    //     println!("Claim name: {}", c.name);
+    // }
+    h.sequential_decomposition();
+    //h.generate_problem_files();
+    //verify_with_vampire(h);
 }
 
 pub fn verify_with_vampire(handler: ProblemHandler) {

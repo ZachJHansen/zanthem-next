@@ -40,6 +40,8 @@ enum Commands {
         specification: PathBuf,
 
         user_guide: PathBuf,
+
+        lemmas: Option<PathBuf>,
     },
 }
 
@@ -89,6 +91,7 @@ fn try_main() -> Result<()> {
             program,
             specification,
             user_guide,
+            lemmas,
         } => {
             let spec = match specification.extension() {
                 Some(extension) => match extension.to_str() {
@@ -137,12 +140,25 @@ fn try_main() -> Result<()> {
                 .parse()
                 .with_context(|| format!("failed to parse '{}'", &user_guide.display()))?;
 
+            let lem = match lemmas {
+                Some(l) => {
+                    let lem: fol::Specification = read_to_string(&l)
+                    .with_context(|| format!("failed to read '{}'", &l.display()))?
+                    .parse()
+                    .with_context(|| format!("failed to parse '{}'", &l.display()))?;
+                    Some(lem)
+                }
+                None => {
+                    None
+                }
+            };
+
             match with {
                 Verification::Default => {
-                    vampire::default_verification(&prog, &spec, &ug);
+                    vampire::default_verification(&prog, &spec, &ug, lem);
                 }
                 Verification::Sequential => {
-                    vampire::sequential_verification(&prog, &spec, &ug);
+                    vampire::sequential_verification(&prog, &spec, &ug, lem);
                 }
             }
         }

@@ -218,14 +218,14 @@ impl Problem {
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Claim {
-    name: String,
-    premises: Vec<fol::Formula>,
-    conclusions: Vec<fol::Formula>,
-    status: ProblemStatus,
+    pub name: String,
+    pub premises: Vec<fol::Formula>,
+    pub conclusions: Vec<fol::Formula>,
+    pub status: ProblemStatus,
 }
 
 impl Claim {
-    pub fn decompose_claim(
+    pub fn decompose_claim_default(
         &self,
         problem_predicates: &Vec<Statement>,
         problem_functions: &Vec<Statement>,
@@ -240,6 +240,40 @@ impl Claim {
                 axioms: self.premises.clone(),
                 conjecture: conclusion.clone(),
             });
+        }
+        problems
+    }
+
+    pub fn decompose_claim_sequential(
+        &self,
+        problem_predicates: &Vec<Statement>,
+        problem_functions: &Vec<Statement>,
+    ) -> Vec<Problem> {
+        let mut problems = Vec::<Problem>::new();
+        let n = self.conclusions.len();
+        assert!(n < 1);
+        if n == 1 {
+            problems.push(Problem {
+                status: ProblemStatus::Unknown,
+                interpretation: Interpretation::Standard,
+                predicates: problem_predicates.clone(),
+                functions: problem_functions.clone(),
+                axioms: self.premises.clone(),
+                conjecture: self.conclusions[0].clone(),
+            });
+        } else {
+            let mut axioms = self.premises.clone();
+            for i in 0..n {
+                problems.push(Problem {
+                    status: ProblemStatus::Unknown,
+                    interpretation: Interpretation::Standard,
+                    predicates: problem_predicates.clone(),
+                    functions: problem_functions.clone(),
+                    axioms: axioms.clone(),
+                    conjecture: self.conclusions[i].clone(),
+                });
+                axioms.push(self.conclusions[i].clone());
+            }
         }
         problems
     }
@@ -401,11 +435,13 @@ impl ProblemHandler {
         let mut goals: HashMap<Claim, Vec<Problem>> = HashMap::new();
         goals.insert(
             forward.clone(),
-            forward.decompose_claim(&predicates, &function_statements),
+            //forward.decompose_claim(&predicates, &function_statements),
+            Vec::new(),
         );
         goals.insert(
             backward.clone(),
-            backward.decompose_claim(&predicates, &function_statements),
+            //backward.decompose_claim(&predicates, &function_statements),
+            Vec::new(),
         );
 
         ProblemHandler {
@@ -416,6 +452,25 @@ impl ProblemHandler {
             goals,
         }
     }
+
+    pub fn default_decomposition(&mut self) {
+        let mut goals: HashMap<Claim, Vec<Problem>> = HashMap::new();
+        for c in self.goals.keys() {
+            let mut claim = c.clone();
+            goals.insert(claim.clone(), claim.decompose_claim_default(&self.predicates, &self.functions));
+        }
+        self.goals = goals;
+    }
+
+    pub fn sequential_decomposition(&mut self) {
+        let mut goals: HashMap<Claim, Vec<Problem>> = HashMap::new();
+        for c in self.goals.keys() {
+            let mut claim = c.clone();
+            goals.insert(claim.clone(), claim.decompose_claim_sequential(&self.predicates, &self.functions));
+        }
+        self.goals = goals;
+    }
+
 
     pub fn display(&self) {
         println!("Goals:\n");
@@ -437,6 +492,68 @@ impl ProblemHandler {
             }
             println!("");
         }
+    }
+
+    pub fn add_lemmas(&mut self, lemmas: fol::Specification) {
+        let mut problem_claims = Vec::new();
+        for claim in self.goals.keys() {
+            problem_claims.push(claim.clone());
+        }
+        problem_claims.sort_by_key(|c| c.name.clone());
+
+        assert_eq!(problem_claims[0].name, "backward");
+        assert_eq!(problem_claims[1].name, "forward");
+
+        // Insert lemmas as the first claim conclusions to be proven
+        let mut forward_lemmas = Vec::new();
+        let mut backward_lemmas = Vec::new();
+
+        for lemma in lemmas.specs.iter() {
+            match lemma {
+                fol::Spec::Lemma(fol::Lemma { direction: fol::Direction::Forward, formula }) => {
+                    forward_lemmas.push(formula.clone());
+                },
+                fol::Spec::Lemma(fol::Lemma { direction: fol::Direction::Backward, formula }) => {
+                    backward_lemmas.push(formula.clone());
+                },
+                fol::Spec::Lemma(fol::Lemma { direction: fol::Direction::Universal, formula }) => {
+                    forward_lemmas.push(formula.clone());
+                    backward_lemmas.push(formula.clone());
+                },
+                _ => {
+                    panic!("Only lemmas should occur in helper lemmas file");
+                },
+            }
+        }
+
+        forward_lemmas.extend(problem_claims[1].conclusions.clone());
+        backward_lemmas.extend(problem_claims[0].conclusions.clone());
+    
+        let forward = Claim {
+            name: "forward".to_string(),
+            premises: problem_claims[1].premises.clone(),
+            conclusions: forward_lemmas,
+            status: ProblemStatus::Unknown,
+        };
+
+        let backward = Claim {
+            name: "backward".to_string(),
+            premises: problem_claims[0].premises.clone(),
+            conclusions: backward_lemmas,
+            status: ProblemStatus::Unknown,
+        };
+
+        let mut goals: HashMap<Claim, Vec<Problem>> = HashMap::new();
+        goals.insert(
+            forward.clone(),
+            Vec::new(),
+        );
+        goals.insert(
+            backward.clone(),
+            Vec::new(),
+        );
+
+        self.goals = goals;
     }
 
     pub fn make_sequential(&mut self) {

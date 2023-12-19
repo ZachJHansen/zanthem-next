@@ -1692,6 +1692,35 @@ mod tests {
                         },
                     },
                 ),
+                (
+                    "lemma: forall X (p(X) <-> q(X)).",
+                    Spec::Lemma( Lemma {
+                        direction: Direction::Universal,
+                        formula: Formula::QuantifiedFormula {
+                            quantification: Quantification {
+                                quantifier: Quantifier::Forall,
+                                variables: vec![Variable {
+                                    name: "X".to_string(),
+                                    sort: Sort::General,
+                                }],
+                            },
+                            formula: Formula::BinaryFormula {
+                                connective: BinaryConnective::Equivalence,
+                                lhs: Formula::AtomicFormula(AtomicFormula::Atom(Atom {
+                                    predicate_symbol: "p".to_string(),
+                                    terms: vec![GeneralTerm::GeneralVariable("X".to_string())],
+                                }))
+                                .into(),
+                                rhs: Formula::AtomicFormula(AtomicFormula::Atom(Atom {
+                                    predicate_symbol: "q".to_string(),
+                                    terms: vec![GeneralTerm::GeneralVariable("X".to_string())],
+                                }))
+                                .into(),
+                            }
+                            .into(),
+                        },
+                    })
+                ),
             ])
             .should_reject(["p/0", "input: p/1 q/2."]);
     }
