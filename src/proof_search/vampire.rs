@@ -29,6 +29,7 @@ pub fn default_verification(
     let mut h = ProblemHandler::new(program, specification, user_guide);
     match lemmas {
         Some(l) => {
+            println!("Warning - adding lemmas to default verification is useless. Try --with sequential.");
             h.add_lemmas(l);
         },
         None => () 
@@ -52,11 +53,8 @@ pub fn sequential_verification(
         },
         None => () 
     }
-    // for (c, p) in h.goals.iter() {
-    //     println!("Claim name: {}", c.name);
-    // }
     h.sequential_decomposition();
-    //h.generate_problem_files();
+    h.generate_problem_files();
     //verify_with_vampire(h);
 }
 

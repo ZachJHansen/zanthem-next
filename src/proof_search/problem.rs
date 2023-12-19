@@ -251,7 +251,7 @@ impl Claim {
     ) -> Vec<Problem> {
         let mut problems = Vec::<Problem>::new();
         let n = self.conclusions.len();
-        assert!(n < 1);
+        assert!(n > 0);
         if n == 1 {
             problems.push(Problem {
                 status: ProblemStatus::Unknown,
@@ -295,6 +295,7 @@ impl Claim {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ProblemHandler {
+    placeholders: HashSet<fol::Placeholder>,
     predicates: Vec<Statement>,
     functions: Vec<Statement>,
     interpretation: Interpretation,
@@ -342,7 +343,7 @@ impl ProblemHandler {
         let mut backward_premises = Vec::<fol::Formula>::new();
         let mut backward_conclusions = Vec::<fol::Formula>::new();
 
-        let mut placeholders = HashSet::<String>::new(); // Placeholders, disjoint from functions
+        let mut placeholders = HashSet::<fol::Placeholder>::new(); // Placeholders, disjoint from functions
         let mut functions = HashSet::<String>::new(); // Function constants occurring in the problem
 
         let mut predicates = Vec::<Statement>::new();
@@ -387,10 +388,6 @@ impl ProblemHandler {
         );
 
         placeholder_replacements(&mut forward_premises, &placeholders);
-        // for formula in forward_premises.iter() {
-        //     println!("\nNew formula: {formula}\n");
-        // }
-        //println!("placeholders: {:?}", placeholders);
         placeholder_replacements(&mut forward_conclusions, &placeholders);
         placeholder_replacements(&mut backward_premises, &placeholders);
         placeholder_replacements(&mut backward_conclusions, &placeholders);
@@ -421,7 +418,14 @@ impl ProblemHandler {
             });
         }
 
-        let ground_function_constants: Vec<&String> = functions.difference(&placeholders).collect();
+        let mut ground_function_constants = Vec::new();
+        let placeholder_names: Vec<String> = placeholders.iter().map(|ph| ph.name.clone()).collect();
+        for f in functions.iter() {
+            if !placeholder_names.contains(f) {
+                ground_function_constants.push(f);
+            }
+        }
+
         let uniqueness_axioms = axiomatize_partial_order(ground_function_constants);
 
         for ax in uniqueness_axioms.iter() {
@@ -445,6 +449,7 @@ impl ProblemHandler {
         );
 
         ProblemHandler {
+            placeholders,
             predicates,
             functions: function_statements,
             interpretation: Interpretation::Standard,
@@ -526,6 +531,9 @@ impl ProblemHandler {
             }
         }
 
+        placeholder_replacements(&mut forward_lemmas, &self.placeholders);
+        placeholder_replacements(&mut backward_lemmas, &self.placeholders);
+
         forward_lemmas.extend(problem_claims[1].conclusions.clone());
         backward_lemmas.extend(problem_claims[0].conclusions.clone());
     
@@ -571,15 +579,17 @@ pub fn axiomatize_partial_order(function_constants: Vec<&String>) -> Vec<fol::Fo
     let n = sorted_fns.len();
     let mut axioms = Vec::new();
     if n > 1 {
-        for i in 0..n - 2 {
-            let ax = fol::Formula::AtomicFormula(fol::AtomicFormula::Comparison(fol::Comparison {
-                term: fol::GeneralTerm::Symbol(sorted_fns[i].clone()),
-                guards: vec![fol::Guard {
-                    relation: fol::Relation::Less,
-                    term: fol::GeneralTerm::Symbol(sorted_fns[i + 1].clone()),
-                }],
-            }));
-            axioms.push(ax);
+        for i in 0..(n - 1) {
+            for j in (i+1)..n {
+                let ax = fol::Formula::AtomicFormula(fol::AtomicFormula::Comparison(fol::Comparison {
+                    term: fol::GeneralTerm::Symbol(sorted_fns[i].clone()),
+                    guards: vec![fol::Guard {
+                        relation: fol::Relation::Less,
+                        term: fol::GeneralTerm::Symbol(sorted_fns[j].clone()),
+                    }],
+                }));
+                axioms.push(ax);
+            }
         }
     }
     axioms
@@ -740,7 +750,7 @@ pub fn parse_user_guide(
     forward_premises: &mut Vec<fol::Formula>,
     backward_premises: &mut Vec<fol::Formula>,
     predicates: &mut Vec<Statement>,
-    placeholder_fns: &mut HashSet<String>,
+    placeholder_fns: &mut HashSet<fol::Placeholder>,
 ) {
     let mut preds = Vec::<Statement>::new();
     let mut axioms = Vec::<fol::Formula>::new();
@@ -749,7 +759,7 @@ pub fn parse_user_guide(
         match spec {
             fol::Spec::PlaceholderDeclaration { placeholders } => {
                 for ph in placeholders.iter() {
-                    placeholder_fns.insert(ph.name.clone());
+                    placeholder_fns.insert(ph.clone());
                 }
             }
             fol::Spec::Input { predicates } | fol::Spec::Output { predicates } => {
@@ -1092,10 +1102,10 @@ pub fn replace_placeholders(formula: fol::Formula, placeholder: &str) -> fol::Fo
     }
 }
 
-pub fn placeholder_replacements(formulas: &mut Vec<fol::Formula>, placeholders: &HashSet<String>) {
+pub fn placeholder_replacements(formulas: &mut Vec<fol::Formula>, placeholders: &HashSet<fol::Placeholder>) {
     let mut borrow_nightmare = HashSet::new();
     for ph in placeholders.iter() {
-        borrow_nightmare.insert(ph.clone());
+        borrow_nightmare.insert(ph.name.clone());
     }
     //println!("Replacing {} placeholders within {} formulas", placeholders.len(), formulas.len());
     let n = formulas.len();
