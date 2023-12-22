@@ -1,2 +1,2 @@
-assumption: q <-> t or r.
-conjecture: p <-> #true.
+spec: q <-> t or r.
+spec: p <-> #true.

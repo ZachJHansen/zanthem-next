@@ -326,9 +326,13 @@ impl ProblemHandler {
                 spec_private_predicates(s, &public_predicates, needs_renaming)
             }
         };
+        
+        println!("Spec private predicates: {:?}", specification_private_predicates); 
 
         let program_private_predicates =
             prog_private_predicates(program, &public_predicates, needs_renaming, false);
+
+        println!("program private predicates: {:?}", program_private_predicates); 
 
         let mut private_predicates: HashSet<fol::Predicate> = HashSet::new();
         private_predicates.extend(specification_private_predicates);
@@ -427,7 +431,18 @@ impl ProblemHandler {
             }
         }
 
-        let uniqueness_axioms = axiomatize_partial_order(ground_function_constants);
+        let uniqueness_axioms = axiomatize_partial_order(ground_function_constants.clone());
+
+        for f in ground_function_constants.iter() {
+            function_statements.push(Statement::TypedAtom {
+                name: "ground_function_constant".to_string(),
+                atom: f.to_string(),
+                spec: TypeSpec {
+                    return_type: VampireTypes::Object,
+                    args: vec![],
+                },
+            });
+        }
 
         for ax in uniqueness_axioms.iter() {
             function_statements.push(Statement::AnnotatedFormula {
@@ -623,7 +638,7 @@ pub fn parse_specification(
                     for f in completion.formulas.iter() {
                         // Spec formulas
                         let formula = if needs_renaming {
-                            rename_predicates(f.clone(), "_2", public_predicates)
+                            rename_predicates(f.clone(), "_1", public_predicates)
                         } else {
                             f.clone()
                         };
@@ -721,7 +736,7 @@ pub fn parse_program(
         Some(completion) => {
             for f in completion.formulas.iter() {
                 let formula = if needs_renaming {
-                    rename_predicates(f.clone(), "_1", public_predicates)
+                    rename_predicates(f.clone(), "_2", public_predicates)
                 } else {
                     f.clone()
                 };
