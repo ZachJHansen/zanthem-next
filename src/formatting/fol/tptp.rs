@@ -305,10 +305,10 @@ impl Display for Format<'_, Variable> {
         match &self.0.sort {
             Sort::Integer => {
                 write!(f, "{}i", &self.0.name)
-            },
+            }
             Sort::General => {
                 write!(f, "{}g", &self.0.name)
-            },
+            }
         }
     }
 }
