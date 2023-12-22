@@ -103,7 +103,7 @@ impl Statement {
                 let mut modified = intermediate.clone();
                 for caps in re.captures_iter(&intermediate) {
                     let ph_specific_re =
-                        Regex::new(format!(r"%-{}-%", &caps["ph"]).as_str()).unwrap();
+                        Regex::new(format!(r"%-{}-%i", &caps["ph"]).as_str()).unwrap();
                     modified = ph_specific_re
                         .replace_all(&modified, &caps["ph"].to_lowercase())
                         .to_string();
