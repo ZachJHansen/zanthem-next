@@ -1,3 +1,5 @@
+use std::thread;
+
 use {
     crate::{
         proof_search::problem::{FileType, ProblemHandler, ProblemStatus},
@@ -62,52 +64,71 @@ pub fn sequential_verification(
 
 pub fn verify_with_vampire(handler: ProblemHandler) {
     let mut task_status = ProblemStatus::Unknown;
-    for (claim, problems) in handler.goals.iter() {
-        let mut claim_status = ProblemStatus::Unknown;
-        println!("Proving Claim... \n%%%%%%%%%%\n{}", claim.display());
-        for p in problems.iter() {
-            let result = run_vampire(
-                &p.display(true),
-                Some(&[
-                    "--proof",
-                    "off",
-                    "--mode",
-                    "casc",
-                    "--cores",
-                    "4",
-                    "--time_limit",
-                    "300",
-                ]),
-            );
-            match result {
-                Ok(status) => match status {
-                    ProblemStatus::Theorem => {
-                        println!("Conjecture: {} \n\t| Status: Proven", p.conjecture);
-                    }
-                    _ => {
-                        claim_status = ProblemStatus::Timeout; // TODO - Differentiate between different vampire errors/non-theorem results
-                        println!("Conjecture: {} \n\t| Status: Not Proven", p.conjecture);
+    let mut thread_handles = vec![];
+    for (c, p) in handler.goals.iter() {
+        let claim = c.clone();
+        let problems = p.clone();
+        let handle = thread::spawn(move || {
+            let mut claim_status = ProblemStatus::Unknown;
+            println!("Proving Claim... \n%%%%%%%%%%\n{}", claim.display());
+            for p in problems.iter() {
+                let result = run_vampire(
+                    &p.display(true),
+                    Some(&[
+                        "--proof",
+                        "off",
+                        "--mode",
+                        "casc",
+                        "--cores",
+                        "4",
+                        "--time_limit",
+                        "300",
+                    ]),
+                );
+                match result {
+                    Ok(status) => match status {
+                        ProblemStatus::Theorem => {
+                            println!("Conjecture: {} \n\t| Status: Proven", p.conjecture);
+                        }
+                        _ => {
+                            claim_status = ProblemStatus::Timeout; // TODO - Differentiate between different vampire errors/non-theorem results
+                            println!("Conjecture: {} \n\t| Status: Not Proven", p.conjecture);
+                            break;
+                        }
+                    },
+                    Err(e) => {
+                        claim_status = ProblemStatus::Error;
+                        println!("{e}");
                         break;
                     }
-                },
-                Err(e) => {
-                    claim_status = ProblemStatus::Error;
-                    println!("{e}");
-                    break;
                 }
+                claim_status = ProblemStatus::Theorem;
             }
-            claim_status = ProblemStatus::Theorem;
-        }
-        match claim_status {
-            ProblemStatus::Theorem => {
-                println!("\n%%%%% Claim status: Theorem %%%%%\n");
-            }
-            _ => {
+            let task_status = match claim_status {
+                ProblemStatus::Theorem => {
+                    println!("\n%%%%% Claim status: Theorem %%%%%\n");
+                    ProblemStatus::Unknown
+                },
+                _ => {
+                    println!("\n%%%%% Claim status: Not a Theorem %%%%%\n");
+                    ProblemStatus::Timeout
+                },
+            };
+            task_status
+        });
+        thread_handles.push(handle);
+    }
+
+    for handle in thread_handles {
+        let claim_failure = handle.join().unwrap();
+        match claim_failure {
+            ProblemStatus::Timeout => {
                 task_status = ProblemStatus::Timeout;
-                println!("\n%%%%% Claim status: Not a Theorem %%%%%\n");
-            }
+            },
+            _ => {},
         }
     }
+
     match task_status {
         ProblemStatus::Unknown => {
             println!("\n%%%%% Task status: Successfully proved all claims. %%%%%\n")
