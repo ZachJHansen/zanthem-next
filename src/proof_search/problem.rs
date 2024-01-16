@@ -1252,3 +1252,36 @@ pub fn placeholder_replacements(
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::syntax_tree::{asp, fol};
+    use super::equivalence_breaker;
+
+    #[test]
+    fn test_break_equivalences_some() {
+        for (src, target) in [
+            ("forall X (p(X) <-> q(X))", ["forall X (p(X) -> q(X))", "forall X (p(X) <- q(X))"]),
+            ("forall X ((p(X) and q) <-> t)", ["forall X ((p(X) and q) -> t)", "forall X ((p(X) and q) <- t)"]),
+            ("p <-> q", ["p -> q", "p <- q"]),
+            ("p <-> q or t", ["p -> q or t", "p <- q or t"]),
+            ("p(X) <-> q(X)", ["p(X) -> q(X)", "p(X) <- q(X)"]),
+        ] {
+            let f: fol::Formula = src.parse().unwrap();
+            let result: Option<Vec<fol::Formula>> = Some(vec![target[0].parse().unwrap(), target[1].parse().unwrap()]);
+            assert_eq!(result, equivalence_breaker(f))
+        }
+    }
+
+    #[test]
+    fn test_break_equivalences_none() {
+        for src in [
+            "forall X (p(X) -> q(X))",
+            "q(a)",
+            "forall X (p(X) and (q <-> t))",
+        ] {
+            let f: fol::Formula = src.parse().unwrap(); 
+            assert_eq!(None, equivalence_breaker(f))
+        }
+    }
+}
