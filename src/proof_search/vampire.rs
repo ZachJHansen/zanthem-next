@@ -25,6 +25,7 @@ pub fn default_verification(
     specification: &FileType,
     user_guide: &fol::Specification,
     lemmas: Option<fol::Specification>,
+    break_equivalences: bool,
 ) {
     let mut h = ProblemHandler::new(program, specification, user_guide);
     match lemmas {
@@ -34,7 +35,7 @@ pub fn default_verification(
         }
         None => (),
     }
-    h.default_decomposition();
+    h.default_decomposition(break_equivalences);
     //h.display();
     h.generate_problem_files();
     verify_with_vampire(h);
@@ -45,6 +46,7 @@ pub fn sequential_verification(
     specification: &FileType,
     user_guide: &fol::Specification,
     lemmas: Option<fol::Specification>,
+    break_equivalences: bool,
 ) {
     let mut h = ProblemHandler::new(program, specification, user_guide);
     match lemmas {
@@ -53,7 +55,7 @@ pub fn sequential_verification(
         }
         None => (),
     }
-    h.sequential_decomposition();
+    h.sequential_decomposition(break_equivalences);
     h.generate_problem_files();
     verify_with_vampire(h);
 }
