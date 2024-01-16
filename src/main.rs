@@ -44,7 +44,10 @@ enum Commands {
         lemmas: Option<PathBuf>,
 
         #[clap(long, short, action)]
-        break_equivalences: bool
+        break_equivalences: bool,
+
+        #[clap(long, short, action)]
+        parallel: bool,
     },
 }
 
@@ -96,6 +99,7 @@ fn try_main() -> Result<()> {
             user_guide,
             lemmas,
             break_equivalences,
+            parallel,
         } => {
             let spec = match specification.extension() {
                 Some(extension) => match extension.to_str() {
@@ -157,10 +161,10 @@ fn try_main() -> Result<()> {
 
             match with {
                 Verification::Default => {
-                    vampire::default_verification(&prog, &spec, &ug, lem, break_equivalences);
+                    vampire::default_verification(&prog, &spec, &ug, lem, break_equivalences, parallel);
                 }
                 Verification::Sequential => {
-                    vampire::sequential_verification(&prog, &spec, &ug, lem, break_equivalences);
+                    vampire::sequential_verification(&prog, &spec, &ug, lem, break_equivalences, parallel);
                 }
             }
         }
