@@ -361,25 +361,93 @@ impl Claim {
         let n = self.conclusions.len();
         assert!(n > 0);
         if n == 1 {
-            problems.push(Problem {
-                status: ProblemStatus::Unknown,
-                interpretation: Interpretation::Standard,
-                predicates: problem_predicates.clone(),
-                functions: problem_functions.clone(),
-                axioms: self.premises.clone(),
-                conjecture: self.conclusions[0].clone(),
-            });
-        } else {
-            let mut axioms = self.premises.clone();
-            for i in 0..n {
+            if break_equivalences {
+                let implications = equivalence_breaker(self.conclusions[0].clone());
+                match implications {
+                    Some(mut formulas) => {
+                        problems.push(Problem {
+                            status: ProblemStatus::Unknown,
+                            interpretation: Interpretation::Standard,
+                            predicates: problem_predicates.clone(),
+                            functions: problem_functions.clone(),
+                            axioms: self.premises.clone(),
+                            conjecture: formulas.pop().unwrap(),
+                        });
+                        problems.push(Problem {
+                            status: ProblemStatus::Unknown,
+                            interpretation: Interpretation::Standard,
+                            predicates: problem_predicates.clone(),
+                            functions: problem_functions.clone(),
+                            axioms: self.premises.clone(),
+                            conjecture: formulas.pop().unwrap(),
+                        });   
+                    },
+                    None => {
+                        problems.push(Problem {
+                            status: ProblemStatus::Unknown,
+                            interpretation: Interpretation::Standard,
+                            predicates: problem_predicates.clone(),
+                            functions: problem_functions.clone(),
+                            axioms: self.premises.clone(),
+                            conjecture: self.conclusions[0].clone(),
+                        });
+                    },
+                }
+            } else {
                 problems.push(Problem {
                     status: ProblemStatus::Unknown,
                     interpretation: Interpretation::Standard,
                     predicates: problem_predicates.clone(),
                     functions: problem_functions.clone(),
-                    axioms: axioms.clone(),
-                    conjecture: self.conclusions[i].clone(),
+                    axioms: self.premises.clone(),
+                    conjecture: self.conclusions[0].clone(),
                 });
+            }
+        } else {
+            let mut axioms = self.premises.clone();
+            for i in 0..n {
+                if break_equivalences {
+                    let implications = equivalence_breaker(self.conclusions[i].clone());
+                    match implications {
+                        Some(mut formulas) => {
+                            problems.push(Problem {
+                                status: ProblemStatus::Unknown,
+                                interpretation: Interpretation::Standard,
+                                predicates: problem_predicates.clone(),
+                                functions: problem_functions.clone(),
+                                axioms: axioms.clone(),
+                                conjecture: formulas.pop().unwrap(),
+                            });
+                            problems.push(Problem {
+                                status: ProblemStatus::Unknown,
+                                interpretation: Interpretation::Standard,
+                                predicates: problem_predicates.clone(),
+                                functions: problem_functions.clone(),
+                                axioms: axioms.clone(),
+                                conjecture: formulas.pop().unwrap(),
+                            });
+                        },
+                        None => {
+                            problems.push(Problem {
+                                status: ProblemStatus::Unknown,
+                                interpretation: Interpretation::Standard,
+                                predicates: problem_predicates.clone(),
+                                functions: problem_functions.clone(),
+                                axioms: axioms.clone(),
+                                conjecture: self.conclusions[i].clone(),
+                            });
+                        },
+                    }
+                } else {
+                    problems.push(Problem {
+                        status: ProblemStatus::Unknown,
+                        interpretation: Interpretation::Standard,
+                        predicates: problem_predicates.clone(),
+                        functions: problem_functions.clone(),
+                        axioms: axioms.clone(),
+                        conjecture: self.conclusions[i].clone(),
+                    });
+                }
                 axioms.push(self.conclusions[i].clone());
             }
         }
