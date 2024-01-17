@@ -27,6 +27,7 @@ pub fn default_verification(
     specification: &FileType,
     user_guide: &fol::Specification,
     lemmas: Option<fol::Specification>,
+    cores: u16,
     break_equivalences: bool,
     parallelize: bool,
 ) {
@@ -42,9 +43,9 @@ pub fn default_verification(
     //h.display();
     h.generate_problem_files();
     if parallelize {
-        verify_with_vampire_parallel(h);
+        verify_with_vampire_parallel(h, cores);
     } else {
-        verify_with_vampire_sequential(h);
+        verify_with_vampire_sequential(h, cores);
     }
 }
 
@@ -53,6 +54,7 @@ pub fn sequential_verification(
     specification: &FileType,
     user_guide: &fol::Specification,
     lemmas: Option<fol::Specification>,
+    cores: u16,
     break_equivalences: bool,
     parallelize: bool,
 ) {
@@ -66,13 +68,13 @@ pub fn sequential_verification(
     h.sequential_decomposition(break_equivalences);
     h.generate_problem_files();
     if parallelize {
-        verify_with_vampire_parallel(h);
+        verify_with_vampire_parallel(h, cores);
     } else {
-        verify_with_vampire_sequential(h);
+        verify_with_vampire_sequential(h, cores);
     }
 }
 
-pub fn verify_with_vampire_sequential(handler: ProblemHandler) {
+pub fn verify_with_vampire_sequential(handler: ProblemHandler, cores: u16) {
     let mut task_status = ProblemStatus::Unknown;
     for (claim, problems) in handler.goals.iter() {
         let mut claim_status = ProblemStatus::Unknown;
@@ -86,7 +88,7 @@ pub fn verify_with_vampire_sequential(handler: ProblemHandler) {
                     "--mode",
                     "casc",
                     "--cores",
-                    "4",
+                    &cores.to_string(),
                     "--time_limit",
                     "300",
                 ]),
@@ -129,7 +131,7 @@ pub fn verify_with_vampire_sequential(handler: ProblemHandler) {
 }
 
 
-pub fn verify_with_vampire_parallel(handler: ProblemHandler) {
+pub fn verify_with_vampire_parallel(handler: ProblemHandler, cores: u16) {
     let mut thread_handles = vec![];
     for (c, p) in handler.goals.iter() {
         let claim = c.clone();
@@ -146,7 +148,7 @@ pub fn verify_with_vampire_parallel(handler: ProblemHandler) {
                         "--mode",
                         "casc",
                         "--cores",
-                        "4",
+                        &cores.to_string(),
                         "--time_limit",
                         "300",
                     ]),

@@ -43,6 +43,9 @@ enum Commands {
 
         lemmas: Option<PathBuf>,
 
+        #[arg(long)]
+        cores: u16,
+
         #[clap(long, short, action)]
         break_equivalences: bool,
 
@@ -98,6 +101,7 @@ fn try_main() -> Result<()> {
             specification,
             user_guide,
             lemmas,
+            cores,
             break_equivalences,
             parallel,
         } => {
@@ -161,10 +165,10 @@ fn try_main() -> Result<()> {
 
             match with {
                 Verification::Default => {
-                    vampire::default_verification(&prog, &spec, &ug, lem, break_equivalences, parallel);
+                    vampire::default_verification(&prog, &spec, &ug, lem, cores, break_equivalences, parallel);
                 }
                 Verification::Sequential => {
-                    vampire::sequential_verification(&prog, &spec, &ug, lem, break_equivalences, parallel);
+                    vampire::sequential_verification(&prog, &spec, &ug, lem, cores, break_equivalences, parallel);
                 }
             }
         }
