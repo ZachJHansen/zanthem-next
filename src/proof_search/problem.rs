@@ -1323,7 +1323,7 @@ pub fn placeholder_replacements(
 
 #[cfg(test)]
 mod tests {
-    use crate::syntax_tree::{asp, fol};
+    use crate::syntax_tree::fol;
     use super::equivalence_breaker;
 
     #[test]

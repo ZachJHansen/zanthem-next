@@ -130,7 +130,6 @@ pub fn verify_with_vampire_sequential(handler: ProblemHandler) {
 
 
 pub fn verify_with_vampire_parallel(handler: ProblemHandler) {
-    let mut task_status = ProblemStatus::Unknown;
     let mut thread_handles = vec![];
     for (c, p) in handler.goals.iter() {
         let claim = c.clone();
@@ -186,6 +185,7 @@ pub fn verify_with_vampire_parallel(handler: ProblemHandler) {
         thread_handles.push(handle);
     }
 
+    let mut task_status = ProblemStatus::Unknown;
     for handle in thread_handles {
         let claim_failure = handle.join().unwrap();
         match claim_failure {
