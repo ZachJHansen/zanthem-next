@@ -21,6 +21,27 @@ pub enum Command {
         /// The file to translate
         input: PathBuf,
     },
+    Verify {
+        #[arg(long, value_enum)]
+        with: Verification,
+
+        program: PathBuf,
+
+        specification: PathBuf,
+
+        user_guide: PathBuf,
+
+        lemmas: Option<PathBuf>,
+
+        #[arg(long)]
+        cores: u16,
+
+        #[clap(long, short, action)]
+        break_equivalences: bool,
+
+        #[clap(long, short, action)]
+        parallel: bool,
+    },
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
