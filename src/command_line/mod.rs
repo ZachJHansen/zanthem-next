@@ -42,6 +42,21 @@ pub enum Command {
         #[clap(long, short, action)]
         parallel: bool,
     },
+    VerifyAlt {
+        #[arg(long, value_enum)]
+        with: Verification,
+
+        directory: PathBuf,
+
+        #[arg(long)]
+        cores: u16,
+
+        #[clap(long, short, action)]
+        break_equivalences: bool,
+
+        #[clap(long, short, action)]
+        parallel: bool,
+    },
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]

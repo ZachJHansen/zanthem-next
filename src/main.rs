@@ -17,7 +17,7 @@ use {
     },
     anyhow::{Context, Result},
     clap::Parser as _,
-    std::{fs::read_to_string, path::PathBuf},
+    std::{io, fs::{read_to_string, read_dir}, path::PathBuf},
 };
 
 fn verify(
@@ -99,6 +99,19 @@ fn verify(
     Ok(())
 }
 
+fn collect_files(dir: PathBuf) -> io::Result<Vec<PathBuf>> {
+    let mut files = vec![];
+    if dir.is_dir() {
+        for entry in read_dir(dir)? {
+            let entry = entry?;
+            let meta = entry.metadata()?;
+            if meta.is_file() {
+                files.push(entry.path());
+            }
+        }
+    }
+    core::result::Result::Ok(files)
+}
 
 fn main() -> Result<()> {
     match Arguments::parse().command {
@@ -138,6 +151,50 @@ fn main() -> Result<()> {
         },
         Command::Verify { with, program, specification, user_guide, lemmas, cores, break_equivalences, parallel } => {
             verify(with, program, specification, user_guide, lemmas, cores, break_equivalences, parallel)?;
+            Ok(())
+        },
+        Command::VerifyAlt { with, directory, cores, break_equivalences, parallel } => {
+            let mut programs: Vec<&PathBuf> = vec![];
+            let mut specs: Vec<&PathBuf> = vec![];
+            let mut user_guides: Vec<&PathBuf> = vec![];
+            let mut lemmas: Vec<&PathBuf> = vec![];
+
+            // TODO - unpack and handle errors in files result
+            let files = match collect_files(directory) {
+                core::result::Result::Ok(f) => f,
+                Err(e) => {
+                    println!("Error! {e}");
+                    vec![]
+                }
+            };
+            for f in files.iter() {
+                match f.clone().into_os_string().into_string().unwrap().as_str() {
+                    "program.lp" => {
+                        programs.push(f);
+                    },
+                    "specification.lp" | "specification.spec" => {
+                        specs.push(f);
+                    },
+                    "user_guide.ug" => {
+                        user_guides.push(f);
+                    },
+                    "help.spec" => {
+                        lemmas.push(f)
+                    },
+                    _ => {
+                        println!("Unexpected file! Ignoring {}", f.clone().into_os_string().into_string().unwrap().as_str());
+                    }
+                }
+            }
+            assert!(programs.len() == 1);
+            assert!(specs.len() == 1);
+            assert!(user_guides.len() == 1);
+            assert!(lemmas.len() < 2);
+            if lemmas.len() > 0 {
+                verify(with, programs[0].to_path_buf(), specs[0].to_path_buf(), user_guides[0].to_path_buf(), Some(lemmas[0].to_path_buf()), cores, break_equivalences, parallel)?;
+            } else {
+                verify(with, programs[0].to_path_buf(), specs[0].to_path_buf(), user_guides[0].to_path_buf(), None, cores, break_equivalences, parallel)?;
+            }
             Ok(())
         },
     }
