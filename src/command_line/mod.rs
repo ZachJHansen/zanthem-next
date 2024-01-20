@@ -26,6 +26,13 @@ pub enum Command {
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
 pub enum Translation {
     TauStar,
+    Completion,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
+pub enum Verification {
+    Default,
+    Sequential,
 }
 
 #[cfg(test)]
