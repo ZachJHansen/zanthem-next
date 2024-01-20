@@ -231,39 +231,39 @@ pub fn equivalence_breaker(formula: fol::Formula) -> Option<Vec<fol::Formula>> {
         fol::Formula::QuantifiedFormula {
             quantification: q,
             formula: f,
-        } => {
-            match f.unbox() {
-                UnboxedFormula::BinaryFormula {
-                    connective: c,
-                    lhs: f1,
-                    rhs: f2,
-                } => match c {
-                    fol::BinaryConnective::Equivalence => {
-                        let imp1 = fol::Formula::QuantifiedFormula {
-                            quantification: q.clone(),
-                            formula: fol::Formula::BinaryFormula {
-                                connective: fol::BinaryConnective::Implication,
-                                lhs: f1.clone().into(),
-                                rhs: f2.clone().into(),
-                            }.into(),
-                        };
-                        let imp2 = fol::Formula::QuantifiedFormula {
-                            quantification: q.clone(),
-                            formula: fol::Formula::BinaryFormula {
-                                connective: fol::BinaryConnective::ReverseImplication,
-                                lhs: f1.into(),
-                                rhs: f2.into(),
-                            }.into(),
-                        };
-                        return Some(vec![imp1, imp2]);
-                    },
-                    _ => {
-                        return None;
-                    },
-                },
+        } => match f.unbox() {
+            UnboxedFormula::BinaryFormula {
+                connective: c,
+                lhs: f1,
+                rhs: f2,
+            } => match c {
+                fol::BinaryConnective::Equivalence => {
+                    let imp1 = fol::Formula::QuantifiedFormula {
+                        quantification: q.clone(),
+                        formula: fol::Formula::BinaryFormula {
+                            connective: fol::BinaryConnective::Implication,
+                            lhs: f1.clone().into(),
+                            rhs: f2.clone().into(),
+                        }
+                        .into(),
+                    };
+                    let imp2 = fol::Formula::QuantifiedFormula {
+                        quantification: q.clone(),
+                        formula: fol::Formula::BinaryFormula {
+                            connective: fol::BinaryConnective::ReverseImplication,
+                            lhs: f1.into(),
+                            rhs: f2.into(),
+                        }
+                        .into(),
+                    };
+                    return Some(vec![imp1, imp2]);
+                }
                 _ => {
                     return None;
-                },
+                }
+            },
+            _ => {
+                return None;
             }
         },
 
@@ -272,7 +272,7 @@ pub fn equivalence_breaker(formula: fol::Formula) -> Option<Vec<fol::Formula>> {
             lhs: f1,
             rhs: f2,
         } => match c {
-            fol::BinaryConnective::Equivalence => { 
+            fol::BinaryConnective::Equivalence => {
                 let imp1 = fol::Formula::BinaryFormula {
                     connective: fol::BinaryConnective::Implication,
                     lhs: f1.clone(),
@@ -284,15 +284,15 @@ pub fn equivalence_breaker(formula: fol::Formula) -> Option<Vec<fol::Formula>> {
                     rhs: f2.clone(),
                 };
                 return Some(vec![imp1, imp2]);
-            },
+            }
             _ => {
                 return None;
-            },
+            }
         },
 
         _ => {
             return None;
-        },
+        }
     }
 }
 
@@ -324,8 +324,8 @@ impl Claim {
                             functions: problem_functions.clone(),
                             axioms: self.premises.clone(),
                             conjecture: formulas.pop().unwrap(),
-                        });        
-                    },
+                        });
+                    }
                     None => {
                         problems.push(Problem {
                             status: ProblemStatus::Unknown,
@@ -335,7 +335,7 @@ impl Claim {
                             axioms: self.premises.clone(),
                             conjecture: conclusion.clone(),
                         });
-                    },
+                    }
                 }
             } else {
                 problems.push(Problem {
@@ -380,8 +380,8 @@ impl Claim {
                             functions: problem_functions.clone(),
                             axioms: self.premises.clone(),
                             conjecture: formulas.pop().unwrap(),
-                        });   
-                    },
+                        });
+                    }
                     None => {
                         problems.push(Problem {
                             status: ProblemStatus::Unknown,
@@ -391,7 +391,7 @@ impl Claim {
                             axioms: self.premises.clone(),
                             conjecture: self.conclusions[0].clone(),
                         });
-                    },
+                    }
                 }
             } else {
                 problems.push(Problem {
@@ -426,7 +426,7 @@ impl Claim {
                                 axioms: axioms.clone(),
                                 conjecture: formulas.pop().unwrap(),
                             });
-                        },
+                        }
                         None => {
                             problems.push(Problem {
                                 status: ProblemStatus::Unknown,
@@ -436,7 +436,7 @@ impl Claim {
                                 axioms: axioms.clone(),
                                 conjecture: self.conclusions[i].clone(),
                             });
-                        },
+                        }
                     }
                 } else {
                     problems.push(Problem {
@@ -502,13 +502,19 @@ impl ProblemHandler {
                 spec_private_predicates(s, &public_predicates, needs_renaming)
             }
         };
-        
-        println!("Spec private predicates: {:?}", specification_private_predicates); 
+
+        println!(
+            "Spec private predicates: {:?}",
+            specification_private_predicates
+        );
 
         let program_private_predicates =
             prog_private_predicates(program, &public_predicates, needs_renaming, false);
 
-        println!("program private predicates: {:?}", program_private_predicates); 
+        println!(
+            "program private predicates: {:?}",
+            program_private_predicates
+        );
 
         let mut private_predicates: HashSet<fol::Predicate> = HashSet::new();
         private_predicates.extend(specification_private_predicates);
@@ -656,7 +662,11 @@ impl ProblemHandler {
             let claim = c.clone();
             goals.insert(
                 claim.clone(),
-                claim.decompose_claim_default(&self.predicates, &self.functions, break_equivalences),
+                claim.decompose_claim_default(
+                    &self.predicates,
+                    &self.functions,
+                    break_equivalences,
+                ),
             );
         }
         self.goals = goals;
@@ -668,7 +678,11 @@ impl ProblemHandler {
             let claim = c.clone();
             goals.insert(
                 claim.clone(),
-                claim.decompose_claim_sequential(&self.predicates, &self.functions, break_equivalences),
+                claim.decompose_claim_sequential(
+                    &self.predicates,
+                    &self.functions,
+                    break_equivalences,
+                ),
             );
         }
         self.goals = goals;
@@ -1323,20 +1337,30 @@ pub fn placeholder_replacements(
 
 #[cfg(test)]
 mod tests {
-    use crate::syntax_tree::fol;
     use super::equivalence_breaker;
+    use crate::syntax_tree::fol;
 
     #[test]
     fn test_break_equivalences_some() {
         for (src, target) in [
-            ("forall X (p(X) <-> q(X))", ["forall X (p(X) -> q(X))", "forall X (p(X) <- q(X))"]),
-            ("forall X ((p(X) and q) <-> t)", ["forall X ((p(X) and q) -> t)", "forall X ((p(X) and q) <- t)"]),
+            (
+                "forall X (p(X) <-> q(X))",
+                ["forall X (p(X) -> q(X))", "forall X (p(X) <- q(X))"],
+            ),
+            (
+                "forall X ((p(X) and q) <-> t)",
+                [
+                    "forall X ((p(X) and q) -> t)",
+                    "forall X ((p(X) and q) <- t)",
+                ],
+            ),
             ("p <-> q", ["p -> q", "p <- q"]),
             ("p <-> q or t", ["p -> q or t", "p <- q or t"]),
             ("p(X) <-> q(X)", ["p(X) -> q(X)", "p(X) <- q(X)"]),
         ] {
             let f: fol::Formula = src.parse().unwrap();
-            let result: Option<Vec<fol::Formula>> = Some(vec![target[0].parse().unwrap(), target[1].parse().unwrap()]);
+            let result: Option<Vec<fol::Formula>> =
+                Some(vec![target[0].parse().unwrap(), target[1].parse().unwrap()]);
             assert_eq!(result, equivalence_breaker(f))
         }
     }
@@ -1348,7 +1372,7 @@ mod tests {
             "q(a)",
             "forall X (p(X) and (q <-> t))",
         ] {
-            let f: fol::Formula = src.parse().unwrap(); 
+            let f: fol::Formula = src.parse().unwrap();
             assert_eq!(None, equivalence_breaker(f))
         }
     }

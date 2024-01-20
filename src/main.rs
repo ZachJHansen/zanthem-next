@@ -10,14 +10,18 @@ pub mod translating;
 use {
     crate::{
         command_line::{Arguments, Command, Translation, Verification},
-        syntax_tree::{asp, fol},
-        translating::tau_star::tau_star,
-        translating::completion::completion,
         proof_search::{problem, vampire},
+        syntax_tree::{asp, fol},
+        translating::completion::completion,
+        translating::tau_star::tau_star,
     },
     anyhow::{Context, Result},
     clap::Parser as _,
-    std::{io, fs::{read_to_string, read_dir}, path::PathBuf},
+    std::{
+        fs::{read_dir, read_to_string},
+        io,
+        path::PathBuf,
+    },
 };
 
 fn verify(
@@ -35,9 +39,7 @@ fn verify(
             Some(ext) => match ext {
                 "lp" => {
                     let prog2: asp::Program = read_to_string(&specification)
-                        .with_context(|| {
-                            format!("failed to read '{}'", &specification.display())
-                        })?
+                        .with_context(|| format!("failed to read '{}'", &specification.display()))?
                         .parse()
                         .with_context(|| {
                             format!("failed to parse '{}'", &specification.display())
@@ -46,9 +48,7 @@ fn verify(
                 }
                 "spec" => {
                     let specification: fol::Specification = read_to_string(&specification)
-                        .with_context(|| {
-                            format!("failed to read '{}'", &specification.display())
-                        })?
+                        .with_context(|| format!("failed to read '{}'", &specification.display()))?
                         .parse()
                         .with_context(|| {
                             format!("failed to parse '{}'", &specification.display())
@@ -72,7 +72,7 @@ fn verify(
         .parse()
         .with_context(|| format!("failed to parse '{}'", &program.display()))?;
 
-        let ug: fol::Specification = read_to_string(&user_guide)
+    let ug: fol::Specification = read_to_string(&user_guide)
         .with_context(|| format!("failed to read '{}'", &user_guide.display()))?
         .parse()
         .with_context(|| format!("failed to parse '{}'", &user_guide.display()))?;
@@ -90,10 +90,26 @@ fn verify(
 
     match with {
         Verification::Default => {
-            vampire::default_verification(&prog, &spec, &ug, lem, cores, break_equivalences, parallelize);
+            vampire::default_verification(
+                &prog,
+                &spec,
+                &ug,
+                lem,
+                cores,
+                break_equivalences,
+                parallelize,
+            );
         }
         Verification::Sequential => {
-            vampire::sequential_verification(&prog, &spec, &ug, lem, cores, break_equivalences, parallelize);
+            vampire::sequential_verification(
+                &prog,
+                &spec,
+                &ug,
+                lem,
+                cores,
+                break_equivalences,
+                parallelize,
+            );
         }
     }
     Ok(())
@@ -128,7 +144,7 @@ fn main() -> Result<()> {
                     let theory = tau_star(program);
 
                     println!("{theory}")
-                },
+                }
                 Translation::Completion => {
                     let program: asp::Program = content
                         .parse()
@@ -144,16 +160,40 @@ fn main() -> Result<()> {
                             println!("Not a completable theory.")
                         }
                     }
-                },
+                }
             }
 
             Ok(())
-        },
-        Command::Verify { with, program, specification, user_guide, lemmas, cores, break_equivalences, parallel } => {
-            verify(with, program, specification, user_guide, lemmas, cores, break_equivalences, parallel)?;
+        }
+        Command::Verify {
+            with,
+            program,
+            specification,
+            user_guide,
+            lemmas,
+            cores,
+            break_equivalences,
+            parallel,
+        } => {
+            verify(
+                with,
+                program,
+                specification,
+                user_guide,
+                lemmas,
+                cores,
+                break_equivalences,
+                parallel,
+            )?;
             Ok(())
-        },
-        Command::VerifyAlt { with, directory, cores, break_equivalences, parallel } => {
+        }
+        Command::VerifyAlt {
+            with,
+            directory,
+            cores,
+            break_equivalences,
+            parallel,
+        } => {
             let mut programs: Vec<&PathBuf> = vec![];
             let mut specs: Vec<&PathBuf> = vec![];
             let mut user_guides: Vec<&PathBuf> = vec![];
@@ -171,18 +211,19 @@ fn main() -> Result<()> {
                 match f.clone().into_os_string().into_string().unwrap().as_str() {
                     "program.lp" => {
                         programs.push(f);
-                    },
+                    }
                     "specification.lp" | "specification.spec" => {
                         specs.push(f);
-                    },
+                    }
                     "user_guide.ug" => {
                         user_guides.push(f);
-                    },
-                    "help.spec" => {
-                        lemmas.push(f)
-                    },
+                    }
+                    "help.spec" => lemmas.push(f),
                     _ => {
-                        println!("Unexpected file! Ignoring {}", f.clone().into_os_string().into_string().unwrap().as_str());
+                        println!(
+                            "Unexpected file! Ignoring {}",
+                            f.clone().into_os_string().into_string().unwrap().as_str()
+                        );
                     }
                 }
             }
@@ -191,11 +232,29 @@ fn main() -> Result<()> {
             assert!(user_guides.len() == 1);
             assert!(lemmas.len() < 2);
             if lemmas.len() > 0 {
-                verify(with, programs[0].to_path_buf(), specs[0].to_path_buf(), user_guides[0].to_path_buf(), Some(lemmas[0].to_path_buf()), cores, break_equivalences, parallel)?;
+                verify(
+                    with,
+                    programs[0].to_path_buf(),
+                    specs[0].to_path_buf(),
+                    user_guides[0].to_path_buf(),
+                    Some(lemmas[0].to_path_buf()),
+                    cores,
+                    break_equivalences,
+                    parallel,
+                )?;
             } else {
-                verify(with, programs[0].to_path_buf(), specs[0].to_path_buf(), user_guides[0].to_path_buf(), None, cores, break_equivalences, parallel)?;
+                verify(
+                    with,
+                    programs[0].to_path_buf(),
+                    specs[0].to_path_buf(),
+                    user_guides[0].to_path_buf(),
+                    None,
+                    cores,
+                    break_equivalences,
+                    parallel,
+                )?;
             }
             Ok(())
-        },
+        }
     }
 }

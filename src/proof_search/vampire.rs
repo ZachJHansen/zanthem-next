@@ -130,7 +130,6 @@ pub fn verify_with_vampire_sequential(handler: ProblemHandler, cores: u16) {
     }
 }
 
-
 pub fn verify_with_vampire_parallel(handler: ProblemHandler, cores: u16) {
     let mut thread_handles = vec![];
     for (c, p) in handler.goals.iter() {
@@ -176,11 +175,11 @@ pub fn verify_with_vampire_parallel(handler: ProblemHandler, cores: u16) {
                 ProblemStatus::Theorem => {
                     println!("\n%%%%% Claim status: Theorem %%%%%\n");
                     ProblemStatus::Unknown
-                },
+                }
                 _ => {
                     println!("\n%%%%% Claim status: Not a Theorem %%%%%\n");
                     ProblemStatus::Timeout
-                },
+                }
             };
             task_status
         });
@@ -193,8 +192,8 @@ pub fn verify_with_vampire_parallel(handler: ProblemHandler, cores: u16) {
         match claim_failure {
             ProblemStatus::Timeout => {
                 task_status = ProblemStatus::Timeout;
-            },
-            _ => {},
+            }
+            _ => {}
         }
     }
 
