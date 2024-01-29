@@ -137,7 +137,7 @@ pub fn verify_with_vampire_parallel(handler: ProblemHandler, cores: u16) {
         let problems = p.clone();
         let handle = thread::spawn(move || {
             let mut claim_status = ProblemStatus::Unknown;
-            println!("Proving Claim... \n%%%%%%%%%%\n{}", claim.display());
+            let mut summary = format!("Proving Claim... \n%%%%%%%%%%\n{}\n%%%%%%%%%%\n", claim.display());
             for p in problems.iter() {
                 let result = run_vampire(
                     &p.display(true),
@@ -155,17 +155,17 @@ pub fn verify_with_vampire_parallel(handler: ProblemHandler, cores: u16) {
                 match result {
                     Ok(status) => match status {
                         ProblemStatus::Theorem => {
-                            println!("Conjecture: {} \n\t| Status: Proven", p.conjecture);
+                            summary.push_str(&format!("Conjecture: {} \n\t| Status: Proven\n", p.conjecture));
                         }
                         _ => {
                             claim_status = ProblemStatus::Timeout; // TODO - Differentiate between different vampire errors/non-theorem results
-                            println!("Conjecture: {} \n\t| Status: Not Proven", p.conjecture);
+                            summary.push_str(&format!("Conjecture: {} \n\t| Status: Not Proven\n", p.conjecture));
                             break;
                         }
                     },
                     Err(e) => {
                         claim_status = ProblemStatus::Error;
-                        println!("{e}");
+                        summary.push_str(&format!("{e}"));
                         break;
                     }
                 }
@@ -173,28 +173,31 @@ pub fn verify_with_vampire_parallel(handler: ProblemHandler, cores: u16) {
             }
             let task_status = match claim_status {
                 ProblemStatus::Theorem => {
-                    println!("\n%%%%% Claim status: Theorem %%%%%\n");
+                    summary.push_str("\n%%%%% Claim status: Theorem %%%%%\n");
                     ProblemStatus::Unknown
                 }
                 _ => {
-                    println!("\n%%%%% Claim status: Not a Theorem %%%%%\n");
+                    summary.push_str("\n%%%%% Claim status: Not a Theorem %%%%%\n");
                     ProblemStatus::Timeout
                 }
             };
-            task_status
+            (task_status, summary)
         });
         thread_handles.push(handle);
     }
 
     let mut task_status = ProblemStatus::Unknown;
     for handle in thread_handles {
-        let claim_failure = handle.join().unwrap();
+        let thread_result = handle.join().unwrap();
+        let claim_failure = thread_result.0;
+        let claim_summary = thread_result.1;
         match claim_failure {
             ProblemStatus::Timeout => {
                 task_status = ProblemStatus::Timeout;
             }
             _ => {}
         }
+        println!("{}", claim_summary);
     }
 
     match task_status {

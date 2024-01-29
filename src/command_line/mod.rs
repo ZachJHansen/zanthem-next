@@ -33,7 +33,7 @@ pub enum Command {
 
         lemmas: Option<PathBuf>,
 
-        #[arg(long)]
+        #[arg(long, default_value_t = 4)]
         cores: u16,
 
         #[clap(long, short, action)]
@@ -48,7 +48,7 @@ pub enum Command {
 
         directory: PathBuf,
 
-        #[arg(long)]
+        #[arg(long, default_value_t = 4)]
         cores: u16,
 
         #[clap(long, short, action)]
