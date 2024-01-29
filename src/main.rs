@@ -17,12 +17,18 @@ use {
     },
     anyhow::{Context, Result},
     clap::Parser as _,
+    lazy_static::lazy_static,
+    regex::Regex,
     std::{
         fs::{read_dir, read_to_string},
         io,
         path::PathBuf,
     },
 };
+
+lazy_static! {
+    static ref HELP: Regex = Regex::new(r"\.help\.spec$").unwrap();
+}
 
 fn verify(
     with: Verification,
@@ -208,29 +214,47 @@ fn main() -> Result<()> {
                 }
             };
             for f in files.iter() {
-                match f.clone().into_os_string().into_string().unwrap().as_str() {
-                    "program.lp" => {
-                        programs.push(f);
-                    }
-                    "specification.lp" | "specification.spec" => {
-                        specs.push(f);
-                    }
-                    "user_guide.ug" => {
-                        user_guides.push(f);
-                    }
-                    "help.spec" => lemmas.push(f),
-                    _ => {
-                        println!(
-                            "Unexpected file! Ignoring {}",
-                            f.clone().into_os_string().into_string().unwrap().as_str()
-                        );
+                match f.extension() {
+                    Some(extension) => match extension.to_str().unwrap() {
+                        "lp" => {
+                            if programs.is_empty() {
+                                programs.push(f);
+                            } else {
+                                specs.push(f);
+                            }
+                        }
+                        "spec" => {
+                            if HELP.is_match(&f.clone().into_os_string().into_string().unwrap()) {
+                                lemmas.push(f);
+                            } else {
+                                specs.push(f);
+                            }
+                        }
+                        "ug" => {
+                            user_guides.push(f);
+                        }
+                        _ => {
+                            println!("Unexpected file! Ignoring {:?}", f);
+                        }
+                    },
+                    None => {
+                        println!("Encountered a file with an unexpected extension: {:?}", f);
                     }
                 }
             }
+
             assert!(programs.len() == 1);
             assert!(specs.len() == 1);
             assert!(user_guides.len() == 1);
             assert!(lemmas.len() < 2);
+
+            println!("Treating {:?} as the program...", programs[0]);
+            println!("Treating {:?} as the specification...", specs[0]);
+            println!("Treating {:?} as the user guide...", user_guides[0]);
+            if lemmas.len() > 0 {
+                println!("Treating {:?} as the lemmas...", lemmas[0]);
+            }
+
             if lemmas.len() > 0 {
                 verify(
                     with,

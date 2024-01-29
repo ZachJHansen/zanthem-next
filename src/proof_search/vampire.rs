@@ -137,7 +137,10 @@ pub fn verify_with_vampire_parallel(handler: ProblemHandler, cores: u16) {
         let problems = p.clone();
         let handle = thread::spawn(move || {
             let mut claim_status = ProblemStatus::Unknown;
-            let mut summary = format!("Proving Claim... \n%%%%%%%%%%\n{}\n%%%%%%%%%%\n", claim.display());
+            let mut summary = format!(
+                "Proving Claim... \n%%%%%%%%%%\n{}\n%%%%%%%%%%\n",
+                claim.display()
+            );
             for p in problems.iter() {
                 let result = run_vampire(
                     &p.display(true),
@@ -155,11 +158,17 @@ pub fn verify_with_vampire_parallel(handler: ProblemHandler, cores: u16) {
                 match result {
                     Ok(status) => match status {
                         ProblemStatus::Theorem => {
-                            summary.push_str(&format!("Conjecture: {} \n\t| Status: Proven\n", p.conjecture));
+                            summary.push_str(&format!(
+                                "Conjecture: {} \n\t| Status: Proven\n",
+                                p.conjecture
+                            ));
                         }
                         _ => {
                             claim_status = ProblemStatus::Timeout; // TODO - Differentiate between different vampire errors/non-theorem results
-                            summary.push_str(&format!("Conjecture: {} \n\t| Status: Not Proven\n", p.conjecture));
+                            summary.push_str(&format!(
+                                "Conjecture: {} \n\t| Status: Not Proven\n",
+                                p.conjecture
+                            ));
                             break;
                         }
                     },
