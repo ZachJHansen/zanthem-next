@@ -91,6 +91,45 @@ pub fn simplify_outer(formula: Formula) -> Formula {
     }
 }
 
+pub fn simplify_quantifiers(formula: Formula) -> Formula {
+    formula.apply(&mut simplify_quantifiers_outer)
+}
+
+pub fn simplify_quantifiers_outer(formula: Formula) -> Formula {
+
+    match formula.unbox() {
+        // Remove redundant existentials
+        // e.g. exists Z$g (Z$g = X$g and F(Z$g)) => F(X$g)
+        // UnboxedFormula::QuantifiedFormula {
+        //     quantification: {
+        //         quantifier: Quantifier::Exists,
+        //         variables: vars,
+        //     },
+        //     formula: f,
+        // } => {
+        //     match f.unbox() {
+        //         UnboxedFormula::BinaryFormula {
+        //             connective: BinaryConnective::Conjunction,
+        //             lhs: lhs @ Formula::AtomicFormula(AtomicFormula::Comparison{
+        //                 term: GeneralTerm::GeneralVariable(v),
+        //                 guards, 
+        //             }),
+        //             rhs,
+        //         } => {
+        //             if vars.contains(GeneralVariable(v)) {
+        //                 // todo 
+        //             } else {
+        //                 formula
+        //             }
+        //         },
+        //         _ => ???
+        //     }
+        // },
+
+        x => x.rebox(),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::{simplify, simplify_outer};
