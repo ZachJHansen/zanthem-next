@@ -3,7 +3,7 @@ use crate::{
         apply::Apply as _,
         unbox::{fol::UnboxedFormula, Unbox as _},
     },
-    syntax_tree::fol::{AtomicFormula, BinaryConnective, Formula},
+    syntax_tree::fol::{AtomicFormula, BinaryConnective, Formula, Quantification},
 };
 
 pub fn simplify(formula: Formula) -> Formula {
@@ -91,6 +91,48 @@ pub fn simplify_outer(formula: Formula) -> Formula {
     }
 }
 
+pub fn simplify_nested_quantifiers(formula: Formula) -> Formula {
+    formula.apply(&mut simplify_nested_quantifiers_outer)
+}
+
+pub fn simplify_nested_quantifiers_outer(formula: Formula) -> Formula {
+
+    match formula.clone().unbox() {
+        // Join nested quantified formulas
+        // e.g. exists X ( exists Y F(X,Y) ) => exists X Y F(X,Y)
+        UnboxedFormula::QuantifiedFormula {
+            quantification: Quantification {
+                quantifier,
+                mut variables,
+            },
+            formula: Formula::QuantifiedFormula {
+                quantification: Quantification {
+                    quantifier: inner_quantifier,
+                    variables: mut inner_vars,
+                },
+                formula: f,
+            }
+         } => {
+            if quantifier == inner_quantifier {
+                variables.append(&mut inner_vars);
+                variables.sort();
+                variables.dedup();
+                Formula::QuantifiedFormula {
+                    quantification: Quantification {
+                        quantifier,
+                        variables,
+                    },
+                    formula: f,
+                }
+            } else {
+                formula
+            }
+        },
+
+        x => x.rebox(),
+    }
+}
+
 pub fn simplify_quantifiers(formula: Formula) -> Formula {
     formula.apply(&mut simplify_quantifiers_outer)
 }
@@ -132,7 +174,7 @@ pub fn simplify_quantifiers_outer(formula: Formula) -> Formula {
 
 #[cfg(test)]
 mod tests {
-    use super::{simplify, simplify_outer};
+    use super::{simplify, simplify_outer, simplify_nested_quantifiers};
 
     #[test]
     fn test_simplify() {
@@ -177,6 +219,21 @@ mod tests {
         ] {
             assert_eq!(
                 simplify_outer(src.parse().unwrap()),
+                target.parse().unwrap()
+            )
+        }
+    }
+
+    #[test]
+    fn test_simplify_nested_quantifiers() {
+        for (src, target) in [
+            ("exists X (exists Y (X = Y))", "exists X Y (X = Y)"),
+            ("exists X (exists X$i (p(X) -> X$i < 1))", "exists X$i X (p(X) -> X$i < 1)"),
+            ("forall X Y (forall Y Z (p(X,Y) and q(Y,Z)))", "forall X Y Z (p(X,Y) and q(Y,Z))"),
+            ("forall X (forall Y (forall Z (X = Y = Z)))", "forall X Y Z (X = Y = Z)"),
+        ] {
+            assert_eq!(
+                simplify_nested_quantifiers(src.parse().unwrap()),
                 target.parse().unwrap()
             )
         }
