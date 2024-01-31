@@ -3,7 +3,7 @@ use crate::{
         apply::Apply as _,
         unbox::{fol::UnboxedFormula, Unbox as _},
     },
-    syntax_tree::fol::{AtomicFormula, BinaryConnective, Formula, Quantification},
+    syntax_tree::fol::{AtomicFormula, BinaryConnective, Formula, Quantification, Quantifier, GeneralTerm, Relation, Variable, Sort, Comparison},
 };
 
 pub fn simplify(formula: Formula) -> Formula {
@@ -135,39 +135,50 @@ pub fn simplify_nested_quantifiers_outer(formula: Formula) -> Formula {
     }
 }
 
-pub fn simplify_quantifiers(formula: Formula) -> Formula {
-    formula.apply(&mut simplify_quantifiers_outer)
+pub fn simplify_redundant_quantifiers(formula: Formula) -> Formula {
+    formula.apply(&mut simplify_redundant_quantifiers_outer)
 }
 
-pub fn simplify_quantifiers_outer(formula: Formula) -> Formula {
-    match formula.unbox() {
+pub fn simplify_redundant_quantifiers_outer(formula: Formula) -> Formula {
+    match formula.clone().unbox() {
         // Remove redundant existentials
         // e.g. exists Z$g (Z$g = X$g and F(Z$g)) => F(X$g)
-        // UnboxedFormula::QuantifiedFormula {
-        //     quantification: {
-        //         quantifier: Quantifier::Exists,
-        //         variables: vars,
-        //     },
-        //     formula: f,
-        // } => {
-        //     match f.unbox() {
-        //         UnboxedFormula::BinaryFormula {
-        //             connective: BinaryConnective::Conjunction,
-        //             lhs: lhs @ Formula::AtomicFormula(AtomicFormula::Comparison{
-        //                 term: GeneralTerm::GeneralVariable(v),
-        //                 guards,
-        //             }),
-        //             rhs,
-        //         } => {
-        //             if vars.contains(GeneralVariable(v)) {
-        //                 // todo
-        //             } else {
-        //                 formula
-        //             }
-        //         },
-        //         _ => ???
-        //     }
-        // },
+        UnboxedFormula::QuantifiedFormula {
+            quantification: Quantification {
+                quantifier: Quantifier::Exists,
+                variables: vars,
+            },
+            formula: f,
+        } => {
+            match f.unbox() {
+                UnboxedFormula::BinaryFormula {
+                    connective: BinaryConnective::Conjunction,
+                    lhs: Formula::AtomicFormula(AtomicFormula::Comparison(Comparison {
+                        term: GeneralTerm::GeneralVariable(v),
+                        guards,
+                    })),
+                    rhs,
+                } => {
+                    let var = Variable { name: v, sort: Sort::General };
+                    if vars.contains(&var) {
+                        let g = guards[0].clone();
+                        match g.relation {
+                            Relation::Equal => {
+                                rhs.substitute(var, g.term)         // F(X)
+                            },
+                            _ => {
+                                formula
+                            }
+                        } 
+                    } else {
+                        formula
+                    }
+                },
+                _ => {
+                    formula
+                }
+            }
+        },
         x => x.rebox(),
     }
 }

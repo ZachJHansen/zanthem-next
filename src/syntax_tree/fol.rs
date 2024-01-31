@@ -429,6 +429,11 @@ impl Formula {
             } => f1.contains_free_variable(v) || f2.contains_free_variable(v),
         }
     }
+
+    // Replaces v with t within F
+    pub fn substitute(&self, v: Variable, t: GeneralTerm) -> Formula {
+        todo!()
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
