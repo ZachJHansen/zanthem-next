@@ -2,6 +2,7 @@ use {
     crate::{
         convenience::{apply::Apply as _, unbox::fol::UnboxedFormula, unbox::Unbox},
         formatting::fol::tptp::Format,
+        simplifying::fol::ht::simplify as ht_simplify,
         syntax_tree::{asp, fol},
         translating::{completion::completion, tau_star::tau_star},
     },
@@ -310,6 +311,7 @@ impl ProblemHandler {
         program: &asp::Program,
         specification: &FileType,
         user_guide: &fol::Specification,
+        simplify: bool,
     ) -> Self {
         let needs_renaming = match &specification {
             &FileType::MiniGringoProgram { .. } => true,
@@ -401,6 +403,22 @@ impl ProblemHandler {
         placeholder_replacements(&mut forward_conclusions, &placeholders);
         placeholder_replacements(&mut backward_premises, &placeholders);
         placeholder_replacements(&mut backward_conclusions, &placeholders);
+
+        if simplify {
+            //println!("We have {} forward premises\n\n", forward_premises.len());    // TODO - Why does 0..len() work??
+            for i in 0..forward_premises.len() {
+                forward_premises[i] = ht_simplify(forward_premises[i].clone());
+            }
+            for i in 0..backward_premises.len() {
+                backward_premises[i] = ht_simplify(backward_premises[i].clone());
+            }
+            for i in 0..forward_conclusions.len() {
+                forward_conclusions[i] = ht_simplify(forward_conclusions[i].clone());
+            }
+            for i in 0..backward_conclusions.len() {
+                backward_conclusions[i] = ht_simplify(backward_conclusions[i].clone());
+            }
+        }
 
         let forward = Claim {
             name: "forward".to_string(),

@@ -10,10 +10,25 @@ use crate::{
 };
 
 pub fn simplify(formula: Formula) -> Formula {
-    formula.apply(&mut simplify_outer)
+    let mut f1 = formula;
+    let mut f2;
+    loop {
+        f2 = simplify_redundant_quantifiers(simplify_empty_quantifiers(simplify_variable_lists(
+            simplify_nested_quantifiers(basic_simplify(f1.clone())),
+        )));
+        if f1 == f2 {
+            break;
+        }
+        f1 = f2;
+    }
+    f1
 }
 
-pub fn simplify_outer(formula: Formula) -> Formula {
+pub fn basic_simplify(formula: Formula) -> Formula {
+    formula.apply(&mut basic_simplify_outer)
+}
+
+pub fn basic_simplify_outer(formula: Formula) -> Formula {
     // TODO: Split simplifications into multiple functions?
 
     match formula.unbox() {
@@ -246,12 +261,12 @@ pub fn simplify_variable_lists_outer(formula: Formula) -> Formula {
 #[cfg(test)]
 mod tests {
     use super::{
-        simplify, simplify_empty_quantifiers, simplify_nested_quantifiers, simplify_outer,
-        simplify_variable_lists,
+        basic_simplify, basic_simplify_outer, simplify, simplify_empty_quantifiers,
+        simplify_nested_quantifiers, simplify_variable_lists,
     };
 
     #[test]
-    fn test_simplify() {
+    fn test_basic_simplify() {
         for (src, target) in [
             ("#true and a", "a"),
             ("a and #true", "a"),
@@ -271,12 +286,15 @@ mod tests {
             ),
             ("forall X (q(X) or (p or #true))", "forall X #true"),
         ] {
-            assert_eq!(simplify(src.parse().unwrap()), target.parse().unwrap())
+            assert_eq!(
+                basic_simplify(src.parse().unwrap()),
+                target.parse().unwrap()
+            )
         }
     }
 
     #[test]
-    fn test_simplify_outer() {
+    fn test_basic_simplify_outer() {
         for (src, target) in [
             ("#true and a", "a"),
             ("a and #true", "a"),
@@ -292,7 +310,7 @@ mod tests {
             ("(#true and #true) and a", "(#true and #true) and a"),
         ] {
             assert_eq!(
-                simplify_outer(src.parse().unwrap()),
+                basic_simplify_outer(src.parse().unwrap()),
                 target.parse().unwrap()
             )
         }
@@ -302,6 +320,10 @@ mod tests {
     fn test_simplify_nested_quantifiers() {
         for (src, target) in [
             ("exists X (exists Y (X = Y))", "exists X Y (X = Y)"),
+            (
+                "exists X Y ( exists Z ( X < Y and Y < Z ))",
+                "exists X Y Z ( X < Y and Y < Z )",
+            ),
             (
                 "exists X (exists Y (X = Y and q(Y)))",
                 "exists X Y (X = Y and q(Y))",
@@ -355,6 +377,16 @@ mod tests {
                 simplify_variable_lists(src.parse().unwrap()),
                 target.parse().unwrap()
             )
+        }
+    }
+
+    #[test]
+    fn test_full_simplify() {
+        for (src, target) in [(
+            "exists X Y ( exists W Y Z (p(Y,Z) and #true) )",
+            "exists Y Z ( p(Y,Z) )",
+        )] {
+            assert_eq!(simplify(src.parse().unwrap()), target.parse().unwrap())
         }
     }
 }

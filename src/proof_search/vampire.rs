@@ -25,8 +25,9 @@ pub fn default_verification(
     specification: &FileType,
     user_guide: &fol::Specification,
     lemmas: Option<fol::Specification>,
+    simplify: bool,
 ) {
-    let mut h = ProblemHandler::new(program, specification, user_guide);
+    let mut h = ProblemHandler::new(program, specification, user_guide, simplify);
     match lemmas {
         Some(l) => {
             println!("Warning - adding lemmas to default verification is useless. Try --with sequential.");
@@ -45,8 +46,9 @@ pub fn sequential_verification(
     specification: &FileType,
     user_guide: &fol::Specification,
     lemmas: Option<fol::Specification>,
+    simplify: bool,
 ) {
-    let mut h = ProblemHandler::new(program, specification, user_guide);
+    let mut h = ProblemHandler::new(program, specification, user_guide, simplify);
     match lemmas {
         Some(l) => {
             h.add_lemmas(l);
