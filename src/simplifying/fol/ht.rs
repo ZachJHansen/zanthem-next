@@ -96,23 +96,25 @@ pub fn simplify_nested_quantifiers(formula: Formula) -> Formula {
 }
 
 pub fn simplify_nested_quantifiers_outer(formula: Formula) -> Formula {
-
     match formula.clone().unbox() {
         // Join nested quantified formulas
         // e.g. exists X ( exists Y F(X,Y) ) => exists X Y F(X,Y)
         UnboxedFormula::QuantifiedFormula {
-            quantification: Quantification {
-                quantifier,
-                mut variables,
-            },
-            formula: Formula::QuantifiedFormula {
-                quantification: Quantification {
-                    quantifier: inner_quantifier,
-                    variables: mut inner_vars,
+            quantification:
+                Quantification {
+                    quantifier,
+                    mut variables,
                 },
-                formula: f,
-            }
-         } => {
+            formula:
+                Formula::QuantifiedFormula {
+                    quantification:
+                        Quantification {
+                            quantifier: inner_quantifier,
+                            variables: mut inner_vars,
+                        },
+                    formula: f,
+                },
+        } => {
             if quantifier == inner_quantifier {
                 variables.append(&mut inner_vars);
                 variables.sort();
@@ -127,7 +129,7 @@ pub fn simplify_nested_quantifiers_outer(formula: Formula) -> Formula {
             } else {
                 formula
             }
-        },
+        }
 
         x => x.rebox(),
     }
@@ -138,7 +140,6 @@ pub fn simplify_quantifiers(formula: Formula) -> Formula {
 }
 
 pub fn simplify_quantifiers_outer(formula: Formula) -> Formula {
-
     match formula.unbox() {
         // Remove redundant existentials
         // e.g. exists Z$g (Z$g = X$g and F(Z$g)) => F(X$g)
@@ -154,12 +155,12 @@ pub fn simplify_quantifiers_outer(formula: Formula) -> Formula {
         //             connective: BinaryConnective::Conjunction,
         //             lhs: lhs @ Formula::AtomicFormula(AtomicFormula::Comparison{
         //                 term: GeneralTerm::GeneralVariable(v),
-        //                 guards, 
+        //                 guards,
         //             }),
         //             rhs,
         //         } => {
         //             if vars.contains(GeneralVariable(v)) {
-        //                 // todo 
+        //                 // todo
         //             } else {
         //                 formula
         //             }
@@ -167,6 +168,28 @@ pub fn simplify_quantifiers_outer(formula: Formula) -> Formula {
         //         _ => ???
         //     }
         // },
+        x => x.rebox(),
+    }
+}
+
+pub fn simplify_empty_quantifiers(formula: Formula) -> Formula {
+    formula.apply(&mut simplify_empty_quantifiers_outer)
+}
+
+pub fn simplify_empty_quantifiers_outer(formula: Formula) -> Formula {
+    match formula.clone().unbox() {
+        // Remove quantifiers with no variables
+        // e.g. exists ( F ) => F
+        UnboxedFormula::QuantifiedFormula {
+            quantification: Quantification { variables, .. },
+            formula: f,
+        } => {
+            if variables.is_empty() {
+                f
+            } else {
+                formula
+            }
+        }
 
         x => x.rebox(),
     }
@@ -174,7 +197,9 @@ pub fn simplify_quantifiers_outer(formula: Formula) -> Formula {
 
 #[cfg(test)]
 mod tests {
-    use super::{simplify, simplify_outer, simplify_nested_quantifiers};
+    use super::{
+        simplify, simplify_empty_quantifiers, simplify_nested_quantifiers, simplify_outer,
+    };
 
     #[test]
     fn test_simplify() {
@@ -228,9 +253,22 @@ mod tests {
     fn test_simplify_nested_quantifiers() {
         for (src, target) in [
             ("exists X (exists Y (X = Y))", "exists X Y (X = Y)"),
-            ("exists X (exists X$i (p(X) -> X$i < 1))", "exists X$i X (p(X) -> X$i < 1)"),
-            ("forall X Y (forall Y Z (p(X,Y) and q(Y,Z)))", "forall X Y Z (p(X,Y) and q(Y,Z))"),
-            ("forall X (forall Y (forall Z (X = Y = Z)))", "forall X Y Z (X = Y = Z)"),
+            (
+                "exists X (exists Y (X = Y and q(Y)))",
+                "exists X Y (X = Y and q(Y))",
+            ),
+            (
+                "exists X (exists X$i (p(X) -> X$i < 1))",
+                "exists X$i X (p(X) -> X$i < 1)",
+            ),
+            (
+                "forall X Y (forall Y Z (p(X,Y) and q(Y,Z)))",
+                "forall X Y Z (p(X,Y) and q(Y,Z))",
+            ),
+            (
+                "forall X (forall Y (forall Z (X = Y = Z)))",
+                "forall X Y Z (X = Y = Z)",
+            ),
         ] {
             assert_eq!(
                 simplify_nested_quantifiers(src.parse().unwrap()),
@@ -238,4 +276,17 @@ mod tests {
             )
         }
     }
+
+    // #[test]
+    // fn test_simplify_empty_quantifiers() {
+    //     for (src, target) in [
+    //         ("exists X (exists Y (1 < 2))", "1 < 2"),
+    //         ("forall Z #true", "#true"),
+    //     ] {
+    //         assert_eq!(
+    //             simplify_empty_quantifiers(src.parse().unwrap()),
+    //             target.parse().unwrap()
+    //         )
+    //     }
+    // }
 }

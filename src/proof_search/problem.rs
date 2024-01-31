@@ -326,13 +326,19 @@ impl ProblemHandler {
                 spec_private_predicates(s, &public_predicates, needs_renaming)
             }
         };
-        
-        println!("Spec private predicates: {:?}", specification_private_predicates); 
+
+        println!(
+            "Spec private predicates: {:?}",
+            specification_private_predicates
+        );
 
         let program_private_predicates =
             prog_private_predicates(program, &public_predicates, needs_renaming, false);
 
-        println!("program private predicates: {:?}", program_private_predicates); 
+        println!(
+            "program private predicates: {:?}",
+            program_private_predicates
+        );
 
         let mut private_predicates: HashSet<fol::Predicate> = HashSet::new();
         private_predicates.extend(specification_private_predicates);
