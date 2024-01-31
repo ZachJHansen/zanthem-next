@@ -5,9 +5,19 @@ use crate::{
     },
     syntax_tree::fol::{
         AtomicFormula, BinaryConnective, Comparison, Formula, GeneralTerm, Quantification,
-        Quantifier, Relation, Sort, Variable,
+        Quantifier, Relation, Sort, Variable, Theory,
     },
 };
+
+pub fn simplify_theory(theory: Theory) -> Theory {
+    let mut formulas = theory.formulas;
+    for i in 0..formulas.len() {
+        formulas[i] = simplify(formulas[i].clone());
+    }
+    Theory {
+        formulas
+    }
+}
 
 pub fn simplify(formula: Formula) -> Formula {
     let mut f1 = formula;
@@ -262,7 +272,7 @@ pub fn simplify_variable_lists_outer(formula: Formula) -> Formula {
 mod tests {
     use super::{
         basic_simplify, basic_simplify_outer, simplify, simplify_empty_quantifiers,
-        simplify_nested_quantifiers, simplify_variable_lists,
+        simplify_nested_quantifiers, simplify_variable_lists, simplify_theory,
     };
 
     #[test]
@@ -387,6 +397,16 @@ mod tests {
             "exists Y Z ( p(Y,Z) )",
         )] {
             assert_eq!(simplify(src.parse().unwrap()), target.parse().unwrap())
+        }
+    }
+
+    #[test]
+    fn test_simplify_theory() {
+        for (src, target) in [(
+            "exists X Y ( exists W Y Z (p(Y,Z) and #true) ). exists X Y ( q or (t and q(Y))).",
+            "exists Y Z ( p(Y,Z) ). exists Y ( q or (t and q(Y))).",
+        )] {
+            assert_eq!(simplify_theory(src.parse().unwrap()), target.parse().unwrap())
         }
     }
 }

@@ -30,6 +30,9 @@ enum Commands {
         with: Translation,
 
         input: PathBuf,
+
+        #[clap(long, short, action)]
+        simplify: bool,
     },
     Verify {
         #[arg(long, value_enum)]
@@ -62,14 +65,18 @@ enum Verification {
 
 fn try_main() -> Result<()> {
     match Cli::parse().command {
-        Commands::Translate { with, input } => match with {
+        Commands::Translate { with, input, simplify } => match with {
             Translation::TauStar => {
                 let program: asp::Program = read_to_string(&input)
                     .with_context(|| format!("failed to read '{}'", &input.display()))?
                     .parse()
                     .with_context(|| format!("failed to parse '{}'", &input.display()))?;
 
-                let theory = translating::tau_star::tau_star(program);
+                let theory = if simplify {
+                    simplifying::fol::ht::simplify_theory(translating::tau_star::tau_star(program))
+                } else {
+                    translating::tau_star::tau_star(program)
+                };
                 println!("{theory}")
             }
             Translation::Completion => {
@@ -81,7 +88,12 @@ fn try_main() -> Result<()> {
                 let theory = translating::tau_star::tau_star(program);
                 match translating::completion::completion(&theory) {
                     Some(completion) => {
-                        println!("{completion}")
+                        let theory = if simplify {
+                            simplifying::fol::ht::simplify_theory(completion)
+                        } else {
+                            completion
+                        };
+                        println!("{theory}")
                     }
                     None => {
                         println!("Not a completable theory.")
