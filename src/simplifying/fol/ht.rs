@@ -206,10 +206,39 @@ pub fn simplify_empty_quantifiers_outer(formula: Formula) -> Formula {
     }
 }
 
+// TODO - make most functions private
+// These aren't true simplifications, since some only make sense in the context of others being performed as well
+pub fn simplify_variable_lists(formula: Formula) -> Formula {
+    formula.apply(&mut simplify_variable_lists_outer)
+}
+
+pub fn simplify_variable_lists_outer(formula: Formula) -> Formula {
+    match formula.clone().unbox() {
+        // Removes variables from quantifiers when they do not occur in the quantified formula
+        // e.g. exists X Y ( q(Y) ) => exists Y ( q(Y) )
+        UnboxedFormula::QuantifiedFormula {
+            quantification: Quantification { mut variables, quantifier },
+            formula,
+        } => {
+            let fvars = formula.variables();
+            variables.retain(|x| fvars.contains(&x));
+            Formula::QuantifiedFormula {
+                quantification: Quantification {
+                    variables,
+                    quantifier,
+                },
+                formula: formula.into(),
+            }
+        }
+
+        x => x.rebox(),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
-        simplify, simplify_empty_quantifiers, simplify_nested_quantifiers, simplify_outer,
+        simplify, simplify_empty_quantifiers, simplify_nested_quantifiers, simplify_outer, simplify_variable_lists,
     };
 
     #[test]
@@ -300,4 +329,16 @@ mod tests {
     //         )
     //     }
     // }
+
+    #[test]
+    fn test_simplify_variable_lists() {
+        for (src, target) in [
+            ("exists X Y ( q or (t and q(Y)))", "exists Y ( q or (t and q(Y)))"),
+        ] {
+            assert_eq!(
+                simplify_variable_lists(src.parse().unwrap()),
+                target.parse().unwrap()
+            )
+        }
+    }
 }
