@@ -3,7 +3,10 @@ use crate::{
         apply::Apply as _,
         unbox::{fol::UnboxedFormula, Unbox as _},
     },
-    syntax_tree::fol::{AtomicFormula, BinaryConnective, Formula, Quantification, Quantifier, GeneralTerm, Relation, Variable, Sort, Comparison},
+    syntax_tree::fol::{
+        AtomicFormula, BinaryConnective, Comparison, Formula, GeneralTerm, Quantification,
+        Quantifier, Relation, Sort, Variable,
+    },
 };
 
 pub fn simplify(formula: Formula) -> Formula {
@@ -144,41 +147,42 @@ pub fn simplify_redundant_quantifiers_outer(formula: Formula) -> Formula {
         // Remove redundant existentials
         // e.g. exists Z$g (Z$g = X$g and F(Z$g)) => F(X$g)
         UnboxedFormula::QuantifiedFormula {
-            quantification: Quantification {
-                quantifier: Quantifier::Exists,
-                variables: vars,
-            },
+            quantification:
+                Quantification {
+                    quantifier: Quantifier::Exists,
+                    variables: vars,
+                },
             formula: f,
         } => {
             match f.unbox() {
                 UnboxedFormula::BinaryFormula {
                     connective: BinaryConnective::Conjunction,
-                    lhs: Formula::AtomicFormula(AtomicFormula::Comparison(Comparison {
-                        term: GeneralTerm::GeneralVariable(v),
-                        guards,
-                    })),
+                    lhs:
+                        Formula::AtomicFormula(AtomicFormula::Comparison(Comparison {
+                            term: GeneralTerm::GeneralVariable(v),
+                            guards,
+                        })),
                     rhs,
                 } => {
-                    let var = Variable { name: v, sort: Sort::General };
+                    let var = Variable {
+                        name: v,
+                        sort: Sort::General,
+                    };
                     if vars.contains(&var) {
                         let g = guards[0].clone();
                         match g.relation {
                             Relation::Equal => {
-                                rhs.substitute(var, g.term)         // F(X)
-                            },
-                            _ => {
-                                formula
+                                rhs.substitute(var, g.term) // F(X)
                             }
-                        } 
+                            _ => formula,
+                        }
                     } else {
                         formula
                     }
-                },
-                _ => {
-                    formula
                 }
+                _ => formula,
             }
-        },
+        }
         x => x.rebox(),
     }
 }
@@ -217,7 +221,11 @@ pub fn simplify_variable_lists_outer(formula: Formula) -> Formula {
         // Removes variables from quantifiers when they do not occur in the quantified formula
         // e.g. exists X Y ( q(Y) ) => exists Y ( q(Y) )
         UnboxedFormula::QuantifiedFormula {
-            quantification: Quantification { mut variables, quantifier },
+            quantification:
+                Quantification {
+                    mut variables,
+                    quantifier,
+                },
             formula,
         } => {
             let fvars = formula.variables();
@@ -238,7 +246,8 @@ pub fn simplify_variable_lists_outer(formula: Formula) -> Formula {
 #[cfg(test)]
 mod tests {
     use super::{
-        simplify, simplify_empty_quantifiers, simplify_nested_quantifiers, simplify_outer, simplify_variable_lists,
+        simplify, simplify_empty_quantifiers, simplify_nested_quantifiers, simplify_outer,
+        simplify_variable_lists,
     };
 
     #[test]
@@ -333,7 +342,14 @@ mod tests {
     #[test]
     fn test_simplify_variable_lists() {
         for (src, target) in [
-            ("exists X Y ( q or (t and q(Y)))", "exists Y ( q or (t and q(Y)))"),
+            (
+                "exists X Y ( q or (t and q(Y)))",
+                "exists Y ( q or (t and q(Y)))",
+            ),
+            (
+                "exists Y V ( q or forall X Z (t(Y) and q(X)))",
+                "exists Y ( q or forall X (t(Y) and q(X)))",
+            ),
         ] {
             assert_eq!(
                 simplify_variable_lists(src.parse().unwrap()),
