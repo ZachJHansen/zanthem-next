@@ -1,2 +1,2 @@
-composite(I*J) :- I = 2..n, J = 2..n.
+composite(I*J) :- I>1, J>1.
 prime(I) :- I = 2..n, not composite(I).
