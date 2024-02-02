@@ -10,6 +10,7 @@ use crate::{
 };
 
 pub fn simplify_theory(theory: Theory) -> Theory {
+    //todo
     let mut formulas = theory.formulas;
     for i in 0..formulas.len() {
         formulas[i] = simplify(formulas[i].clone());
