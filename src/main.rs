@@ -65,7 +65,11 @@ enum Verification {
 
 fn try_main() -> Result<()> {
     match Cli::parse().command {
-        Commands::Translate { with, input, simplify } => match with {
+        Commands::Translate {
+            with,
+            input,
+            simplify,
+        } => match with {
             Translation::TauStar => {
                 let program: asp::Program = read_to_string(&input)
                     .with_context(|| format!("failed to read '{}'", &input.display()))?

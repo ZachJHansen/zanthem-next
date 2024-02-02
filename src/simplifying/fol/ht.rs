@@ -5,7 +5,7 @@ use crate::{
     },
     syntax_tree::fol::{
         AtomicFormula, BinaryConnective, Comparison, Formula, GeneralTerm, Quantification,
-        Quantifier, Relation, Sort, Variable, Theory,
+        Quantifier, Relation, Sort, Theory, Variable,
     },
 };
 
@@ -14,9 +14,7 @@ pub fn simplify_theory(theory: Theory) -> Theory {
     for i in 0..formulas.len() {
         formulas[i] = simplify(formulas[i].clone());
     }
-    Theory {
-        formulas
-    }
+    Theory { formulas }
 }
 
 pub fn simplify(formula: Formula) -> Formula {
@@ -272,7 +270,8 @@ pub fn simplify_variable_lists_outer(formula: Formula) -> Formula {
 mod tests {
     use super::{
         basic_simplify, basic_simplify_outer, simplify, simplify_empty_quantifiers,
-        simplify_nested_quantifiers, simplify_variable_lists, simplify_theory,
+        simplify_nested_quantifiers, simplify_redundant_quantifiers, simplify_theory,
+        simplify_variable_lists,
     };
 
     #[test]
@@ -391,11 +390,33 @@ mod tests {
     }
 
     #[test]
+    fn test_simplify_redundant_quantifiers() {
+        for (src, target) in [
+            (
+                "exists X Y ( X = Y and forall V (p(X,V) -> q(X)) )",
+                "exists Y ( forall V (p(X,V) -> q(X)) )",
+            ),
+            ("exists X ( X = Z and not q(X) )", "not q(Z)"),
+        ] {
+            assert_eq!(
+                simplify_redundant_quantifiers(src.parse().unwrap()),
+                target.parse().unwrap()
+            )
+        }
+    }
+
+    #[test]
     fn test_full_simplify() {
-        for (src, target) in [(
-            "exists X Y ( exists W Y Z (p(Y,Z) and #true) )",
-            "exists Y Z ( p(Y,Z) )",
-        )] {
+        for (src, target) in [
+            (
+                "exists X Y ( exists W Y Z (p(Y,Z) and #true) )",
+                "exists Y Z ( p(Y,Z) )",
+            ),
+            (
+                "forall X (forall Y (forall Z (X < Y)))",
+                "forall X Y ( X < Y )",
+            ),
+        ] {
             assert_eq!(simplify(src.parse().unwrap()), target.parse().unwrap())
         }
     }
@@ -406,7 +427,10 @@ mod tests {
             "exists X Y ( exists W Y Z (p(Y,Z) and #true) ). exists X Y ( q or (t and q(Y))).",
             "exists Y Z ( p(Y,Z) ). exists Y ( q or (t and q(Y))).",
         )] {
-            assert_eq!(simplify_theory(src.parse().unwrap()), target.parse().unwrap())
+            assert_eq!(
+                simplify_theory(src.parse().unwrap()),
+                target.parse().unwrap()
+            )
         }
     }
 }

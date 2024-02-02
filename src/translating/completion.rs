@@ -255,7 +255,7 @@ pub fn completion(theory: &fol::Theory) -> Option<fol::Theory> {
                             }
                         }
                         //let f1 = bodies.pop().unwrap();
-                        let full_body = ht::simplify(fol::Formula::disjoin(bodies));
+                        let full_body = ht::basic_simplify(fol::Formula::disjoin(bodies));
                         let comp = match head_vars.len() {
                             0 => fol::Formula::BinaryFormula {
                                 connective: fol::BinaryConnective::Equivalence,
