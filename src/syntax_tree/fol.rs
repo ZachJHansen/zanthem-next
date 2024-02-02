@@ -137,9 +137,12 @@ impl GeneralTerm {
             GeneralTerm::GeneralVariable(s) if var.name == s && var.sort == Sort::General => term,
             GeneralTerm::IntegerTerm(t) => match term {
                 GeneralTerm::IntegerTerm(term) => GeneralTerm::IntegerTerm(t.substitute(var, term)),
-                _ => panic!(
+                _ => {
+                    println!("Z - {:?}, I - {:?}, t - {:?}", var, term, t);
+                    panic!(
                     "cannot substitute general term `{term}` for the integer variable `{var}`"
-                ),
+                );
+            },
             },
             t => t,
         }
@@ -527,7 +530,7 @@ impl Formula {
             } => f1.contains_free_variable(v) || f2.contains_free_variable(v),
         }
     }
-    
+
     // Replace all free occurences of var with term within the formula
     pub fn substitute(self, var: Variable, term: GeneralTerm) -> Self {
         match self {

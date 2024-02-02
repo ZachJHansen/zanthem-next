@@ -417,8 +417,14 @@ mod tests {
                 "forall X (forall Y (forall Z (X < Y)))",
                 "forall X Y ( X < Y )",
             ),
+            (
+                "exists Z Z1 ( Z = I and (exists I$i J$i K$i (I$i = 2 and J$i = n and Z1 = K$i and I$i <= K$i <= J$i) and Z = Z1) )",
+                "exists Z1 ( exists I$i J$i K$i (I$i = 2 and J$i = n and Z1 = K$i and I$i <= K$i <= J$i) and I = Z1 )",
+            )
         ] {
-            assert_eq!(simplify(src.parse().unwrap()), target.parse().unwrap())
+            let src = simplify(src.parse().unwrap());
+            let target = target.parse().unwrap();
+            assert_eq!(src, target, "{src} != {target}")
         }
     }
 
