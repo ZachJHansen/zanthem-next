@@ -358,18 +358,18 @@ mod tests {
         }
     }
 
-    // #[test]
-    // fn test_simplify_empty_quantifiers() {
-    //     for (src, target) in [
-    //         ("exists X (exists Y (1 < 2))", "1 < 2"),
-    //         ("forall Z #true", "#true"),
-    //     ] {
-    //         assert_eq!(
-    //             simplify_empty_quantifiers(src.parse().unwrap()),
-    //             target.parse().unwrap()
-    //         )
-    //     }
-    // }
+    #[test]
+    fn test_simplify_empty_quantifiers() {
+        for (src, target) in [
+            ("exists X (exists Y (1 < 2))", "1 < 2"),
+            ("forall Z #true", "#true"),
+        ] {
+            assert_eq!(
+                simplify_empty_quantifiers(simplify_variable_lists(src.parse().unwrap())),
+                target.parse().unwrap()
+            )
+        }
+    }
 
     #[test]
     fn test_simplify_variable_lists() {
