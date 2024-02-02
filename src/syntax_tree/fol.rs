@@ -80,6 +80,28 @@ impl IntegerTerm {
             }
         }
     }
+
+    pub fn substitute(self, var: Variable, term: IntegerTerm) -> Self {
+        match self {
+            IntegerTerm::BasicIntegerTerm(t) => match t {
+                BasicIntegerTerm::IntegerVariable(s)
+                    if var.name == s && var.sort == Sort::Integer =>
+                {
+                    term
+                }
+                _ => IntegerTerm::BasicIntegerTerm(t),
+            },
+            IntegerTerm::UnaryOperation { op, arg } => IntegerTerm::UnaryOperation {
+                op,
+                arg: arg.substitute(var, term).into(),
+            },
+            IntegerTerm::BinaryOperation { op, lhs, rhs } => IntegerTerm::BinaryOperation {
+                op,
+                lhs: lhs.substitute(var.clone(), term.clone()).into(),
+                rhs: rhs.substitute(var, term).into(),
+            },
+        }
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
@@ -109,6 +131,19 @@ impl GeneralTerm {
             GeneralTerm::GeneralVariable(_) | GeneralTerm::IntegerTerm(_) => HashSet::new(),
         }
     }
+
+    pub fn substitute(self, var: Variable, term: GeneralTerm) -> Self {
+        match self {
+            GeneralTerm::GeneralVariable(s) if var.name == s && var.sort == Sort::General => term,
+            GeneralTerm::IntegerTerm(t) => match term {
+                GeneralTerm::IntegerTerm(term) => GeneralTerm::IntegerTerm(t.substitute(var, term)),
+                _ => panic!(
+                    "cannot substitute general term `{term}` for the integer variable `{var}`"
+                ),
+            },
+            t => t,
+        }
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
@@ -135,6 +170,22 @@ impl Atom {
 }
 
 impl_node!(Atom, Format, AtomParser);
+
+impl Atom {
+    pub fn substitute(self, var: Variable, term: GeneralTerm) -> Self {
+        let predicate_symbol = self.predicate_symbol;
+
+        let mut terms = Vec::new();
+        for t in self.terms {
+            terms.push(t.substitute(var.clone(), term.clone()))
+        }
+
+        Atom {
+            predicate_symbol,
+            terms,
+        }
+    }
+}
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub enum Relation {
@@ -173,6 +224,23 @@ pub struct Comparison {
 }
 
 impl_node!(Comparison, Format, ComparisonParser);
+
+impl Comparison {
+    pub fn substitute(self, var: Variable, term: GeneralTerm) -> Self {
+        let lhs = self.term.substitute(var.clone(), term.clone());
+
+        let mut guards = Vec::new();
+        for old_guard in self.guards {
+            let new_guard = Guard {
+                relation: old_guard.relation,
+                term: old_guard.term.substitute(var.clone(), term.clone()),
+            };
+            guards.push(new_guard);
+        }
+
+        Comparison { term: lhs, guards }
+    }
+}
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub enum AtomicFormula {
@@ -242,6 +310,14 @@ impl AtomicFormula {
     // TODO
     pub fn contains_free_variable(&self, v: &Variable) -> bool {
         self.contains_variable(v)
+    }
+
+    pub fn substitute(self, var: Variable, term: GeneralTerm) -> Self {
+        match self {
+            AtomicFormula::Atom(a) => AtomicFormula::Atom(a.substitute(var, term)),
+            AtomicFormula::Comparison(c) => AtomicFormula::Comparison(c.substitute(var, term)),
+            f => f,
+        }
     }
 }
 
@@ -456,6 +532,40 @@ impl Formula {
     pub fn substitute(&self, v: Variable, t: GeneralTerm) -> Formula {
         todo!()
     }
+
+    // Replace all free occurences of var with term within the formula
+    pub fn substitute(self, var: Variable, term: GeneralTerm) -> Self {
+        match self {
+            Formula::AtomicFormula(f) => Formula::AtomicFormula(f.substitute(var, term)),
+            Formula::UnaryFormula {
+                connective,
+                formula,
+            } => Formula::UnaryFormula {
+                connective,
+                formula: formula.substitute(var, term).into(),
+            },
+            Formula::BinaryFormula {
+                connective,
+                lhs,
+                rhs,
+            } => Formula::BinaryFormula {
+                connective,
+                lhs: lhs.substitute(var.clone(), term.clone()).into(),
+                rhs: rhs.substitute(var, term).into(),
+            },
+            Formula::QuantifiedFormula {
+                quantification,
+                formula,
+            } if !quantification.variables.contains(&var) => Formula::QuantifiedFormula {
+                quantification,
+                formula: formula.substitute(var, term).into(),
+            },
+            f @ Formula::QuantifiedFormula {
+                quantification: _,
+                formula: _,
+            } => f,
+        }
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
@@ -548,6 +658,44 @@ mod tests {
             assert_eq!(
                 src.parse::<Formula>().unwrap().free_variables(),
                 target.iter().map(|x| x.parse().unwrap()).collect(),
+            )
+        }
+    }
+
+    #[test]
+    fn test_substitute_formula() {
+        for (src, target) in [
+            (vec!["p(X)", "X", "s"], "p(s)"),
+            (vec!["p(X)", "X", "5"], "p(5)"),
+            (
+                vec!["prime(-X$i + 13)", "X$i", "3*Y$i"],
+                "prime(-(3*Y$i) + 13)",
+            ),
+            (vec!["prime(X$i, X)", "X$i", "Y$i"], "prime(Y$i, X)"),
+            (vec!["exists X (X = Y)", "Y", "3"], "exists X (X = 3)"),
+            (
+                vec!["exists X (X = Y)", "Y", "X$i + 3"],
+                "exists X (X = (X$i + 3))",
+            ),
+            (
+                vec!["forall X (q(Y) or exists Y (p(1,Y) and X > Y))", "Y", "a"],
+                "forall X (q(a) or exists Y (p(1,Y) and X > Y))",
+            ),
+            (
+                vec![
+                    "forall X (q(Y$i) or exists Z (p(1,Z) and X > Y$i > Z))",
+                    "Y$i",
+                    "4",
+                ],
+                "forall X (q(4) or exists Z (p(1,Z) and X > 4 > Z))",
+            ),
+        ] {
+            assert_eq!(
+                src[0]
+                    .parse::<Formula>()
+                    .unwrap()
+                    .substitute(src[1].parse().unwrap(), src[2].parse().unwrap()),
+                target.parse().unwrap()
             )
         }
     }
