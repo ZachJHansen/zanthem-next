@@ -385,6 +385,28 @@ impl Formula {
         }
     }
 
+    pub fn free_variables(&self) -> HashSet<Variable> {
+        match &self {
+            Formula::AtomicFormula(f) => f.variables(),
+            Formula::UnaryFormula { formula, .. } => formula.free_variables(),
+            Formula::BinaryFormula { lhs, rhs, .. } => {
+                let mut vars = lhs.free_variables();
+                vars.extend(rhs.free_variables());
+                vars
+            }
+            Formula::QuantifiedFormula {
+                quantification,
+                formula,
+            } => {
+                let mut vars = formula.free_variables();
+                for var in &quantification.variables {
+                    vars.remove(var);
+                }
+                vars
+            }
+        }
+    }
+
     pub fn predicates(&self) -> HashSet<Predicate> {
         match &self {
             Formula::AtomicFormula(f) => f.predicates(),
@@ -512,6 +534,20 @@ mod tests {
             assert_eq!(
                 Formula::disjoin(src.iter().map(|x| x.parse().unwrap())),
                 target.parse().unwrap(),
+            )
+        }
+    }
+
+    #[test]
+    fn test_formula_free_variables() {
+        for (src, target) in [
+            ("forall X (X = Y)", vec!["Y"]),
+            ("forall X (X = Y) and Y = Z", vec!["Y", "Z"]),
+            ("forall X exists Y (X = Y)", vec![]),
+        ] {
+            assert_eq!(
+                src.parse::<Formula>().unwrap().free_variables(),
+                target.iter().map(|x| x.parse().unwrap()).collect(),
             )
         }
     }

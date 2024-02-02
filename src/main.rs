@@ -1,3 +1,4 @@
+pub mod command_line;
 pub mod convenience;
 pub mod formatting;
 pub mod parsing;

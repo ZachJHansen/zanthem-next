@@ -747,6 +747,7 @@ mod tests {
                 ("-48", BasicIntegerTerm::Numeral(-48)),
                 ("301", BasicIntegerTerm::Numeral(301)),
                 ("A$i", BasicIntegerTerm::IntegerVariable("A".into())),
+                ("Avar$", BasicIntegerTerm::IntegerVariable("Avar".into())),
             ])
             .should_reject(["00", "-0", "#", "#infi", "#supa", "_", "1_", "A"]);
     }
@@ -821,7 +822,7 @@ mod tests {
                     },
                 ),
             ])
-            .should_reject(["00", "#", "#infi", "#supa", "_", "1_", "(1", "X$", "X"]);
+            .should_reject(["00", "#", "#infi", "#supa", "_", "1_", "(1", "X"]);
     }
 
     #[test]
@@ -1164,6 +1165,20 @@ mod tests {
                     }),
                 ),
                 (
+                    "1 = N$",
+                    AtomicFormula::Comparison(Comparison {
+                        term: GeneralTerm::IntegerTerm(IntegerTerm::BasicIntegerTerm(
+                            BasicIntegerTerm::Numeral(1),
+                        )),
+                        guards: vec![Guard {
+                            relation: Relation::Equal,
+                            term: GeneralTerm::IntegerTerm(IntegerTerm::BasicIntegerTerm(
+                                BasicIntegerTerm::IntegerVariable("N".into()),
+                            )),
+                        }],
+                    }),
+                ),
+                (
                     "n > 1",
                     AtomicFormula::Comparison(Comparison {
                         term: GeneralTerm::Symbol("n".to_string()),
@@ -1260,6 +1275,13 @@ mod tests {
                 ),
                 (
                     "X$i",
+                    Variable {
+                        name: "X".into(),
+                        sort: Sort::Integer,
+                    },
+                ),
+                (
+                    "X$",
                     Variable {
                         name: "X".into(),
                         sort: Sort::Integer,

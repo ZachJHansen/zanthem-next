@@ -35,7 +35,7 @@ keyword = _{ primitive | binary_connective | unary_connective | quantifier }
 basic_integer_term = { numeral | integer_variable | infimum | supremum }
     numeral           = @{ ("0") | ("-"? ~ ASCII_NONZERO_DIGIT ~ ASCII_DIGIT*) }
     unsorted_variable = @{ "_"? ~ ASCII_ALPHA_UPPER ~ (ASCII_ALPHANUMERIC | "_")* }
-    integer_variable  = ${ unsorted_variable ~ "$" ~ integer_sort }
+    integer_variable  = ${ (unsorted_variable ~ "$" ~ integer_sort) | !(unsorted_variable ~ "$" ~ sort) ~ (unsorted_variable ~ "$") }
 
 unary_operator = _{ negative }
     negative = { !numeral ~ "-" }
