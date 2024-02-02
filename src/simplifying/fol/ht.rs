@@ -393,11 +393,11 @@ mod tests {
     #[test]
     fn test_simplify_redundant_quantifiers() {
         for (src, target) in [
-            (
-                "exists X Y ( X = Y and forall V (p(X,V) -> q(X)) )",
-                "exists Y ( forall V (p(X,V) -> q(X)) )",
-            ),
             ("exists X ( X = Z and not q(X) )", "not q(Z)"),
+            (
+                "exists Y ( Y = X and forall V (p(Y,V) -> q(X)) )",
+                "forall V (p(X,V) -> q(X))",
+            ),
         ] {
             assert_eq!(
                 simplify_redundant_quantifiers(src.parse().unwrap()),
