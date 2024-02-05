@@ -428,6 +428,24 @@ impl Formula {
             .unwrap_or_else(|| Formula::AtomicFormula(AtomicFormula::Truth))
     }
 
+    // Inverse function to conjoin
+    pub fn conjoin_invert(formula: Formula) -> Vec<Formula> {
+        match formula {
+            Formula::BinaryFormula {
+                connective: BinaryConnective::Conjunction,
+                lhs,
+                rhs,
+            } => {
+                let mut formulas = Self::conjoin_invert(*lhs);
+                formulas.append(&mut Self::conjoin_invert(*rhs));
+                return formulas;
+            },
+            _ => {
+                return vec![formula];
+            }
+        }
+    }
+
     /// Recursively turn a list of formulas into a tree of disjunctions
     pub fn disjoin(formulas: impl IntoIterator<Item = Formula>) -> Formula {
         /*
@@ -630,6 +648,21 @@ mod tests {
             assert_eq!(
                 Formula::conjoin(src.iter().map(|x| x.parse().unwrap())),
                 target.parse().unwrap(),
+            )
+        }
+    }
+
+    #[test]
+    fn test_conjoin_invert() {
+        for src in [
+            vec!["X = Y"],
+            vec!["X = Y", "p(a)", "q(X)"],
+            vec!["X < Y < 3", "exists Y (Y > 1)"]
+        ] {
+            let formulas: Vec<Formula> = src.iter().map(|x| x.parse().unwrap()).collect();
+            assert_eq!(
+                Formula::conjoin_invert(Formula::conjoin(formulas.clone())),
+                formulas,
             )
         }
     }
