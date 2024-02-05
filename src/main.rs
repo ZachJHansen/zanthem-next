@@ -90,7 +90,11 @@ fn try_main() -> Result<()> {
                     .with_context(|| format!("failed to read '{}'", &input.display()))?
                     .parse()
                     .with_context(|| format!("failed to parse '{}'", &input.display()))?;
-                let simplified = simplifying::fol::ht::simplify(theory);
+                println!("{theory}");
+                let mut simplified = simplifying::fol::ht::simplify_redundant_quantifiers(theory);
+                println!("{simplified}");
+                let mut simplified =
+                    simplifying::fol::ht::simplify_redundant_quantifiers(simplified);
                 println!("{simplified}");
             }
             Translation::Completion => {
