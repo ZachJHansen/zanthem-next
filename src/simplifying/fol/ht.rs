@@ -243,51 +243,55 @@ pub fn simplify_redundant_quantifiers_outer(formula: Formula) -> Formula {
                 lhs: Formula::AtomicFormula(AtomicFormula::Comparison(Comparison { term, guards })),
                 ..
             } => {
-                let g = guards[0].clone();
-                match g.relation {
-                    Relation::Equal => {
-                        let lhs_is_var = match term.clone() {
-                            GeneralTerm::GeneralVariable(v) => Some(Variable {
-                                sort: Sort::General,
-                                name: v,
-                            }),
-                            GeneralTerm::IntegerTerm(IntegerTerm::BasicIntegerTerm(
-                                BasicIntegerTerm::IntegerVariable(v),
-                            )) => Some(Variable {
-                                sort: Sort::Integer,
-                                name: v,
-                            }),
-                            _ => None,
-                        };
-                        let rhs_is_var = match g.term.clone() {
-                            GeneralTerm::GeneralVariable(v) => Some(Variable {
-                                sort: Sort::General,
-                                name: v,
-                            }),
-                            GeneralTerm::IntegerTerm(IntegerTerm::BasicIntegerTerm(
-                                BasicIntegerTerm::IntegerVariable(v),
-                            )) => Some(Variable {
-                                sort: Sort::Integer,
-                                name: v,
-                            }),
-                            _ => None,
-                        };
-
-                        let mut simplified = formula.clone();
-                        if let Some(v1) = lhs_is_var {
-                            if variables.contains(&v1) {
-                                simplified =
-                                    subsort_equality(v1.clone(), g.term, formula.clone(), false);
+                if guards.len() != 1 {
+                    formula
+                } else {
+                    let g = guards[0].clone();
+                    match g.relation {
+                        Relation::Equal => {
+                            let lhs_is_var = match term.clone() {
+                                GeneralTerm::GeneralVariable(v) => Some(Variable {
+                                    sort: Sort::General,
+                                    name: v,
+                                }),
+                                GeneralTerm::IntegerTerm(IntegerTerm::BasicIntegerTerm(
+                                    BasicIntegerTerm::IntegerVariable(v),
+                                )) => Some(Variable {
+                                    sort: Sort::Integer,
+                                    name: v,
+                                }),
+                                _ => None,
+                            };
+                            let rhs_is_var = match g.term.clone() {
+                                GeneralTerm::GeneralVariable(v) => Some(Variable {
+                                    sort: Sort::General,
+                                    name: v,
+                                }),
+                                GeneralTerm::IntegerTerm(IntegerTerm::BasicIntegerTerm(
+                                    BasicIntegerTerm::IntegerVariable(v),
+                                )) => Some(Variable {
+                                    sort: Sort::Integer,
+                                    name: v,
+                                }),
+                                _ => None,
+                            };
+    
+                            let mut simplified = formula.clone();
+                            if let Some(v1) = lhs_is_var {
+                                if variables.contains(&v1) {
+                                    simplified =
+                                        subsort_equality(v1.clone(), g.term, formula.clone(), false);
+                                }
                             }
-                        }
-                        if let Some(v2) = rhs_is_var {
-                            if variables.contains(&v2) {
-                                simplified = subsort_equality(v2.clone(), term, simplified, false);
+                            if let Some(v2) = rhs_is_var {
+                                if variables.contains(&v2) {
+                                    simplified = subsort_equality(v2.clone(), term, simplified, false);
+                                }
                             }
+                            simplified
                         }
-                        simplified
+                        _ => formula,
                     }
-                    _ => formula,
                 }
             }
             UnboxedFormula::BinaryFormula {
@@ -295,53 +299,57 @@ pub fn simplify_redundant_quantifiers_outer(formula: Formula) -> Formula {
                 rhs: Formula::AtomicFormula(AtomicFormula::Comparison(Comparison { term, guards })),
                 ..
             } => {
-                let g = guards[0].clone();
-                match g.relation {
-                    Relation::Equal => {
-                        let lhs_is_var = match term.clone() {
-                            GeneralTerm::GeneralVariable(v) => Some(Variable {
-                                sort: Sort::General,
-                                name: v,
-                            }),
-                            GeneralTerm::IntegerTerm(IntegerTerm::BasicIntegerTerm(
-                                BasicIntegerTerm::IntegerVariable(v),
-                            )) => Some(Variable {
-                                sort: Sort::Integer,
-                                name: v,
-                            }),
-                            _ => None,
-                        };
-                        let rhs_is_var = match g.term.clone() {
-                            GeneralTerm::GeneralVariable(v) => Some(Variable {
-                                sort: Sort::General,
-                                name: v,
-                            }),
-                            GeneralTerm::IntegerTerm(IntegerTerm::BasicIntegerTerm(
-                                BasicIntegerTerm::IntegerVariable(v),
-                            )) => Some(Variable {
-                                sort: Sort::Integer,
-                                name: v,
-                            }),
-                            _ => None,
-                        };
-
-                        let mut safety = true;
-                        let mut simplified = formula.clone();
-                        if let Some(v1) = lhs_is_var {
-                            if variables.contains(&v1) {
-                                simplified =
-                                    subsort_equality(v1.clone(), g.term, formula.clone(), true);
-                                safety = false;
+                if guards.len() != 1 {
+                    formula
+                } else {
+                    let g = guards[0].clone();
+                    match g.relation {
+                        Relation::Equal => {
+                            let lhs_is_var = match term.clone() {
+                                GeneralTerm::GeneralVariable(v) => Some(Variable {
+                                    sort: Sort::General,
+                                    name: v,
+                                }),
+                                GeneralTerm::IntegerTerm(IntegerTerm::BasicIntegerTerm(
+                                    BasicIntegerTerm::IntegerVariable(v),
+                                )) => Some(Variable {
+                                    sort: Sort::Integer,
+                                    name: v,
+                                }),
+                                _ => None,
+                            };
+                            let rhs_is_var = match g.term.clone() {
+                                GeneralTerm::GeneralVariable(v) => Some(Variable {
+                                    sort: Sort::General,
+                                    name: v,
+                                }),
+                                GeneralTerm::IntegerTerm(IntegerTerm::BasicIntegerTerm(
+                                    BasicIntegerTerm::IntegerVariable(v),
+                                )) => Some(Variable {
+                                    sort: Sort::Integer,
+                                    name: v,
+                                }),
+                                _ => None,
+                            };
+    
+                            let mut safety = true;
+                            let mut simplified = formula.clone();
+                            if let Some(v1) = lhs_is_var {
+                                if variables.contains(&v1) {
+                                    simplified =
+                                        subsort_equality(v1.clone(), g.term, formula.clone(), true);
+                                    safety = false;
+                                }
                             }
-                        }
-                        if let Some(v2) = rhs_is_var {
-                            if variables.contains(&v2) && safety {
-                                simplified = subsort_equality(v2.clone(), term, simplified, true);
+                            if let Some(v2) = rhs_is_var {
+                                if variables.contains(&v2) && safety {
+                                    simplified = subsort_equality(v2.clone(), term, simplified, true);
+                                }
                             }
+                            simplified
                         }
-                        simplified
+                        _ => formula,
                     }
-                    _ => formula,
                 }
             }
             _ => formula,
