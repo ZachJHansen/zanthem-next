@@ -183,37 +183,81 @@ pub fn simplify_redundant_quantifiers_outer(formula: Formula) -> Formula {
                     connective: BinaryConnective::Conjunction,
                     lhs:
                         Formula::AtomicFormula(AtomicFormula::Comparison(Comparison {
-                            term: GeneralTerm::GeneralVariable(v),
+                            term,
                             guards,
                         })),
                     rhs,
                 } => {
-                    let var = Variable {
-                        name: v,
-                        sort: Sort::General,
-                    };
-                    if vars.contains(&var) {
-                        let g = guards[0].clone();
-                        match g.relation {
-                            Relation::Equal => {
-                                vars.retain(|x| x != &var);
-                                Formula::QuantifiedFormula {
-                                    quantification: Quantification {
-                                        quantifier: Quantifier::Exists,
-                                        variables: vars,
-                                    },
-                                    formula: rhs.substitute(var, g.term).into(), // F(X)
+                    let g = guards[0].clone();
+                    match g.relation {
+                        Relation::Equal => {
+                            let simplified;
+                            if let GeneralTerm::GeneralVariable(v) = term.clone() {
+                                let var = Variable {
+                                    name: v,
+                                    sort: Sort::General,
+                                };
+                                if vars.contains(&var) {
+                                    vars.retain(|x| x != &var);
+                                    simplified = Formula::QuantifiedFormula {
+                                        quantification: Quantification {
+                                            quantifier: Quantifier::Exists,
+                                            variables: vars,
+                                        },
+                                        formula: rhs.substitute(var, g.term).into(), // F(X)
+                                    };
+                                } else {
+                                    if let GeneralTerm::GeneralVariable(v) = g.term {
+                                        let var = Variable {
+                                            name: v,
+                                            sort: Sort::General,
+                                        };
+                                        if vars.contains(&var) {
+                                            vars.retain(|x| x != &var);
+                                            simplified = Formula::QuantifiedFormula {
+                                                quantification: Quantification {
+                                                    quantifier: Quantifier::Exists,
+                                                    variables: vars,
+                                                },
+                                                formula: rhs.substitute(var, term).into(), // F(X)
+                                            };
+                                        } else {
+                                            simplified = formula;
+                                        }
+                                    } else {
+                                        simplified = formula;
+                                    }
+                                }
+                            } else {
+                                if let GeneralTerm::GeneralVariable(v) = g.term {
+                                    let var = Variable {
+                                        name: v,
+                                        sort: Sort::General,
+                                    };
+                                    if vars.contains(&var) {
+                                        vars.retain(|x| x != &var);
+                                        simplified = Formula::QuantifiedFormula {
+                                            quantification: Quantification {
+                                                quantifier: Quantifier::Exists,
+                                                variables: vars,
+                                            },
+                                            formula: rhs.substitute(var, term).into(), // F(X)
+                                        };
+                                    } else {
+                                        simplified = formula;
+                                    }
+                                } else {
+                                    simplified = formula;
                                 }
                             }
-                            _ => formula,
-                        }
-                    } else {
-                        formula
+                            simplified
+                        },
+                        _ => formula,
                     }
-                }
+                },
                 _ => formula,
             }
-        }
+        },
         x => x.rebox(),
     }
 }
@@ -426,6 +470,10 @@ mod tests {
             (
                 "forall X (forall Y (forall Z (X < Y)))",
                 "forall X Y ( X < Y )",
+            ),
+            (
+                "forall V1 (prime(V1) <-> exists I (V1 = I and (exists Z Z1 (Z = I and exists I$i J$i K$i (I$i = 2 and J$i = n and Z1 = K$i and I$i <= K$i <= J$i) and Z = Z1) and exists Z (Z = I and not composite(Z)))))",
+                "forall V1 (prime(V1) <-> exists Z Z1 (Z = V1 and exists I$i J$i K$i (I$i = 2 and J$i = n and Z1 = K$i and I$i <= K$i <= J$i) and Z = Z1) and not composite(V1))",
             ),
             // (
             //     "exists Z Z1 ( Z = I and (exists K$i (K$i = 2) and Z = Z1) )",

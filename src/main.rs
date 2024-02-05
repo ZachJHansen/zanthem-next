@@ -56,6 +56,7 @@ enum Commands {
 enum Translation {
     TauStar,
     Completion,
+    Test,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
@@ -83,7 +84,15 @@ fn try_main() -> Result<()> {
                     translating::tau_star::tau_star(program)
                 };
                 println!("{theory}")
-            }
+            },
+            Translation::Test => {
+                let theory: fol::Formula = read_to_string(&input)
+                    .with_context(|| format!("failed to read '{}'", &input.display()))?
+                    .parse()
+                    .with_context(|| format!("failed to parse '{}'", &input.display()))?;
+                let simplified = simplifying::fol::ht::simplify(theory);
+                println!("{simplified}");
+            },
             Translation::Completion => {
                 let program: asp::Program = read_to_string(&input)
                     .with_context(|| format!("failed to read '{}'", &input.display()))?
@@ -104,7 +113,7 @@ fn try_main() -> Result<()> {
                         println!("Not a completable theory.")
                     }
                 }
-            }
+            },
         },
         Commands::Verify {
             with,
