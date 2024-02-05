@@ -4,8 +4,8 @@ use crate::{
         unbox::{fol::UnboxedFormula, Unbox as _},
     },
     syntax_tree::fol::{
-        AtomicFormula, BinaryConnective, Comparison, Formula, GeneralTerm, Quantification,
-        Quantifier, Relation, Sort, Theory, Variable,
+        AtomicFormula, BasicIntegerTerm, BinaryConnective, Comparison, Formula, GeneralTerm,
+        IntegerTerm, Quantification, Quantifier, Relation, Sort, Theory, Variable,
     },
 };
 
@@ -162,6 +162,69 @@ pub fn simplify_nested_quantifiers_outer(formula: Formula) -> Formula {
     }
 }
 
+// ASSUMES formula has the form:
+// exists X ( var = term & F(var) ) OR
+// exists X ( term = var & F(var) )
+// WHERE var occurs in variable list X
+// If var is a variable of sort S and term is a domain element of S universe, return `exists X \ {var} F(term)`
+// Otherwise, return the original formula
+fn subsort_equality(var: Variable, term: GeneralTerm, formula: Formula) -> Formula {
+    //println!("{formula} | {var} | {term}");
+    match formula.clone().unbox() {
+        UnboxedFormula::QuantifiedFormula {
+            quantification:
+                Quantification {
+                    variables: mut vars,
+                    ..
+                },
+            formula: Formula::BinaryFormula { rhs, .. },
+        } => {
+            match var.sort {
+                Sort::General => {
+                    vars.retain(|x| x != &var);
+                    if vars.is_empty() {
+                        rhs.substitute(var, term)
+                    } else {
+                        Formula::QuantifiedFormula {
+                            quantification: Quantification {
+                                quantifier: Quantifier::Exists,
+                                variables: vars,
+                            },
+                            formula: rhs.substitute(var, term).into(),
+                        }
+                    }
+                }
+                Sort::Integer => match term.clone() {
+                    GeneralTerm::IntegerTerm(_) => {
+                        vars.retain(|x| x != &var);
+                        if vars.is_empty() {
+                            rhs.substitute(var, term)
+                        } else {
+                            Formula::QuantifiedFormula {
+                                quantification: Quantification {
+                                    quantifier: Quantifier::Exists,
+                                    variables: vars,
+                                },
+                                formula: rhs.substitute(var, term).into(),
+                            }
+                        }
+                    }
+                    _ => formula,
+                },
+            }
+
+            //                 simplified = Formula::QuantifiedFormula {
+            //                     quantification: Quantification {
+            //                         quantifier: Quantifier::Exists,
+            //                         variables: vars,
+            //                     },
+            //                     formula: rhs.substitute(var, g.term).into(), // F(X)
+            //                 };
+        }
+        _ => panic!("you're using the subsort equality fn wrong"),
+    }
+}
+
 pub fn simplify_redundant_quantifiers(formula: Formula) -> Formula {
     formula.apply(&mut simplify_redundant_quantifiers_outer)
 }
@@ -174,90 +237,134 @@ pub fn simplify_redundant_quantifiers_outer(formula: Formula) -> Formula {
             quantification:
                 Quantification {
                     quantifier: Quantifier::Exists,
-                    variables: mut vars,
+                    variables,
                 },
             formula: f,
         } => {
-            match f.unbox() {
+            match f.clone().unbox() {
                 UnboxedFormula::BinaryFormula {
                     connective: BinaryConnective::Conjunction,
                     lhs:
-                        Formula::AtomicFormula(AtomicFormula::Comparison(Comparison {
-                            term,
-                            guards,
-                        })),
-                    rhs,
+                        Formula::AtomicFormula(AtomicFormula::Comparison(Comparison { term, guards })),
+                    ..
                 } => {
                     let g = guards[0].clone();
                     match g.relation {
                         Relation::Equal => {
-                            let simplified;
-                            if let GeneralTerm::GeneralVariable(v) = term.clone() {
-                                let var = Variable {
-                                    name: v,
+                            let lhs_is_var = match term.clone() {
+                                GeneralTerm::GeneralVariable(v) => Some(Variable {
                                     sort: Sort::General,
-                                };
-                                if vars.contains(&var) {
-                                    vars.retain(|x| x != &var);
-                                    simplified = Formula::QuantifiedFormula {
-                                        quantification: Quantification {
-                                            quantifier: Quantifier::Exists,
-                                            variables: vars,
-                                        },
-                                        formula: rhs.substitute(var, g.term).into(), // F(X)
-                                    };
-                                } else {
-                                    if let GeneralTerm::GeneralVariable(v) = g.term {
-                                        let var = Variable {
-                                            name: v,
-                                            sort: Sort::General,
-                                        };
-                                        if vars.contains(&var) {
-                                            vars.retain(|x| x != &var);
-                                            simplified = Formula::QuantifiedFormula {
-                                                quantification: Quantification {
-                                                    quantifier: Quantifier::Exists,
-                                                    variables: vars,
-                                                },
-                                                formula: rhs.substitute(var, term).into(), // F(X)
-                                            };
-                                        } else {
-                                            simplified = formula;
-                                        }
-                                    } else {
-                                        simplified = formula;
-                                    }
+                                    name: v,
+                                }),
+                                GeneralTerm::IntegerTerm(IntegerTerm::BasicIntegerTerm(
+                                    BasicIntegerTerm::IntegerVariable(v),
+                                )) => Some(Variable {
+                                    sort: Sort::Integer,
+                                    name: v,
+                                }),
+                                _ => None,
+                            };
+                            let rhs_is_var = match g.term.clone() {
+                                GeneralTerm::GeneralVariable(v) => Some(Variable {
+                                    sort: Sort::General,
+                                    name: v,
+                                }),
+                                GeneralTerm::IntegerTerm(IntegerTerm::BasicIntegerTerm(
+                                    BasicIntegerTerm::IntegerVariable(v),
+                                )) => Some(Variable {
+                                    sort: Sort::Integer,
+                                    name: v,
+                                }),
+                                _ => None,
+                            };
+
+                            let mut simplified = formula.clone();
+                            if let Some(v1) = lhs_is_var {
+                                if variables.contains(&v1) {
+                                    simplified =
+                                        subsort_equality(v1.clone(), g.term, formula.clone());
                                 }
-                            } else {
-                                if let GeneralTerm::GeneralVariable(v) = g.term {
-                                    let var = Variable {
-                                        name: v,
-                                        sort: Sort::General,
-                                    };
-                                    if vars.contains(&var) {
-                                        vars.retain(|x| x != &var);
-                                        simplified = Formula::QuantifiedFormula {
-                                            quantification: Quantification {
-                                                quantifier: Quantifier::Exists,
-                                                variables: vars,
-                                            },
-                                            formula: rhs.substitute(var, term).into(), // F(X)
-                                        };
-                                    } else {
-                                        simplified = formula;
-                                    }
-                                } else {
-                                    simplified = formula;
+                            }
+                            if let Some(v2) = rhs_is_var {
+                                if variables.contains(&v2) {
+                                    simplified = subsort_equality(v2.clone(), term, simplified);
                                 }
                             }
                             simplified
-                        },
+                        }
                         _ => formula,
                     }
-                },
+
+                    // let g = guards[0].clone();
+                    // match g.relation {
+                    //     Relation::Equal => {
+                    //         let simplified;
+                    //         if let GeneralTerm::GeneralVariable(v) = term.clone() {
+                    //             let var = Variable {
+                    //                 name: v,
+                    //                 sort: Sort::General,
+                    //             };
+                    //             if vars.contains(&var) {
+                    //                 vars.retain(|x| x != &var);
+                    //                 simplified = Formula::QuantifiedFormula {
+                    //                     quantification: Quantification {
+                    //                         quantifier: Quantifier::Exists,
+                    //                         variables: vars,
+                    //                     },
+                    //                     formula: rhs.substitute(var, g.term).into(), // F(X)
+                    //                 };
+                    //             } else {
+                    //                 if let GeneralTerm::GeneralVariable(v) = g.term {
+                    //                     let var = Variable {
+                    //                         name: v,
+                    //                         sort: Sort::General,
+                    //                     };
+                    //                     if vars.contains(&var) {
+                    //                         vars.retain(|x| x != &var);
+                    //                         simplified = Formula::QuantifiedFormula {
+                    //                             quantification: Quantification {
+                    //                                 quantifier: Quantifier::Exists,
+                    //                                 variables: vars,
+                    //                             },
+                    //                             formula: rhs.substitute(var, term).into(), // F(X)
+                    //                         };
+                    //                     } else {
+                    //                         simplified = formula;
+                    //                     }
+                    //                 } else {
+                    //                     simplified = formula;
+                    //                 }
+                    //             }
+                    //         } else {
+                    //             if let GeneralTerm::GeneralVariable(v) = g.term {
+                    //                 let var = Variable {
+                    //                     name: v,
+                    //                     sort: Sort::General,
+                    //                 };
+                    //                 if vars.contains(&var) {
+                    //                     vars.retain(|x| x != &var);
+                    //                     simplified = Formula::QuantifiedFormula {
+                    //                         quantification: Quantification {
+                    //                             quantifier: Quantifier::Exists,
+                    //                             variables: vars,
+                    //                         },
+                    //                         formula: rhs.substitute(var, term).into(), // F(X)
+                    //                     };
+                    //                 } else {
+                    //                     simplified = formula;
+                    //                 }
+                    //             } else {
+                    //                 simplified = formula;
+                    //             }
+                    //         }
+                    //         simplified
+                    //     },
+                    //     _ => formula,
+                    // }
+                }
                 _ => formula,
             }
-        },
+        }
         x => x.rebox(),
     }
 }
@@ -454,7 +561,8 @@ mod tests {
                 "exists Z1 ( exists K$i (K$i = I) and I = Z1)",
             ),
         ] {
-            let src = simplify_empty_quantifiers(simplify_redundant_quantifiers(src.parse().unwrap()));
+            let src =
+                simplify_empty_quantifiers(simplify_redundant_quantifiers(src.parse().unwrap()));
             let target = target.parse().unwrap();
             assert_eq!(src, target, "{src} != {target}")
         }
