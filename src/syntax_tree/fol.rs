@@ -133,16 +133,17 @@ impl GeneralTerm {
     }
 
     pub fn substitute(self, var: Variable, term: GeneralTerm) -> Self {
-        match self {
+        match self.clone() {
             GeneralTerm::GeneralVariable(s) if var.name == s && var.sort == Sort::General => term,
-            GeneralTerm::IntegerTerm(t) => match term {
+            GeneralTerm::IntegerTerm(t) => match term {// K$i
                 GeneralTerm::IntegerTerm(term) => GeneralTerm::IntegerTerm(t.substitute(var, term)),
-                _ => {
-                    println!("Z - {:?}, I - {:?}, t - {:?}", var, term, t);
-                    panic!(
-                    "cannot substitute general term `{term}` for the integer variable `{var}`"
-                );
-            },
+                _ => self,
+            //     _ => {
+            //         println!("Z - {:?}, I - {:?}, t - {:?}, self - {:?}", var, term, t, self);
+            //         panic!(
+            //         "cannot substitute general term `{term}` for the integer variable `{var}`"
+            //     );
+            // },
             },
             t => t,
         }

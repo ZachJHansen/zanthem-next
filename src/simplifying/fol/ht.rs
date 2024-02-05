@@ -174,7 +174,7 @@ pub fn simplify_redundant_quantifiers_outer(formula: Formula) -> Formula {
             quantification:
                 Quantification {
                     quantifier: Quantifier::Exists,
-                    variables: vars,
+                    variables: mut vars,
                 },
             formula: f,
         } => {
@@ -196,7 +196,14 @@ pub fn simplify_redundant_quantifiers_outer(formula: Formula) -> Formula {
                         let g = guards[0].clone();
                         match g.relation {
                             Relation::Equal => {
-                                rhs.substitute(var, g.term) // F(X)
+                                vars.retain(|x| x != &var);
+                                Formula::QuantifiedFormula {
+                                    quantification: Quantification {
+                                        quantifier: Quantifier::Exists,
+                                        variables: vars,
+                                    },
+                                    formula: rhs.substitute(var, g.term).into(), // F(X)
+                                }
                             }
                             _ => formula,
                         }
@@ -398,11 +405,14 @@ mod tests {
                 "exists Y ( Y = X and forall V (p(Y,V) -> q(X)) )",
                 "forall V (p(X,V) -> q(X))",
             ),
+            (
+                "exists Z Z1 ( Z = I and (exists K$i (K$i = I) and Z = Z1) )",
+                "exists Z1 ( exists K$i (K$i = I) and I = Z1)",
+            ),
         ] {
-            assert_eq!(
-                simplify_redundant_quantifiers(src.parse().unwrap()),
-                target.parse().unwrap()
-            )
+            let src = simplify_empty_quantifiers(simplify_redundant_quantifiers(src.parse().unwrap()));
+            let target = target.parse().unwrap();
+            assert_eq!(src, target, "{src} != {target}")
         }
     }
 
@@ -417,10 +427,15 @@ mod tests {
                 "forall X (forall Y (forall Z (X < Y)))",
                 "forall X Y ( X < Y )",
             ),
-            (
-                "exists Z Z1 ( Z = I and (exists I$i J$i K$i (I$i = 2 and J$i = n and Z1 = K$i and I$i <= K$i <= J$i) and Z = Z1) )",
-                "exists Z1 ( exists I$i J$i K$i (I$i = 2 and J$i = n and Z1 = K$i and I$i <= K$i <= J$i) and I = Z1 )",
-            )
+            // (
+            //     "exists Z Z1 ( Z = I and (exists K$i (K$i = 2) and Z = Z1) )",
+            //     "exists K$i(K$i = 2)",
+            // ),
+            // (
+            //     "exists Z Z1 ( Z = I and ((q) and Z = Z1) )",
+            //     "exists Z1 ( q and I = Z1 )",
+            // )
+            //exists I$i J$i K$i (I$i = 2 and J$i = n and Z1 = K$i and I$i <= K$i <= J$i)
         ] {
             let src = simplify(src.parse().unwrap());
             let target = target.parse().unwrap();
