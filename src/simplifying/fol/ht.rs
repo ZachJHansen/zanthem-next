@@ -163,12 +163,14 @@ pub fn simplify_nested_quantifiers_outer(formula: Formula) -> Formula {
 }
 
 // ASSUMES formula has the form:
-// exists X ( var = term & F(var) ) OR
-// exists X ( term = var & F(var) )
+// exists X ( F(var) & var = term ) OR
+// exists X ( F(var) & term = var )
 // WHERE var occurs in variable list X
 // If var is a variable of sort S and term is a domain element of S universe, return `exists X \ {var} F(term)`
 // Otherwise, return the original formula
-fn subsort_equality(var: Variable, term: GeneralTerm, formula: Formula, left: bool) -> Formula {
+fn subsort_equality(var: Variable, term: GeneralTerm, formula: Formula) -> (Formula, bool) {
+    let mut modified = false;
+    let simplified_formula;
     match formula.clone().unbox() {
         UnboxedFormula::QuantifiedFormula {
             quantification:
@@ -176,50 +178,50 @@ fn subsort_equality(var: Variable, term: GeneralTerm, formula: Formula, left: bo
                     variables: mut vars,
                     ..
                 },
-            formula: Formula::BinaryFormula { rhs, lhs, .. },
+            formula: Formula::BinaryFormula { lhs, .. },
         } => {
-            let f;
-            if left {
-                f = lhs;
-            } else {
-                f = rhs;
-            }
+            //println!("formula in subsort equality: {lhs}");
             match var.sort {
                 Sort::General => {
+                    modified = true;
                     vars.retain(|x| x != &var);
                     if vars.is_empty() {
-                        f.substitute(var, term)
+                        simplified_formula = lhs.substitute(var, term);
                     } else {
-                        Formula::QuantifiedFormula {
+                        simplified_formula = Formula::QuantifiedFormula {
                             quantification: Quantification {
                                 quantifier: Quantifier::Exists,
                                 variables: vars,
                             },
-                            formula: f.substitute(var, term).into(),
+                            formula: lhs.substitute(var, term).into(),
                         }
-                    }
+                    };
                 }
                 Sort::Integer => match term.clone() {
                     GeneralTerm::IntegerTerm(_) => {
+                        modified = true;
                         vars.retain(|x| x != &var);
                         if vars.is_empty() {
-                            f.substitute(var, term)
+                            simplified_formula = lhs.substitute(var, term);
                         } else {
-                            Formula::QuantifiedFormula {
+                            simplified_formula = Formula::QuantifiedFormula {
                                 quantification: Quantification {
                                     quantifier: Quantifier::Exists,
                                     variables: vars,
                                 },
-                                formula: f.substitute(var, term).into(),
-                            }
+                                formula: lhs.substitute(var, term).into(),
+                            };
                         }
                     }
-                    _ => formula,
+                    _ => {
+                        simplified_formula = formula;
+                    }
                 },
             }
         }
         _ => panic!("you're using the subsort equality fn wrong"),
     }
+    (simplified_formula, modified)
 }
 
 pub fn simplify_redundant_quantifiers(formula: Formula) -> Formula {
@@ -240,121 +242,121 @@ pub fn simplify_redundant_quantifiers_outer(formula: Formula) -> Formula {
         } => match f.clone().unbox() {
             UnboxedFormula::BinaryFormula {
                 connective: BinaryConnective::Conjunction,
-                lhs: Formula::AtomicFormula(AtomicFormula::Comparison(Comparison { term, guards })),
                 ..
             } => {
-                if guards.len() != 1 {
-                    formula
-                } else {
-                    let g = guards[0].clone();
-                    match g.relation {
-                        Relation::Equal => {
-                            let lhs_is_var = match term.clone() {
-                                GeneralTerm::GeneralVariable(v) => Some(Variable {
-                                    sort: Sort::General,
-                                    name: v,
-                                }),
-                                GeneralTerm::IntegerTerm(IntegerTerm::BasicIntegerTerm(
-                                    BasicIntegerTerm::IntegerVariable(v),
-                                )) => Some(Variable {
-                                    sort: Sort::Integer,
-                                    name: v,
-                                }),
-                                _ => None,
-                            };
-                            let rhs_is_var = match g.term.clone() {
-                                GeneralTerm::GeneralVariable(v) => Some(Variable {
-                                    sort: Sort::General,
-                                    name: v,
-                                }),
-                                GeneralTerm::IntegerTerm(IntegerTerm::BasicIntegerTerm(
-                                    BasicIntegerTerm::IntegerVariable(v),
-                                )) => Some(Variable {
-                                    sort: Sort::Integer,
-                                    name: v,
-                                }),
-                                _ => None,
-                            };
-    
-                            let mut simplified = formula.clone();
-                            if let Some(v1) = lhs_is_var {
-                                if variables.contains(&v1) {
-                                    simplified =
-                                        subsort_equality(v1.clone(), g.term, formula.clone(), false);
+                let mut simplified_formula = None;
+                let conjunctive_terms = Formula::conjoin_invert(f.clone());
+                println!("Formula to simplify: {f}");
+                // for form in conjunctive_terms.iter() {
+                //     println!("subformula: {form}");
+                // }
+                for ct in conjunctive_terms.iter() {
+                    // Search for an equality formula
+                    if let Formula::AtomicFormula(AtomicFormula::Comparison(Comparison {
+                        term,
+                        guards,
+                    })) = ct
+                    {
+                        if guards.len() == 1 {
+                            let g = guards[0].clone();
+                            match g.relation {
+                                Relation::Equal => {
+                                    let lhs_is_var = match term.clone() {
+                                        GeneralTerm::GeneralVariable(v) => Some(Variable {
+                                            sort: Sort::General,
+                                            name: v,
+                                        }),
+                                        GeneralTerm::IntegerTerm(
+                                            IntegerTerm::BasicIntegerTerm(
+                                                BasicIntegerTerm::IntegerVariable(v),
+                                            ),
+                                        ) => Some(Variable {
+                                            sort: Sort::Integer,
+                                            name: v,
+                                        }),
+                                        _ => None,
+                                    };
+                                    let rhs_is_var = match g.term.clone() {
+                                        GeneralTerm::GeneralVariable(v) => Some(Variable {
+                                            sort: Sort::General,
+                                            name: v,
+                                        }),
+                                        GeneralTerm::IntegerTerm(
+                                            IntegerTerm::BasicIntegerTerm(
+                                                BasicIntegerTerm::IntegerVariable(v),
+                                            ),
+                                        ) => Some(Variable {
+                                            sort: Sort::Integer,
+                                            name: v,
+                                        }),
+                                        _ => None,
+                                    };
+
+                                    let mut safety = true; // Simplify var = term or term = var but not both
+                                    let mut modified = false; // Don't restructure the conjunction tree unless simplification occurs
+                                    let mut restructured = vec![]; // Make the equality formula the top rhs leaf of a new conjunction tree
+                                    for i in 0..conjunctive_terms.len() {
+                                        if conjunctive_terms[i] != *ct {
+                                            restructured.push(conjunctive_terms[i].clone());
+                                        }
+                                    }
+                                    restructured.push(ct.clone());
+
+                                    let mut simplified = Formula::QuantifiedFormula {
+                                        quantification: Quantification {
+                                            quantifier: Quantifier::Exists,
+                                            variables: variables.clone(),
+                                        },
+                                        formula: Formula::conjoin(restructured).into(),
+                                    };
+                                    println!("Restructured conjunction tree: {simplified}");
+                                    if let Some(v1) = lhs_is_var {
+                                        if variables.contains(&v1) {
+                                            //println!("Var to simplify: {v1}");
+                                            let simplification_result =
+                                                subsort_equality(v1.clone(), g.term, simplified);
+                                            safety = false;
+                                            //println!("simplified: {simplified}");
+                                            modified = simplification_result.1;
+                                            simplified = simplification_result.0;
+                                        }
+                                    }
+                                    if let Some(v2) = rhs_is_var {
+                                        if variables.contains(&v2) && safety {
+                                            let simplification_result = subsort_equality(
+                                                v2.clone(),
+                                                term.clone(),
+                                                simplified,
+                                            );
+                                            safety = false;
+                                            modified = simplification_result.1;
+                                            simplified = simplification_result.0;
+                                        }
+                                    }
+                                    if !safety {
+                                        if modified {
+                                            simplified_formula = Some(simplified);
+                                        } else {
+                                            simplified_formula = Some(formula.clone());
+                                        }
+
+                                        break;
+                                    }
                                 }
+                                _ => (),
                             }
-                            if let Some(v2) = rhs_is_var {
-                                if variables.contains(&v2) {
-                                    simplified = subsort_equality(v2.clone(), term, simplified, false);
-                                }
-                            }
-                            simplified
                         }
-                        _ => formula,
                     }
                 }
-            }
-            UnboxedFormula::BinaryFormula {
-                connective: BinaryConnective::Conjunction,
-                rhs: Formula::AtomicFormula(AtomicFormula::Comparison(Comparison { term, guards })),
-                ..
-            } => {
-                if guards.len() != 1 {
-                    formula
+                if simplified_formula.is_some() {
+                    simplified_formula.unwrap()
                 } else {
-                    let g = guards[0].clone();
-                    match g.relation {
-                        Relation::Equal => {
-                            let lhs_is_var = match term.clone() {
-                                GeneralTerm::GeneralVariable(v) => Some(Variable {
-                                    sort: Sort::General,
-                                    name: v,
-                                }),
-                                GeneralTerm::IntegerTerm(IntegerTerm::BasicIntegerTerm(
-                                    BasicIntegerTerm::IntegerVariable(v),
-                                )) => Some(Variable {
-                                    sort: Sort::Integer,
-                                    name: v,
-                                }),
-                                _ => None,
-                            };
-                            let rhs_is_var = match g.term.clone() {
-                                GeneralTerm::GeneralVariable(v) => Some(Variable {
-                                    sort: Sort::General,
-                                    name: v,
-                                }),
-                                GeneralTerm::IntegerTerm(IntegerTerm::BasicIntegerTerm(
-                                    BasicIntegerTerm::IntegerVariable(v),
-                                )) => Some(Variable {
-                                    sort: Sort::Integer,
-                                    name: v,
-                                }),
-                                _ => None,
-                            };
-    
-                            let mut safety = true;
-                            let mut simplified = formula.clone();
-                            if let Some(v1) = lhs_is_var {
-                                if variables.contains(&v1) {
-                                    simplified =
-                                        subsort_equality(v1.clone(), g.term, formula.clone(), true);
-                                    safety = false;
-                                }
-                            }
-                            if let Some(v2) = rhs_is_var {
-                                if variables.contains(&v2) && safety {
-                                    simplified = subsort_equality(v2.clone(), term, simplified, true);
-                                }
-                            }
-                            simplified
-                        }
-                        _ => formula,
-                    }
+                    formula
                 }
             }
             _ => formula,
         },
-        x => x.rebox(),
+        _ => formula,
     }
 }
 
@@ -569,9 +571,21 @@ mod tests {
                 "forall X Y ( X < Y )",
             ),
             (
-                "forall V1 (prime(V1) <-> exists I (V1 = I and (exists Z Z1 (Z = I and exists I$i J$i K$i (I$i = 2 and J$i = n and Z1 = K$i and I$i <= K$i <= J$i) and Z = Z1) and exists Z (Z = I and not composite(Z)))))",
-                "forall V1 (prime(V1) <-> exists I$i J$i K$i (I$i = 2 and J$i = n and V1 = K$i and I$i <= K$i <= J$i) and not composite(V1))",
+                "forall V1 (composite(V1) <-> exists I J (exists I1$i J1$i (V1 = I1$i * J1$i and I1$i = I and J1$i = J) and (exists Z Z1 (Z = I and exists I$i J$i K$i (I$i = 2 and J$i = N$i and Z1 = K$i and I$i <= K$i <= J$i) and Z = Z1) and exists Z Z1 (Z = J and exists I$i J$i K$i (I$i = 2 and J$i = N$i and Z1 = K$i and I$i <= K$i <= J$i) and Z = Z1))))",
+                "forall V1 (composite(V1) <-> exists I J (exists I1$i J1$i (V1 = I1$i * J1$i and I1$i = I and J1$i = J) and (exists K$i (I = K$i and 2 <= K$i <= N$i) and exists K$i (J = K$i and 2 <= K$i <= N$i))))",
             ),
+            (
+                "forall V1 (prime(V1) <-> exists I (V1 = I and (exists Z Z1 (Z = I and exists I$i J$i K$i (I$i = 2 and J$i = n and Z1 = K$i and I$i <= K$i <= J$i) and Z = Z1) and exists Z (Z = I and not composite(Z)))))",
+                "forall V1 (prime(V1) <-> exists J$i K$i (J$i = n and V1 = K$i and 2 <= K$i <= J$i) and not composite(V1))",
+            ),
+            // (
+            //     "forall V1 (composite(V1) <-> exists I J (exists I1$i J1$i (V1 = I1$i * J1$i and I1$i = I and J1$i = J) and (exists Z Z1 (Z = I and Z1 = 1 and Z > Z1) and exists Z Z1 (Z = J and Z1 = 1 and Z > Z1))))",
+            //     "",
+            // ),
+            // (
+            //     "forall V1 (prime(V1) <-> exists I (V1 = I and (exists Z Z1 (Z = I and exists I$i J$i K$i (I$i = 2 and J$i = n and Z1 = K$i and I$i <= K$i <= J$i) and Z = Z1) and exists Z (Z = I and not composite(Z)))))",
+            //     "",
+            // ),
             (
                 "exists Z Z1 ( Z = I and (exists K$i (K$i = 2) and Z = Z1) )",
                 "exists K$i(K$i = 2)",

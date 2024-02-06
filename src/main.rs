@@ -91,10 +91,9 @@ fn try_main() -> Result<()> {
                     .parse()
                     .with_context(|| format!("failed to parse '{}'", &input.display()))?;
                 println!("{theory}");
-                let mut simplified = simplifying::fol::ht::simplify_redundant_quantifiers(theory);
+                let simplified = simplifying::fol::ht::simplify_redundant_quantifiers(theory);
                 println!("{simplified}");
-                let mut simplified =
-                    simplifying::fol::ht::simplify_redundant_quantifiers(simplified);
+                let simplified = simplifying::fol::ht::simplify_redundant_quantifiers(simplified);
                 println!("{simplified}");
             }
             Translation::Completion => {

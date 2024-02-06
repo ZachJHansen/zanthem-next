@@ -439,7 +439,7 @@ impl Formula {
                 let mut formulas = Self::conjoin_invert(*lhs);
                 formulas.append(&mut Self::conjoin_invert(*rhs));
                 return formulas;
-            },
+            }
             _ => {
                 return vec![formula];
             }
@@ -657,7 +657,7 @@ mod tests {
         for src in [
             vec!["X = Y"],
             vec!["X = Y", "p(a)", "q(X)"],
-            vec!["X < Y < 3", "exists Y (Y > 1)"]
+            vec!["X < Y < 3", "exists Y (Y > 1)"],
         ] {
             let formulas: Vec<Formula> = src.iter().map(|x| x.parse().unwrap()).collect();
             assert_eq!(
