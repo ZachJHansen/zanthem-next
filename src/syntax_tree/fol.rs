@@ -245,6 +245,16 @@ impl Comparison {
 
         Comparison { term: lhs, guards }
     }
+
+    pub fn equality_comparison(&self) -> bool {
+        let guards = &self.guards;
+        let first = &guards[0];
+        if guards.len() == 1 && first.relation == Relation::Equal {
+            return true;
+        } else {
+            return false;
+        }
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
