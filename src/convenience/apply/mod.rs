@@ -69,7 +69,7 @@ impl ApplyCount for Formula {
                     connective,
                     formula: result.0.into(),
                 }
-            },
+            }
 
             Formula::BinaryFormula {
                 connective,
@@ -85,7 +85,7 @@ impl ApplyCount for Formula {
                     lhs: result1.0.into(),
                     rhs: result2.0.into(),
                 }
-            },
+            }
 
             Formula::QuantifiedFormula {
                 quantification,
@@ -97,7 +97,7 @@ impl ApplyCount for Formula {
                     quantification,
                     formula: result.0.into(),
                 }
-            },
+            }
         };
         f(inner, count)
     }
