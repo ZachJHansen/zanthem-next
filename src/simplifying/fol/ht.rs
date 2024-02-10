@@ -1,6 +1,7 @@
 use crate::{
     convenience::{
         apply::Apply as _,
+        apply::ApplyCount as _,
         choose_fresh_variable_names,
         unbox::{fol::UnboxedFormula, Unbox as _},
     },
@@ -31,7 +32,38 @@ pub fn simplify(formula: Formula) -> Formula {
         }
         f1 = f2;
     }
-    f1
+    println!("Formula before variable renaming: \n{f1}");
+    pretty(f1)
+}
+
+pub fn pretty(formula: Formula) -> Formula {
+    let result = formula.apply_count(&mut pretty_outer);
+    result.0
+}
+
+
+pub fn pretty_outer(formula: Formula, mut count: usize) -> (Formula, usize) {
+    match formula {
+        Formula::UnaryFormula { connective, formula } => {
+            let f = *formula;
+            let result = f.rename_variables(count);
+            count = count + result.1;
+            (Formula::UnaryFormula { connective, formula: result.0.into() }, count)
+        },
+        Formula::BinaryFormula { connective, lhs, rhs } => {
+            let f1 = *lhs;
+            let f2 = *rhs;
+            let result1 = f1.rename_variables(count);
+            count = count + result1.1;
+            let result2 = f2.rename_variables(count);
+            count = count + result2.1;
+            (Formula::BinaryFormula { connective, lhs: result1.0.into(), rhs: result2.0.into() }, count)
+        },
+        Formula::QuantifiedFormula { .. } => {
+            formula.rename_variables(count)
+        },
+        x => (x, count)
+    }
 }
 
 pub fn basic_simplify(formula: Formula) -> Formula {
