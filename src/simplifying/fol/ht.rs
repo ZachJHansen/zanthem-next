@@ -556,8 +556,8 @@ pub fn restrict_quantifiers(formula: Formula) -> Formula {
 pub fn restrict_quantifiers_outer(formula: Formula) -> Formula {
     let mut simplified_formula = formula.clone();
     match formula.clone().unbox() {
-        // Replace a general variable in an outer quantification with an integer variable from an inner quantification
-        // e.g. exists Z$g (exists I$i J$i (I$i = Z$g & G) & H) => exists I$i (exists J$i (G) & H)
+        // Replace a general variable in an outer quantification with a fresh integer variable capturing an inner quantification
+        // e.g. exists Z$g (exists I$i J$i (I$i = Z$g & G) & H) => exists K$i (exists I$i J$i (I$i = K$i & G) & H)
         UnboxedFormula::QuantifiedFormula {
             quantification:
                 Quantification {
@@ -682,7 +682,7 @@ mod tests {
     use super::{
         basic_simplify, basic_simplify_outer, relation_simplify_outer, simplify,
         simplify_empty_quantifiers, simplify_nested_quantifiers, simplify_redundant_quantifiers,
-        simplify_theory, simplify_variable_lists,
+        simplify_theory, simplify_variable_lists, restrict_quantifiers,
     };
 
     #[test]
@@ -835,6 +835,33 @@ mod tests {
         ] {
             let src =
                 simplify_empty_quantifiers(simplify_redundant_quantifiers(src.parse().unwrap()));
+            let target = target.parse().unwrap();
+            assert_eq!(src, target, "{src} != {target}")
+        }
+    }
+
+    #[test]
+    fn test_restrict_quantifiers() {
+        for (src, target) in [
+            (
+                "exists Z Z1 ( exists I$i J$i ( Z = J$i and q(I$i, J$i) ) and Z = Z1 )",
+                "exists Z1 J1$i ( exists I$i J$i ( J1$i = J$i and q(I$i, J$i) ) and J1$i = Z1 )",
+            ),
+            (
+                "exists Z Z1 ( exists I$i J$i ( q(I$i, J$i) and Z = J$i) and Z = Z1 )",
+                "exists Z1 J1$i ( exists I$i J$i ( q(I$i, J$i) and J1$i = J$i) and J1$i = Z1 )",
+            ),
+            (
+                "exists Z Z1 ( Z = Z1 and exists I$i J$i ( q(I$i, J$i) and Z = J$i) )",
+                "exists Z1 J1$i ( J1$i = Z1 and exists I$i J$i ( q(I$i, J$i) and J1$i = J$i) )",
+            ),
+            (
+                "exists Z Z1 ( Z = Z1 and exists I$i J$i ( q(I$i, J$i) and Z = J$i and 3 > 2) and 1 < 5 )",
+                "exists Z1 J1$i ( J1$i = Z1 and exists I$i J$i ( q(I$i, J$i) and J1$i = J$i and 3 > 2) and 1 < 5 )",
+            ),
+        ] {
+            let src =
+                restrict_quantifiers(src.parse().unwrap());
             let target = target.parse().unwrap();
             assert_eq!(src, target, "{src} != {target}")
         }
