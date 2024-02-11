@@ -917,6 +917,7 @@ pub fn tau_star(p: asp::Program) -> fol::Theory {
 #[cfg(test)]
 mod tests {
     use super::{tau_b, tau_star, val};
+    use crate::simplifying::fol::ht;
 
     #[test]
     fn test_val() {
@@ -979,6 +980,23 @@ mod tests {
                 src,
                 target,
                 "{src} != {target}"
+            )
+        }
+    }
+
+    #[test]
+    fn test_tau_star_simplified() {
+        for (src, target) in [
+            ("p(a). p(b). q(X, Y) :- p(X), p(Y).", "forall V1 (V1 = a -> p(V1)). forall V1 (V1 = b -> p(V1)). forall V1 V2 X Y (V1 = X and V2 = Y and (p(X) and p(Y)) -> q(V1,V2))."),
+            ("p.", "#true -> p."),
+            ("composite(I*J) :- I>1, J>1.", "p."),
+            ] {
+            let src = ht::simplify_theory(tau_star(src.parse().unwrap()));
+            let target = target.parse().unwrap();
+            assert_eq!(
+                src,
+                target,
+                "\n{src} != \n{target}"
             )
         }
     }
