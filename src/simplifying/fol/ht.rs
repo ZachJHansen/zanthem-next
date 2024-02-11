@@ -1,6 +1,7 @@
 use crate::{
     convenience::{
         apply::Apply as _,
+        apply::ApplyCount as _,
         choose_fresh_variable_names,
         unbox::{fol::UnboxedFormula, Unbox as _},
     },
@@ -9,6 +10,8 @@ use crate::{
         IntegerTerm, Quantification, Quantifier, Relation, Sort, Theory, Variable,
     },
 };
+
+use evalexpr::*;
 
 pub fn simplify_theory(theory: Theory) -> Theory {
     //todo
@@ -31,14 +34,55 @@ pub fn simplify(formula: Formula) -> Formula {
         }
         f1 = f2;
     }
+    println!("Formula before variable renaming: \n{f1}");
     pretty(f1)
 }
 
-/// Choose consistent variable names
 pub fn pretty(formula: Formula) -> Formula {
-    let _current_vars = formula.variables();
-    // TODO
-    formula
+    let result = formula.apply_count(&mut pretty_outer);
+    result.0
+}
+
+pub fn pretty_outer(formula: Formula, mut count: usize) -> (Formula, usize) {
+    match formula {
+        Formula::UnaryFormula {
+            connective,
+            formula,
+        } => {
+            let f = *formula;
+            let result = f.rename_variables(count);
+            count = count + result.1;
+            (
+                Formula::UnaryFormula {
+                    connective,
+                    formula: result.0.into(),
+                },
+                count,
+            )
+        }
+        Formula::BinaryFormula {
+            connective,
+            lhs,
+            rhs,
+        } => {
+            let f1 = *lhs;
+            let f2 = *rhs;
+            let result1 = f1.rename_variables(count);
+            count = count + result1.1;
+            let result2 = f2.rename_variables(count);
+            count = count + result2.1;
+            (
+                Formula::BinaryFormula {
+                    connective,
+                    lhs: result1.0.into(),
+                    rhs: result2.0.into(),
+                },
+                count,
+            )
+        }
+        Formula::QuantifiedFormula { .. } => formula.rename_variables(count),
+        x => (x, count),
+    }
 }
 
 pub fn basic_simplify(formula: Formula) -> Formula {
@@ -121,6 +165,75 @@ pub fn basic_simplify_outer(formula: Formula) -> Formula {
             lhs,
             rhs,
         } if lhs == rhs => lhs,
+
+        // Simplify equality relations
+        // e.g. X$i = a => #false
+
+        // s = s => #true || s = s' => #false
+        // s = X$i => #false || s = 5 => #false || ...
+        // X = X => #true
+        // X$i = s => #false || 5 = s => #false || ...
+        // X$i = X$i => #true || 5 = 5 => #true || 3 + 2 = 5 => #true || ...
+        UnboxedFormula::AtomicFormula(AtomicFormula::Comparison(c)) => {
+            let mut f = Formula::AtomicFormula(AtomicFormula::Comparison(c.clone()));
+            if c.equality_comparison() {
+                let rhs = c.guards[0].term.clone();
+                match c.term {
+                    GeneralTerm::Symbol(lhs) => {
+                        match rhs {
+                            GeneralTerm::Symbol(s) => {
+                                if lhs == s {
+                                    f = Formula::AtomicFormula(AtomicFormula::Truth);
+                                } else {
+                                    f = Formula::AtomicFormula(AtomicFormula::Falsity);
+                                }
+                            }
+                            GeneralTerm::GeneralVariable(_) => (),
+                            GeneralTerm::IntegerTerm(_) => {
+                                f = Formula::AtomicFormula(AtomicFormula::Falsity);
+                            }
+                        }
+                    }
+                    GeneralTerm::GeneralVariable(lhs) => {
+                        match rhs {
+                            GeneralTerm::GeneralVariable(v) => {
+                                if lhs == v {
+                                    f = Formula::AtomicFormula(AtomicFormula::Truth);
+                                }
+                            },
+                            _ => (),
+                        }
+                    },
+                    GeneralTerm::IntegerTerm(lhs) => {
+                        match rhs {
+                            GeneralTerm::Symbol(_) => {
+                                f = Formula::AtomicFormula(AtomicFormula::Falsity);
+                            }
+                            GeneralTerm::GeneralVariable(_) => (),
+                            GeneralTerm::IntegerTerm(i) => {
+                                let equality = format!("({lhs}) == ({i})");
+                                let eval_result = eval(&equality);
+                                match eval_result {
+                                    Ok(bool) => match bool {
+                                        Value::Boolean(b) => {
+                                            if b {
+                                                f = Formula::AtomicFormula(AtomicFormula::Truth);
+                                            } else {
+                                                f = Formula::AtomicFormula(AtomicFormula::Falsity);
+                                            }
+                                        }
+                                        _ => (),
+                                    },
+                                    Err(_) => (),
+                                }
+
+                            }
+                        }
+                    }
+                }
+            }
+            f
+        }
 
         x => x.rebox(),
     }
@@ -588,6 +701,15 @@ mod tests {
             ("a or a", "a"),
             ("#true and (#true and a)", "#true and a"),
             ("(#true and #true) and a", "(#true and #true) and a"),
+            ("s = s", "#true"),
+            ("s = a", "#false"),
+            ("s = X$i", "#false"),
+            ("a = 5", "#false"),
+            ("X$i = s", "#false"),
+            ("5 = s", "#false"),
+            //("X$i = X$i", "#true"), 
+            ("5 = 5", "#true"),
+            ("(3 + 2) * -1 = -5", "#true"),
         ] {
             assert_eq!(
                 basic_simplify_outer(src.parse().unwrap()),

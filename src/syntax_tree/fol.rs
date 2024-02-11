@@ -594,6 +594,47 @@ impl Formula {
             } => f,
         }
     }
+
+    pub fn rename_variables(self, count: usize) -> (Formula, usize) {
+        match self {
+            Formula::QuantifiedFormula {
+                quantification: q,
+                formula: f,
+            } => {
+                let mut fcount = count;
+                let mut f1 = *f;
+                let mut vars = vec![];
+                for (i, var) in q.variables.iter().enumerate() {
+                    let mut x = "X".to_owned();
+                    x.push_str((count + i + 1).to_string().as_str());
+                    let new_var = Variable {
+                        name: x,
+                        sort: var.clone().sort,
+                    };
+                    vars.push(new_var.clone());
+                    let new_term = match var.sort {
+                        Sort::General => GeneralTerm::GeneralVariable(new_var.name),
+                        Sort::Integer => GeneralTerm::IntegerTerm(IntegerTerm::BasicIntegerTerm(
+                            BasicIntegerTerm::IntegerVariable(new_var.clone().name),
+                        )),
+                    };
+                    f1 = f1.substitute(var.clone(), new_term);
+                    fcount = count + i + 1;
+                }
+                (
+                    Formula::QuantifiedFormula {
+                        quantification: Quantification {
+                            quantifier: q.quantifier,
+                            variables: vars,
+                        },
+                        formula: f1.into(),
+                    },
+                    fcount,
+                )
+            }
+            x => (x, count),
+        }
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
@@ -688,6 +729,21 @@ mod tests {
                 Formula::disjoin(src.iter().map(|x| x.parse().unwrap())),
                 target.parse().unwrap(),
             )
+        }
+    }
+
+    #[test]
+    fn test_rename_variables() {
+        for (src, target) in [
+            ("exists X Y (X = Y)", "exists X1 X2 (X1 = X2)"),
+            (
+                "exists N M (exists N (N = M and p(N)) or q(N))",
+                "exists X1 X2 (exists N (N = X2 and p(N)) or q(X1))",
+            ),
+        ] {
+            let src = src.parse::<Formula>().unwrap().rename_variables(0).0;
+            let target = target.parse().unwrap();
+            assert_eq!(src, target, "{src} != {target}")
         }
     }
 
