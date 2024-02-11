@@ -31,7 +31,14 @@ pub fn simplify(formula: Formula) -> Formula {
         }
         f1 = f2;
     }
-    f1
+    pretty(f1)
+}
+
+/// Choose consistent variable names
+pub fn pretty(formula: Formula) -> Formula {
+    let _current_vars = formula.variables();
+    // TODO
+    formula
 }
 
 pub fn basic_simplify(formula: Formula) -> Formula {
@@ -489,7 +496,7 @@ pub fn restrict_quantifiers_outer(formula: Formula) -> Formula {
                                                                 let varnames =
                                                                     choose_fresh_variable_names(
                                                                         &formula.variables(),
-                                                                        &ivar.name,
+                                                                        &ivar.name.chars().next().unwrap().to_string(),
                                                                         1,
                                                                     );
                                                                 let fvar = varnames[0].clone();
