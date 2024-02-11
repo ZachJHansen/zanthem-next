@@ -27,7 +27,7 @@ pub fn simplify(formula: Formula, prettify: bool) -> Formula {
     let mut f2;
     println!("Formula prior to simplification: \n{f1}\n");
     loop {
-        f2 = basic_simplify(f1.clone());
+        f2 = relation_simplify(basic_simplify(f1.clone()));
         f2 = simplify_empty_quantifiers(simplify_variable_lists(f2));
         println!("Formula after basic simplification: \n{f2}\n");
 
