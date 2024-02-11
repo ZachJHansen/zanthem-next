@@ -91,7 +91,7 @@ fn try_main() -> Result<()> {
                     .parse()
                     .with_context(|| format!("failed to parse '{}'", &input.display()))?;
 
-                let simplified = simplifying::fol::ht::simplify(theory);
+                let simplified = simplifying::fol::ht::simplify(theory, true);
                 println!("{simplified}");
             }
             Translation::Completion => {

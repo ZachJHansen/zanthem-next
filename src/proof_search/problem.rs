@@ -407,16 +407,16 @@ impl ProblemHandler {
         if simplify {
             //println!("We have {} forward premises\n\n", forward_premises.len());    // TODO - Why does 0..len() work??
             for i in 0..forward_premises.len() {
-                forward_premises[i] = ht_simplify(forward_premises[i].clone());
+                forward_premises[i] = ht_simplify(forward_premises[i].clone(), false);
             }
             for i in 0..backward_premises.len() {
-                backward_premises[i] = ht_simplify(backward_premises[i].clone());
+                backward_premises[i] = ht_simplify(backward_premises[i].clone(), false);
             }
             for i in 0..forward_conclusions.len() {
-                forward_conclusions[i] = ht_simplify(forward_conclusions[i].clone());
+                forward_conclusions[i] = ht_simplify(forward_conclusions[i].clone(), false);
             }
             for i in 0..backward_conclusions.len() {
-                backward_conclusions[i] = ht_simplify(backward_conclusions[i].clone());
+                backward_conclusions[i] = ht_simplify(backward_conclusions[i].clone(), false);
             }
         }
 
