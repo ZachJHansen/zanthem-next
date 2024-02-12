@@ -680,9 +680,9 @@ pub fn restrict_quantifiers_outer(formula: Formula) -> Formula {
 #[cfg(test)]
 mod tests {
     use super::{
-        basic_simplify, basic_simplify_outer, relation_simplify_outer, simplify,
-        simplify_empty_quantifiers, simplify_nested_quantifiers, simplify_redundant_quantifiers,
-        simplify_theory, simplify_variable_lists, restrict_quantifiers,
+        basic_simplify, basic_simplify_outer, relation_simplify_outer, restrict_quantifiers,
+        simplify, simplify_empty_quantifiers, simplify_nested_quantifiers,
+        simplify_redundant_quantifiers, simplify_theory, simplify_variable_lists,
     };
 
     #[test]
