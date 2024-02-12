@@ -1,5 +1,3 @@
-use std::thread;
-
 use {
     crate::{
         proof_search::problem::{FileType, ProblemHandler, ProblemStatus},
@@ -8,7 +6,7 @@ use {
     anyhow::anyhow,
     lazy_static::lazy_static,
     regex::Regex,
-    std::process,
+    std::{process, thread, time::Instant},
 };
 
 lazy_static! {
@@ -82,6 +80,7 @@ pub fn verify_with_vampire_sequential(handler: ProblemHandler, cores: u16) {
         let mut claim_status = ProblemStatus::Unknown;
         println!("Proving Claim... \n%%%%%%%%%%\n{}", claim.display());
         for p in problems.iter() {
+            let now = Instant::now();
             let result = run_vampire(
                 &p.display(true),
                 Some(&[
@@ -98,11 +97,19 @@ pub fn verify_with_vampire_sequential(handler: ProblemHandler, cores: u16) {
             match result {
                 Ok(status) => match status {
                     ProblemStatus::Theorem => {
-                        println!("Conjecture: {} \n\t| Status: Proven", p.conjecture);
+                        println!(
+                            "Conjecture: {} \n\t| Status: Proven - {} millisecs",
+                            p.conjecture,
+                            now.elapsed().as_millis()
+                        );
                     }
                     _ => {
                         claim_status = ProblemStatus::Timeout; // TODO - Differentiate between different vampire errors/non-theorem results
-                        println!("Conjecture: {} \n\t| Status: Not Proven", p.conjecture);
+                        println!(
+                            "Conjecture: {} \n\t| Status: Not Proven - {} millisecs",
+                            p.conjecture,
+                            now.elapsed().as_millis()
+                        );
                         break;
                     }
                 },
@@ -144,6 +151,7 @@ pub fn verify_with_vampire_parallel(handler: ProblemHandler, cores: u16) {
                 claim.display()
             );
             for p in problems.iter() {
+                let now = Instant::now(); // What time is it right now?
                 let result = run_vampire(
                     &p.display(true),
                     Some(&[
@@ -161,15 +169,17 @@ pub fn verify_with_vampire_parallel(handler: ProblemHandler, cores: u16) {
                     Ok(status) => match status {
                         ProblemStatus::Theorem => {
                             summary.push_str(&format!(
-                                "Conjecture: {} \n\t| Status: Proven\n",
-                                p.conjecture
+                                "Conjecture: {} \n\t| Status: Proven - {} millisecs\n",
+                                p.conjecture,
+                                now.elapsed().as_millis()
                             ));
                         }
                         _ => {
                             claim_status = ProblemStatus::Timeout; // TODO - Differentiate between different vampire errors/non-theorem results
                             summary.push_str(&format!(
-                                "Conjecture: {} \n\t| Status: Not Proven\n",
-                                p.conjecture
+                                "Conjecture: {} \n\t| Status: Not Proven - {} millisecs\n",
+                                p.conjecture,
+                                now.elapsed().as_millis()
                             ));
                             break;
                         }

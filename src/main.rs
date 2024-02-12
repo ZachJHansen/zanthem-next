@@ -11,10 +11,10 @@ use {
     crate::{
         command_line::{Arguments, Command, Translation, Verification},
         proof_search::{problem, vampire},
+        simplifying::fol::ht as ht_simplifications,
         syntax_tree::{asp, fol},
         translating::completion::completion,
         translating::tau_star::tau_star,
-        simplifying::fol::ht as ht_simplifications,
     },
     anyhow::{Context, Result},
     clap::Parser as _,
