@@ -14,6 +14,7 @@ use {
         syntax_tree::{asp, fol},
         translating::completion::completion,
         translating::tau_star::tau_star,
+        simplifying::fol::ht as ht_simplifications,
     },
     anyhow::{Context, Result},
     clap::Parser as _,
@@ -170,8 +171,14 @@ fn main() -> Result<()> {
                         }
                     }
                 }
-                Translation::Test => {
-                    todo!()
+                Translation::Simplify => {
+                    let formula: fol::Formula = content
+                        .parse()
+                        .with_context(|| format!("could not parse file `{}`", input.display()))?;
+
+                    let simple = ht_simplifications::simplify(formula, false);
+
+                    println!("{simple}");
                 }
             }
 

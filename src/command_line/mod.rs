@@ -69,7 +69,7 @@ pub enum Command {
 pub enum Translation {
     TauStar,
     Completion,
-    Test,
+    Simplify,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
