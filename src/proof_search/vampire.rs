@@ -1,3 +1,5 @@
+use std::thread;
+
 use {
     crate::{
         proof_search::problem::{FileType, ProblemHandler, ProblemStatus},
@@ -26,6 +28,9 @@ pub fn default_verification(
     user_guide: &fol::Specification,
     lemmas: Option<fol::Specification>,
     simplify: bool,
+    cores: u16,
+    break_equivalences: bool,
+    parallelize: bool,
 ) {
     let mut h = ProblemHandler::new(program, specification, user_guide, simplify);
     match lemmas {
@@ -35,10 +40,14 @@ pub fn default_verification(
         }
         None => (),
     }
-    h.default_decomposition();
+    h.default_decomposition(break_equivalences);
     //h.display();
     h.generate_problem_files();
-    verify_with_vampire(h);
+    if parallelize {
+        verify_with_vampire_parallel(h, cores);
+    } else {
+        verify_with_vampire_sequential(h, cores);
+    }
 }
 
 pub fn sequential_verification(
@@ -47,6 +56,9 @@ pub fn sequential_verification(
     user_guide: &fol::Specification,
     lemmas: Option<fol::Specification>,
     simplify: bool,
+    cores: u16,
+    break_equivalences: bool,
+    parallelize: bool,
 ) {
     let mut h = ProblemHandler::new(program, specification, user_guide, simplify);
     match lemmas {
@@ -55,12 +67,16 @@ pub fn sequential_verification(
         }
         None => (),
     }
-    h.sequential_decomposition();
+    h.sequential_decomposition(break_equivalences);
     h.generate_problem_files();
-    verify_with_vampire(h);
+    if parallelize {
+        verify_with_vampire_parallel(h, cores);
+    } else {
+        verify_with_vampire_sequential(h, cores);
+    }
 }
 
-pub fn verify_with_vampire(handler: ProblemHandler) {
+pub fn verify_with_vampire_sequential(handler: ProblemHandler, cores: u16) {
     let mut task_status = ProblemStatus::Unknown;
     for (claim, problems) in handler.goals.iter() {
         let mut claim_status = ProblemStatus::Unknown;
@@ -74,7 +90,7 @@ pub fn verify_with_vampire(handler: ProblemHandler) {
                     "--mode",
                     "casc",
                     "--cores",
-                    "4",
+                    &cores.to_string(),
                     "--time_limit",
                     "300",
                 ]),
@@ -108,6 +124,93 @@ pub fn verify_with_vampire(handler: ProblemHandler) {
             }
         }
     }
+    match task_status {
+        ProblemStatus::Unknown => {
+            println!("\n%%%%% Task status: Successfully proved all claims. %%%%%\n")
+        }
+        _ => println!("\n%%%%% Task status: Failed to prove some claims. %%%%%\n"),
+    }
+}
+
+pub fn verify_with_vampire_parallel(handler: ProblemHandler, cores: u16) {
+    let mut thread_handles = vec![];
+    for (c, p) in handler.goals.iter() {
+        let claim = c.clone();
+        let problems = p.clone();
+        let handle = thread::spawn(move || {
+            let mut claim_status = ProblemStatus::Unknown;
+            let mut summary = format!(
+                "Proving Claim... \n%%%%%%%%%%\n{}\n%%%%%%%%%%\n",
+                claim.display()
+            );
+            for p in problems.iter() {
+                let result = run_vampire(
+                    &p.display(true),
+                    Some(&[
+                        "--proof",
+                        "off",
+                        "--mode",
+                        "casc",
+                        "--cores",
+                        &cores.to_string(),
+                        "--time_limit",
+                        "300",
+                    ]),
+                );
+                match result {
+                    Ok(status) => match status {
+                        ProblemStatus::Theorem => {
+                            summary.push_str(&format!(
+                                "Conjecture: {} \n\t| Status: Proven\n",
+                                p.conjecture
+                            ));
+                        }
+                        _ => {
+                            claim_status = ProblemStatus::Timeout; // TODO - Differentiate between different vampire errors/non-theorem results
+                            summary.push_str(&format!(
+                                "Conjecture: {} \n\t| Status: Not Proven\n",
+                                p.conjecture
+                            ));
+                            break;
+                        }
+                    },
+                    Err(e) => {
+                        claim_status = ProblemStatus::Error;
+                        summary.push_str(&format!("{e}"));
+                        break;
+                    }
+                }
+                claim_status = ProblemStatus::Theorem;
+            }
+            let task_status = match claim_status {
+                ProblemStatus::Theorem => {
+                    summary.push_str("\n%%%%% Claim status: Theorem %%%%%\n");
+                    ProblemStatus::Unknown
+                }
+                _ => {
+                    summary.push_str("\n%%%%% Claim status: Not a Theorem %%%%%\n");
+                    ProblemStatus::Timeout
+                }
+            };
+            (task_status, summary)
+        });
+        thread_handles.push(handle);
+    }
+
+    let mut task_status = ProblemStatus::Unknown;
+    for handle in thread_handles {
+        let thread_result = handle.join().unwrap();
+        let claim_failure = thread_result.0;
+        let claim_summary = thread_result.1;
+        match claim_failure {
+            ProblemStatus::Timeout => {
+                task_status = ProblemStatus::Timeout;
+            }
+            _ => {}
+        }
+        println!("{}", claim_summary);
+    }
+
     match task_status {
         ProblemStatus::Unknown => {
             println!("\n%%%%% Task status: Successfully proved all claims. %%%%%\n")

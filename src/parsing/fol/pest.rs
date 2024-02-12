@@ -541,7 +541,6 @@ impl PestParser for LemmaParser {
     const RULE: Self::Rule = internal::Rule::lemma;
 
     fn translate_pair(pair: pest::iterators::Pair<'_, Self::Rule>) -> Self::Node {
-        println!("check 0");
         match pair.as_rule() {
             internal::Rule::lemma => Self::translate_pairs(pair.into_inner()),
             internal::Rule::forward_lemma => {
@@ -580,8 +579,6 @@ impl PestParser for LemmaParser {
                 if pair.as_rule() != internal::Rule::universal_lemma {
                     Self::report_unexpected_pair(pair)
                 }
-
-                println!("check 1");
 
                 let mut pairs = pair.into_inner();
 

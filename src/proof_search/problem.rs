@@ -225,22 +225,129 @@ pub struct Claim {
     pub status: ProblemStatus,
 }
 
+// Qx (Head <=> Body)   becomes     [Qx (Head => Body), Qx (Head <= Body)]
+// Head <=> Body        becomes     [Head => Body, Head <= Body]
+pub fn equivalence_breaker(formula: fol::Formula) -> Option<Vec<fol::Formula>> {
+    match formula {
+        fol::Formula::QuantifiedFormula {
+            quantification: q,
+            formula: f,
+        } => match f.unbox() {
+            UnboxedFormula::BinaryFormula {
+                connective: c,
+                lhs: f1,
+                rhs: f2,
+            } => match c {
+                fol::BinaryConnective::Equivalence => {
+                    let imp1 = fol::Formula::QuantifiedFormula {
+                        quantification: q.clone(),
+                        formula: fol::Formula::BinaryFormula {
+                            connective: fol::BinaryConnective::Implication,
+                            lhs: f1.clone().into(),
+                            rhs: f2.clone().into(),
+                        }
+                        .into(),
+                    };
+                    let imp2 = fol::Formula::QuantifiedFormula {
+                        quantification: q.clone(),
+                        formula: fol::Formula::BinaryFormula {
+                            connective: fol::BinaryConnective::ReverseImplication,
+                            lhs: f1.into(),
+                            rhs: f2.into(),
+                        }
+                        .into(),
+                    };
+                    return Some(vec![imp1, imp2]);
+                }
+                _ => {
+                    return None;
+                }
+            },
+            _ => {
+                return None;
+            }
+        },
+
+        fol::Formula::BinaryFormula {
+            connective: c,
+            lhs: f1,
+            rhs: f2,
+        } => match c {
+            fol::BinaryConnective::Equivalence => {
+                let imp1 = fol::Formula::BinaryFormula {
+                    connective: fol::BinaryConnective::Implication,
+                    lhs: f1.clone(),
+                    rhs: f2.clone(),
+                };
+                let imp2 = fol::Formula::BinaryFormula {
+                    connective: fol::BinaryConnective::ReverseImplication,
+                    lhs: f1.clone(),
+                    rhs: f2.clone(),
+                };
+                return Some(vec![imp1, imp2]);
+            }
+            _ => {
+                return None;
+            }
+        },
+
+        _ => {
+            return None;
+        }
+    }
+}
+
 impl Claim {
     pub fn decompose_claim_default(
         &self,
         problem_predicates: &Vec<Statement>,
         problem_functions: &Vec<Statement>,
+        break_equivalences: bool,
     ) -> Vec<Problem> {
         let mut problems = Vec::<Problem>::new();
         for conclusion in self.conclusions.iter() {
-            problems.push(Problem {
-                status: ProblemStatus::Unknown,
-                interpretation: Interpretation::Standard,
-                predicates: problem_predicates.clone(),
-                functions: problem_functions.clone(),
-                axioms: self.premises.clone(),
-                conjecture: conclusion.clone(),
-            });
+            if break_equivalences {
+                let implications = equivalence_breaker(conclusion.clone());
+                match implications {
+                    Some(mut formulas) => {
+                        problems.push(Problem {
+                            status: ProblemStatus::Unknown,
+                            interpretation: Interpretation::Standard,
+                            predicates: problem_predicates.clone(),
+                            functions: problem_functions.clone(),
+                            axioms: self.premises.clone(),
+                            conjecture: formulas.pop().unwrap(),
+                        });
+                        problems.push(Problem {
+                            status: ProblemStatus::Unknown,
+                            interpretation: Interpretation::Standard,
+                            predicates: problem_predicates.clone(),
+                            functions: problem_functions.clone(),
+                            axioms: self.premises.clone(),
+                            conjecture: formulas.pop().unwrap(),
+                        });
+                    }
+                    None => {
+                        problems.push(Problem {
+                            status: ProblemStatus::Unknown,
+                            interpretation: Interpretation::Standard,
+                            predicates: problem_predicates.clone(),
+                            functions: problem_functions.clone(),
+                            axioms: self.premises.clone(),
+                            conjecture: conclusion.clone(),
+                        });
+                    }
+                }
+            } else {
+                problems.push(Problem {
+                    status: ProblemStatus::Unknown,
+                    interpretation: Interpretation::Standard,
+                    predicates: problem_predicates.clone(),
+                    functions: problem_functions.clone(),
+                    axioms: self.premises.clone(),
+                    conjecture: conclusion.clone(),
+                });
+            }
         }
         problems
     }
@@ -249,30 +356,99 @@ impl Claim {
         &self,
         problem_predicates: &Vec<Statement>,
         problem_functions: &Vec<Statement>,
+        break_equivalences: bool,
     ) -> Vec<Problem> {
         let mut problems = Vec::<Problem>::new();
         let n = self.conclusions.len();
         assert!(n > 0);
         if n == 1 {
-            problems.push(Problem {
-                status: ProblemStatus::Unknown,
-                interpretation: Interpretation::Standard,
-                predicates: problem_predicates.clone(),
-                functions: problem_functions.clone(),
-                axioms: self.premises.clone(),
-                conjecture: self.conclusions[0].clone(),
-            });
-        } else {
-            let mut axioms = self.premises.clone();
-            for i in 0..n {
+            if break_equivalences {
+                let implications = equivalence_breaker(self.conclusions[0].clone());
+                match implications {
+                    Some(mut formulas) => {
+                        problems.push(Problem {
+                            status: ProblemStatus::Unknown,
+                            interpretation: Interpretation::Standard,
+                            predicates: problem_predicates.clone(),
+                            functions: problem_functions.clone(),
+                            axioms: self.premises.clone(),
+                            conjecture: formulas.pop().unwrap(),
+                        });
+                        problems.push(Problem {
+                            status: ProblemStatus::Unknown,
+                            interpretation: Interpretation::Standard,
+                            predicates: problem_predicates.clone(),
+                            functions: problem_functions.clone(),
+                            axioms: self.premises.clone(),
+                            conjecture: formulas.pop().unwrap(),
+                        });
+                    }
+                    None => {
+                        problems.push(Problem {
+                            status: ProblemStatus::Unknown,
+                            interpretation: Interpretation::Standard,
+                            predicates: problem_predicates.clone(),
+                            functions: problem_functions.clone(),
+                            axioms: self.premises.clone(),
+                            conjecture: self.conclusions[0].clone(),
+                        });
+                    }
+                }
+            } else {
                 problems.push(Problem {
                     status: ProblemStatus::Unknown,
                     interpretation: Interpretation::Standard,
                     predicates: problem_predicates.clone(),
                     functions: problem_functions.clone(),
-                    axioms: axioms.clone(),
-                    conjecture: self.conclusions[i].clone(),
+                    axioms: self.premises.clone(),
+                    conjecture: self.conclusions[0].clone(),
                 });
+            }
+        } else {
+            let mut axioms = self.premises.clone();
+            for i in 0..n {
+                if break_equivalences {
+                    let implications = equivalence_breaker(self.conclusions[i].clone());
+                    match implications {
+                        Some(mut formulas) => {
+                            problems.push(Problem {
+                                status: ProblemStatus::Unknown,
+                                interpretation: Interpretation::Standard,
+                                predicates: problem_predicates.clone(),
+                                functions: problem_functions.clone(),
+                                axioms: axioms.clone(),
+                                conjecture: formulas.pop().unwrap(),
+                            });
+                            problems.push(Problem {
+                                status: ProblemStatus::Unknown,
+                                interpretation: Interpretation::Standard,
+                                predicates: problem_predicates.clone(),
+                                functions: problem_functions.clone(),
+                                axioms: axioms.clone(),
+                                conjecture: formulas.pop().unwrap(),
+                            });
+                        }
+                        None => {
+                            problems.push(Problem {
+                                status: ProblemStatus::Unknown,
+                                interpretation: Interpretation::Standard,
+                                predicates: problem_predicates.clone(),
+                                functions: problem_functions.clone(),
+                                axioms: axioms.clone(),
+                                conjecture: self.conclusions[i].clone(),
+                            });
+                        }
+                    }
+                } else {
+                    problems.push(Problem {
+                        status: ProblemStatus::Unknown,
+                        interpretation: Interpretation::Standard,
+                        predicates: problem_predicates.clone(),
+                        functions: problem_functions.clone(),
+                        axioms: axioms.clone(),
+                        conjecture: self.conclusions[i].clone(),
+                    });
+                }
                 axioms.push(self.conclusions[i].clone());
             }
         }
@@ -498,25 +674,33 @@ impl ProblemHandler {
         }
     }
 
-    pub fn default_decomposition(&mut self) {
+    pub fn default_decomposition(&mut self, break_equivalences: bool) {
         let mut goals: HashMap<Claim, Vec<Problem>> = HashMap::new();
         for c in self.goals.keys() {
             let claim = c.clone();
             goals.insert(
                 claim.clone(),
-                claim.decompose_claim_default(&self.predicates, &self.functions),
+                claim.decompose_claim_default(
+                    &self.predicates,
+                    &self.functions,
+                    break_equivalences,
+                ),
             );
         }
         self.goals = goals;
     }
 
-    pub fn sequential_decomposition(&mut self) {
+    pub fn sequential_decomposition(&mut self, break_equivalences: bool) {
         let mut goals: HashMap<Claim, Vec<Problem>> = HashMap::new();
         for c in self.goals.keys() {
             let claim = c.clone();
             goals.insert(
                 claim.clone(),
-                claim.decompose_claim_sequential(&self.predicates, &self.functions),
+                claim.decompose_claim_sequential(
+                    &self.predicates,
+                    &self.functions,
+                    break_equivalences,
+                ),
             );
         }
         self.goals = goals;
@@ -1165,6 +1349,49 @@ pub fn placeholder_replacements(
         for ph in borrow_nightmare.iter() {
             formulas[i] = replace_placeholders(formulas[i].clone(), ph);
             //println!("\n\n%%%%%\nNew formula: {}\n%%%%%%", formulas[i]);
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::equivalence_breaker;
+    use crate::syntax_tree::fol;
+
+    #[test]
+    fn test_break_equivalences_some() {
+        for (src, target) in [
+            (
+                "forall X (p(X) <-> q(X))",
+                ["forall X (p(X) -> q(X))", "forall X (p(X) <- q(X))"],
+            ),
+            (
+                "forall X ((p(X) and q) <-> t)",
+                [
+                    "forall X ((p(X) and q) -> t)",
+                    "forall X ((p(X) and q) <- t)",
+                ],
+            ),
+            ("p <-> q", ["p -> q", "p <- q"]),
+            ("p <-> q or t", ["p -> q or t", "p <- q or t"]),
+            ("p(X) <-> q(X)", ["p(X) -> q(X)", "p(X) <- q(X)"]),
+        ] {
+            let f: fol::Formula = src.parse().unwrap();
+            let result: Option<Vec<fol::Formula>> =
+                Some(vec![target[0].parse().unwrap(), target[1].parse().unwrap()]);
+            assert_eq!(result, equivalence_breaker(f))
+        }
+    }
+
+    #[test]
+    fn test_break_equivalences_none() {
+        for src in [
+            "forall X (p(X) -> q(X))",
+            "q(a)",
+            "forall X (p(X) and (q <-> t))",
+        ] {
+            let f: fol::Formula = src.parse().unwrap();
+            assert_eq!(None, equivalence_breaker(f))
         }
     }
 }

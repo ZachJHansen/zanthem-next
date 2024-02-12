@@ -182,7 +182,7 @@ pub fn basic_simplify(formula: Formula) -> Formula {
 
 pub fn basic_simplify_outer(formula: Formula) -> Formula {
     // TODO: Split simplifications into multiple functions?
-
+    // tdo
     match formula.unbox() {
         // Remove identities
         // e.g. F op E => F
