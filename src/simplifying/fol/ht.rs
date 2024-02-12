@@ -553,10 +553,11 @@ pub fn restrict_quantifiers_outer(formula: Formula) -> Formula {
     match formula.clone().unbox() {
         // Replace a general variable in an outer quantification with a fresh integer variable capturing an inner quantification
         // e.g. exists Z$g (exists I$i J$i (I$i = Z$g & G) & H) => exists K$i (exists I$i J$i (I$i = K$i & G) & H)
+        // or forall Z$g (exists I$i J$i (I$i = Z$g & G) & H) => forall K$i (exists I$i J$i (I$i = K$i & G) & H)
         UnboxedFormula::QuantifiedFormula {
             quantification:
                 Quantification {
-                    quantifier: Quantifier::Exists,
+                    quantifier: outer_quantifier,
                     variables: outer_vars,
                 },
             formula: f,
@@ -645,7 +646,7 @@ pub fn restrict_quantifiers_outer(formula: Formula) -> Formula {
                                                                 });
                                                                 simplified_formula = Formula::QuantifiedFormula {
                                                                 quantification: Quantification {
-                                                                    quantifier: Quantifier::Exists,
+                                                                    quantifier: outer_quantifier.clone(),
                                                                     variables: new_outer,
                                                                 },
                                                                 formula: f.clone().substitute(ovar.clone(), fvar_term).into(),
