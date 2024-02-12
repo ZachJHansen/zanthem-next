@@ -11,7 +11,10 @@ use crate::{
     },
 };
 
-use evalexpr::*;
+use {
+    evalexpr::*,
+    log::debug,
+};
 
 pub fn simplify_theory(theory: Theory) -> Theory {
     //todo
@@ -25,23 +28,23 @@ pub fn simplify_theory(theory: Theory) -> Theory {
 pub fn simplify(formula: Formula, prettify: bool) -> Formula {
     let mut f1 = formula;
     let mut f2;
-    println!("Formula prior to simplification: \n{f1}\n");
+    debug!("Formula prior to simplification: \n{f1}\n");
     loop {
         f2 = relation_simplify(basic_simplify(f1.clone()));
         f2 = simplify_empty_quantifiers(simplify_variable_lists(f2));
-        println!("Formula after basic simplification: \n{f2}\n");
+        debug!("Formula after basic simplification: \n{f2}\n");
 
         f2 = simplify_redundant_quantifiers(f2);
         f2 = simplify_empty_quantifiers(simplify_variable_lists(f2));
-        println!("Formula after redundant quantifier elimination: \n{f2}\n");
+        debug!("Formula after redundant quantifier elimination: \n{f2}\n");
 
         f2 = simplify_nested_quantifiers(f2);
         f2 = simplify_empty_quantifiers(simplify_variable_lists(f2));
-        println!("Formula after nested quantifier joining: \n{f2}\n");
+        debug!("Formula after nested quantifier joining: \n{f2}\n");
 
         f2 = restrict_quantifiers(f2);
         f2 = simplify_empty_quantifiers(simplify_variable_lists(f2));
-        println!("Formula after quantifier scope restriction: \n{f2}\n");
+        debug!("Formula after quantifier scope restriction: \n{f2}\n");
 
         if f1 == f2 {
             break;

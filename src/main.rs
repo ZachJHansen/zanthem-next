@@ -140,6 +140,8 @@ fn collect_files(dir: PathBuf) -> io::Result<Vec<PathBuf>> {
 }
 
 fn main() -> Result<()> {
+    env_logger::init();
+
     match Arguments::parse().command {
         Command::Translate { with, input } => {
             let content = read_to_string(&input)
