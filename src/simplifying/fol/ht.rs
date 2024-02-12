@@ -30,7 +30,8 @@ pub fn simplify(formula: Formula, prettify: bool) -> Formula {
     let mut f2;
     debug!("Formula prior to simplification: \n{f1}\n");
     loop {
-        f2 = relation_simplify(basic_simplify(f1.clone()));
+        f2 = basic_simplify(f1.clone());
+        f2 = relation_simplify(f2);
         f2 = simplify_empty_quantifiers(simplify_variable_lists(f2));
         debug!("Formula after basic simplification: \n{f2}\n");
 
@@ -114,12 +115,9 @@ pub fn relation_simplify(formula: Formula) -> Formula {
 pub fn relation_simplify_outer(formula: Formula) -> Formula {
     match formula.unbox() {
         // Simplify equality relations
-        // e.g. X$i = a => #false
 
-        // s = s => #true || s = s' => #false
-        // s = X$i => #false || s = 5 => #false || ...
+        // s = s => #true
         // X = X => #true
-        // X$i = s => #false || 5 = s => #false || ...
         // 5 = 5 => #true || 3 + 2 = 5 => #true || ...
         UnboxedFormula::AtomicFormula(AtomicFormula::Comparison(c)) => {
             let mut f = Formula::AtomicFormula(AtomicFormula::Comparison(c.clone()));
@@ -130,14 +128,10 @@ pub fn relation_simplify_outer(formula: Formula) -> Formula {
                         GeneralTerm::Symbol(s) => {
                             if lhs == s {
                                 f = Formula::AtomicFormula(AtomicFormula::Truth);
-                            } else {
-                                f = Formula::AtomicFormula(AtomicFormula::Falsity);
                             }
                         }
                         GeneralTerm::GeneralVariable(_) => (),
-                        GeneralTerm::IntegerTerm(_) => {
-                            f = Formula::AtomicFormula(AtomicFormula::Falsity);
-                        }
+                        GeneralTerm::IntegerTerm(_) => (),  // LHS could be an integer-valued placeholder, so no simplifications are possible
                     },
                     GeneralTerm::GeneralVariable(lhs) => match rhs {
                         GeneralTerm::GeneralVariable(v) => {
@@ -148,9 +142,7 @@ pub fn relation_simplify_outer(formula: Formula) -> Formula {
                         _ => (),
                     },
                     GeneralTerm::IntegerTerm(lhs) => match rhs {
-                        GeneralTerm::Symbol(_) => {
-                            f = Formula::AtomicFormula(AtomicFormula::Falsity);
-                        }
+                        GeneralTerm::Symbol(_) => (), // RHS could be an integer-valued placeholder, so no simplifications are possible
                         GeneralTerm::GeneralVariable(_) => (),
                         GeneralTerm::IntegerTerm(i) => {
                             let equality = format!("({lhs}) == ({i})");
@@ -743,11 +735,11 @@ mod tests {
     fn test_relation_simplify_outer() {
         for (src, target) in [
             ("s = s", "#true"),
-            ("s = a", "#false"),
-            ("s = X$i", "#false"),
-            ("a = 5", "#false"),
-            ("X$i = s", "#false"),
-            ("5 = s", "#false"),
+            //("s = a", "#false"),  // These are only valid in the absence of placeholders
+            //("s = X$i", "#false"),
+            //("a = 5", "#false"),
+            //("X$i = s", "#false"),
+            //("5 = s", "#false"),
             //("X$i = X$i", "#true"),
             ("5 = 5", "#true"),
             ("(3 + 2) * -1 = -5", "#true"),

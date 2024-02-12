@@ -174,11 +174,19 @@ fn main() -> Result<()> {
                     }
                 }
                 Translation::Simplify => {
-                    let formula: fol::Formula = content
+                    let theory: fol::Theory = content
                         .parse()
                         .with_context(|| format!("could not parse file `{}`", input.display()))?;
 
-                    let simple = ht_simplifications::simplify(formula, false);
+                    let simple = ht_simplifications::simplify_theory(theory);
+                    // match completion(&theory) {
+                    //     Some(completion) => {
+                    //         println!("{completion}")
+                    //     }
+                    //     None => {
+                    //         println!("Not a completable theory.")
+                    //     }
+                    // }
 
                     println!("{simple}");
                 }
