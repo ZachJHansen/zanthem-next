@@ -1,5 +1,4 @@
 pub mod command_line;
-pub mod command_line;
 pub mod convenience;
 pub mod formatting;
 pub mod parsing;
@@ -24,9 +23,6 @@ use {
         fs::{read_dir, read_to_string},
         io,
         path::PathBuf,
-
-        #[clap(long, short, action)]
-        simplify: bool,
     },
 };
 
@@ -43,6 +39,7 @@ fn verify(
     cores: u16,
     break_equivalences: bool,
     parallelize: bool,
+    simplify: bool,
 ) -> Result<()> {
     let spec = match specification.extension() {
         Some(extension) => match extension.to_str() {
@@ -108,6 +105,7 @@ fn verify(
                 cores,
                 break_equivalences,
                 parallelize,
+                simplify,
             );
         }
         Verification::Sequential => {
@@ -119,6 +117,7 @@ fn verify(
                 cores,
                 break_equivalences,
                 parallelize,
+                simplify,
             );
         }
     }
@@ -171,6 +170,9 @@ fn main() -> Result<()> {
                         }
                     }
                 }
+                Translation::Test => {
+                    todo!()
+                }
             }
 
             Ok(())
@@ -184,6 +186,7 @@ fn main() -> Result<()> {
             cores,
             break_equivalences,
             parallel,
+            simplify,
         } => {
             verify(
                 with,
@@ -194,6 +197,7 @@ fn main() -> Result<()> {
                 cores,
                 break_equivalences,
                 parallel,
+                simplify,
             )?;
             Ok(())
         }
@@ -203,6 +207,7 @@ fn main() -> Result<()> {
             cores,
             break_equivalences,
             parallel,
+            simplify,
         } => {
             let mut programs: Vec<&PathBuf> = vec![];
             let mut specs: Vec<&PathBuf> = vec![];
@@ -269,6 +274,7 @@ fn main() -> Result<()> {
                     cores,
                     break_equivalences,
                     parallel,
+                    simplify,
                 )?;
             } else {
                 verify(
@@ -280,6 +286,7 @@ fn main() -> Result<()> {
                     cores,
                     break_equivalences,
                     parallel,
+                    simplify,
                 )?;
             }
             Ok(())

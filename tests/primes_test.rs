@@ -88,10 +88,16 @@ fn verify_graph_coloring_cmd() {
         ])
         .unwrap();
 
-    let f1_expected = include_str!("/home/zachhansen/Desktop/anthem-next/examples/expectations/graph-coloring/forward_1.p").trim_end();
+    let f1_expected = include_str!(
+        "/home/zachhansen/Desktop/anthem-next/examples/expectations/graph-coloring/forward_1.p"
+    )
+    .trim_end();
     let f1_actual = include_str!("/home/zachhansen/Desktop/anthem-next/forward_1.p").trim_end();
 
-    let b1_expected = include_str!("/home/zachhansen/Desktop/anthem-next/examples/expectations/graph-coloring/backward_1.p").trim_end();
+    let b1_expected = include_str!(
+        "/home/zachhansen/Desktop/anthem-next/examples/expectations/graph-coloring/backward_1.p"
+    )
+    .trim_end();
     let b1_actual = include_str!("/home/zachhansen/Desktop/anthem-next/backward_1.p").trim_end();
 
     assert!(f1_expected == f1_actual && b1_expected == b1_actual);

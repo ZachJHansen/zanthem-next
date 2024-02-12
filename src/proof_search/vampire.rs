@@ -27,10 +27,10 @@ pub fn default_verification(
     specification: &FileType,
     user_guide: &fol::Specification,
     lemmas: Option<fol::Specification>,
-    simplify: bool,
     cores: u16,
     break_equivalences: bool,
     parallelize: bool,
+    simplify: bool,
 ) {
     let mut h = ProblemHandler::new(program, specification, user_guide, simplify);
     match lemmas {
@@ -55,10 +55,10 @@ pub fn sequential_verification(
     specification: &FileType,
     user_guide: &fol::Specification,
     lemmas: Option<fol::Specification>,
-    simplify: bool,
     cores: u16,
     break_equivalences: bool,
     parallelize: bool,
+    simplify: bool,
 ) {
     let mut h = ProblemHandler::new(program, specification, user_guide, simplify);
     match lemmas {

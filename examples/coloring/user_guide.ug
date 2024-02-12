@@ -1,0 +1,2 @@
+input: vertex/1, edge/2, color/1.
+output: color/2.

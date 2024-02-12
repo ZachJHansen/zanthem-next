@@ -41,6 +41,9 @@ pub enum Command {
 
         #[clap(long, short, action)]
         parallel: bool,
+
+        #[clap(long, short, action)]
+        simplify: bool,
     },
     VerifyAlt {
         #[arg(long, value_enum)]
@@ -56,6 +59,9 @@ pub enum Command {
 
         #[clap(long, short, action)]
         parallel: bool,
+
+        #[clap(long, short, action)]
+        simplify: bool,
     },
 }
 
@@ -63,6 +69,7 @@ pub enum Command {
 pub enum Translation {
     TauStar,
     Completion,
+    Test,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
