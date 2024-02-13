@@ -15,6 +15,7 @@ use {
         syntax_tree::{asp, fol},
         translating::completion::completion,
         translating::tau_star::tau_star,
+        formatting::fol::tptp::Format,
     },
     anyhow::{Context, Result},
     clap::Parser as _,
@@ -141,6 +142,12 @@ fn collect_files(dir: PathBuf) -> io::Result<Vec<PathBuf>> {
 
 fn main() -> Result<()> {
     env_logger::init();
+
+    //let f1: fol::Formula = "forall Y (exists Z (exists I$ J$ (Z = I$ + J$ and Y = I$ and J$ = 1) and q(Z)) -> r(Y))".parse().unwrap();
+    //let f2: fol::Formula = "forall Y (q(Y) -> exists Z (exists I$ J$ (Z = I$ - J$ and Y = I$ and J$ = 1) and r(Z)))".parse().unwrap();
+    let f3: fol::Formula = "forall Y( exists Z (exists I$ J$ (Z = I$ - J$ and Y = I$ and J$ = 1) and q(Y) -> r(Z)))".parse().unwrap();
+
+    println!("tff(con1, conjecture, {}).", Format(&f3));
 
     match Arguments::parse().command {
         Command::Translate { with, input } => {
