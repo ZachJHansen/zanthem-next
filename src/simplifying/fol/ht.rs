@@ -301,62 +301,146 @@ pub fn simplify_nested_quantifiers_outer(formula: Formula) -> Formula {
 }
 
 // ASSUMES formula has the form:
-// exists X ( F(var) & var = term ) OR
-// exists X ( F(var) & term = var )
-// WHERE var occurs in variable list X
-// If var is a variable of sort S and term is a domain element of S universe, return `exists X \ {var} F(term)`
+// F(var) & var = term  OR
+// F(var) & term = var
+// If var is a variable of sort S and term is a term of a subsort of S, 
+// and term doesn't contain variables quantified within F, return `F(term)`
 // Otherwise, return the original formula
 fn subsort_equality(var: Variable, term: GeneralTerm, formula: Formula) -> (Formula, bool) {
     let mut modified = false;
-    let simplified_formula;
+    let mut simplified_formula = formula.clone();
     match formula.clone().unbox() {
-        UnboxedFormula::QuantifiedFormula {
-            quantification:
-                Quantification {
-                    variables: mut vars,
-                    ..
-                },
-            formula: Formula::BinaryFormula { lhs, .. },
-        } => match var.sort {
-            Sort::General => {
-                modified = true;
-                vars.retain(|x| x != &var);
-                if vars.is_empty() {
-                    simplified_formula = lhs.substitute(var, term);
-                } else {
-                    simplified_formula = Formula::QuantifiedFormula {
-                        quantification: Quantification {
-                            quantifier: Quantifier::Exists,
-                            variables: vars,
-                        },
-                        formula: lhs.substitute(var, term).into(),
-                    }
-                };
-            }
-            Sort::Integer => match term.clone() {
-                GeneralTerm::IntegerTerm(_) => {
-                    modified = true;
-                    vars.retain(|x| x != &var);
-                    if vars.is_empty() {
+        UnboxedFormula::BinaryFormula {
+            connective: BinaryConnective::Conjunction,
+            lhs,
+            ..
+        } => {
+            let term_vars = term.variables();   // term must not contain var
+            match var.sort {
+                Sort::General => {
+                    if !term_vars.contains(&var) && !lhs.clone().unsafe_substitution(&var, &term) {               
+                        modified = true;
                         simplified_formula = lhs.substitute(var, term);
-                    } else {
-                        simplified_formula = Formula::QuantifiedFormula {
-                            quantification: Quantification {
-                                quantifier: Quantifier::Exists,
-                                variables: vars,
-                            },
-                            formula: lhs.substitute(var, term).into(),
-                        };
                     }
-                }
-                _ => {
-                    simplified_formula = formula;
-                }
-            },
+                },
+                Sort::Integer => match term.clone() {
+                    GeneralTerm::IntegerTerm(_) => {
+                        if !term_vars.contains(&var) && !lhs.clone().unsafe_substitution(&var, &term) {
+                            modified = true;
+                            simplified_formula = lhs.substitute(var, term);
+                        }
+                    },
+                    _ => {
+                        simplified_formula = formula;
+                    }
+                },
+            }
         },
+
         _ => panic!("you're using the subsort equality fn wrong"),
     }
     (simplified_formula, modified)
+}
+
+// Given a tree of conjunctions, F1, .. Fi, .. Fn, identify an equality formula Fi: X = t or t = X
+// If possible, substitute t for X within the tree and drop Fi
+// Return the original formula and None if not possible
+// Otherwise, return the simplified formula and the variable that was replaced 
+fn simplify_conjunction_tree_with_equality(formula: Formula, enclosing_variables: Vec<Variable>) -> (Formula, Option<Variable>) {
+    let mut result = (formula.clone(), None);
+    let conjunctive_terms = Formula::conjoin_invert(formula.clone());
+    for ct in conjunctive_terms.iter() {
+        // Search for an equality formula
+        if let Formula::AtomicFormula(AtomicFormula::Comparison(Comparison {
+            term,
+            guards,
+        })) = ct
+        {
+            if guards.len() == 1 {
+                let g = guards[0].clone();
+                match g.relation {
+                    Relation::Equal => {
+                        let lhs_is_var = match term.clone() {
+                            GeneralTerm::GeneralVariable(v) => Some(Variable {
+                                sort: Sort::General,
+                                name: v,
+                            }),
+                            GeneralTerm::IntegerTerm(
+                                IntegerTerm::BasicIntegerTerm(
+                                    BasicIntegerTerm::IntegerVariable(v),
+                                ),
+                            ) => Some(Variable {
+                                sort: Sort::Integer,
+                                name: v,
+                            }),
+                            _ => None,
+                        };
+                        let rhs_is_var = match g.term.clone() {
+                            GeneralTerm::GeneralVariable(v) => Some(Variable {
+                                sort: Sort::General,
+                                name: v,
+                            }),
+                            GeneralTerm::IntegerTerm(
+                                IntegerTerm::BasicIntegerTerm(
+                                    BasicIntegerTerm::IntegerVariable(v),
+                                ),
+                            ) => Some(Variable {
+                                sort: Sort::Integer,
+                                name: v,
+                            }),
+                            _ => None,
+                        };
+
+                        let mut safety = true; // Simplify var = term or term = var but not both
+                        // Don't restructure the conjunction tree unless simplification occurs
+                        let mut restructured = vec![]; // Make the equality formula the top rhs leaf of a new conjunction tree
+                        for i in 0..conjunctive_terms.len() {
+                            if conjunctive_terms[i] != *ct {
+                                restructured.push(conjunctive_terms[i].clone());
+                            }
+                        }
+                        restructured.push(ct.clone());
+
+                        let simplified = Formula::conjoin(restructured);
+
+                        if let Some(v1) = lhs_is_var {
+                            if enclosing_variables.contains(&v1) {
+                                let simplification_result =
+                                    subsort_equality(v1.clone(), g.term, simplified.clone());
+                                safety = false;
+                                if simplification_result.1 {
+                                    result = (simplification_result.0, Some(v1));
+                                } else {
+                                    result = (formula.clone(), None);
+                                }    
+                            }
+                        }
+                        if let Some(v2) = rhs_is_var {
+                            if enclosing_variables.contains(&v2) && safety {
+                                let simplification_result = subsort_equality(
+                                    v2.clone(),
+                                    term.clone(),
+                                    simplified,
+                                );
+                                safety = false;
+                                if simplification_result.1 {
+                                    result = (simplification_result.0, Some(v2));
+                                } else {
+                                    result = (formula.clone(), None);
+                                }
+                            }
+                        }
+                        if !safety {
+                            break;
+                        }
+                    },
+
+                    _ => (),
+                }
+            }
+        }
+    }
+    result
 }
 
 pub fn simplify_redundant_quantifiers(formula: Formula) -> Formula {
@@ -371,7 +455,7 @@ pub fn simplify_redundant_quantifiers_outer(formula: Formula) -> Formula {
             quantification:
                 Quantification {
                     quantifier: Quantifier::Exists,
-                    variables,
+                    mut variables,
                 },
             formula: f,
         } => match f.clone().unbox() {
@@ -379,111 +463,51 @@ pub fn simplify_redundant_quantifiers_outer(formula: Formula) -> Formula {
                 connective: BinaryConnective::Conjunction,
                 ..
             } => {
-                let mut simplified_formula = None;
-                let conjunctive_terms = Formula::conjoin_invert(f.clone());
-                for ct in conjunctive_terms.iter() {
-                    // Search for an equality formula
-                    if let Formula::AtomicFormula(AtomicFormula::Comparison(Comparison {
-                        term,
-                        guards,
-                    })) = ct
-                    {
-                        if guards.len() == 1 {
-                            let g = guards[0].clone();
-                            match g.relation {
-                                Relation::Equal => {
-                                    let lhs_is_var = match term.clone() {
-                                        GeneralTerm::GeneralVariable(v) => Some(Variable {
-                                            sort: Sort::General,
-                                            name: v,
-                                        }),
-                                        GeneralTerm::IntegerTerm(
-                                            IntegerTerm::BasicIntegerTerm(
-                                                BasicIntegerTerm::IntegerVariable(v),
-                                            ),
-                                        ) => Some(Variable {
-                                            sort: Sort::Integer,
-                                            name: v,
-                                        }),
-                                        _ => None,
-                                    };
-                                    let rhs_is_var = match g.term.clone() {
-                                        GeneralTerm::GeneralVariable(v) => Some(Variable {
-                                            sort: Sort::General,
-                                            name: v,
-                                        }),
-                                        GeneralTerm::IntegerTerm(
-                                            IntegerTerm::BasicIntegerTerm(
-                                                BasicIntegerTerm::IntegerVariable(v),
-                                            ),
-                                        ) => Some(Variable {
-                                            sort: Sort::Integer,
-                                            name: v,
-                                        }),
-                                        _ => None,
-                                    };
-
-                                    let mut safety = true; // Simplify var = term or term = var but not both
-                                    let mut modified = false; // Don't restructure the conjunction tree unless simplification occurs
-                                    let mut restructured = vec![]; // Make the equality formula the top rhs leaf of a new conjunction tree
-                                    for i in 0..conjunctive_terms.len() {
-                                        if conjunctive_terms[i] != *ct {
-                                            restructured.push(conjunctive_terms[i].clone());
-                                        }
-                                    }
-                                    restructured.push(ct.clone());
-
-                                    let mut simplified = Formula::QuantifiedFormula {
-                                        quantification: Quantification {
-                                            quantifier: Quantifier::Exists,
-                                            variables: variables.clone(),
-                                        },
-                                        formula: Formula::conjoin(restructured).into(),
-                                    };
-                                    if let Some(v1) = lhs_is_var {
-                                        if variables.contains(&v1) {
-                                            let simplification_result =
-                                                subsort_equality(v1.clone(), g.term, simplified);
-                                            safety = false;
-                                            modified = simplification_result.1;
-                                            simplified = simplification_result.0;
-                                        }
-                                    }
-                                    if let Some(v2) = rhs_is_var {
-                                        if variables.contains(&v2) && safety {
-                                            let simplification_result = subsort_equality(
-                                                v2.clone(),
-                                                term.clone(),
-                                                simplified,
-                                            );
-                                            safety = false;
-                                            modified = simplification_result.1;
-                                            simplified = simplification_result.0;
-                                        }
-                                    }
-                                    if !safety {
-                                        if modified {
-                                            simplified_formula = Some(simplified);
-                                        } else {
-                                            simplified_formula = Some(formula.clone());
-                                        }
-
-                                        break;
-                                    }
-                                }
-                                _ => (),
-                            }
+                let simplification_result = simplify_conjunction_tree_with_equality(f, variables.clone());
+                match simplification_result.1 {
+                    Some(var) => {
+                        variables.retain(|v| v != &var);
+                        Formula::QuantifiedFormula {
+                            quantification: Quantification {
+                                quantifier: Quantifier::Exists,
+                                variables,
+                            },
+                            formula: simplification_result.0.into(),
                         }
+                    },
+                    None => {
+                        formula
                     }
-                }
-                if simplified_formula.is_some() {
-                    simplified_formula.unwrap()
-                } else {
-                    formula
                 }
             }
             _ => formula,
         },
+
+        // A universally quantified implication can sometimes be simplified
+        // e.g. forall X1 .. Xj .. Xn  (F1 and .. Fi .. and Fm -> G), where Fi is Xj=t, and Xj doesn’t occur in t, and free variables occurring in t are not bound by quantifiers in F1, F2, ..
+        // becomes forall X1 .. Xn  (F1 and .. and Fm -> G)
+        // UnboxedFormula::QuantifiedFormula {
+        //     quantification:
+        //         Quantification {
+        //             quantifier: Quantifier::Forall,
+        //             variables,
+        //         },
+        //     formula: Formula::BinaryFormula {
+        //         connective: BinaryConnective::Implication,
+        //         lhs,
+        //         rhs,
+        //     },
+        // } => {
+        //     match lhs.clone().unbox() {
+        //         UnboxedFormula::BinaryFormula {
+        //             connective: BinaryConnective::Conjunction,
+        //             ..
+        //         }
+
+        //         _ => formula,
+        //     }
+        // },
+
         _ => formula,
     }
 }
@@ -678,8 +702,10 @@ mod tests {
     use super::{
         basic_simplify, basic_simplify_outer, relation_simplify_outer, restrict_quantifiers,
         simplify, simplify_empty_quantifiers, simplify_nested_quantifiers,
-        simplify_redundant_quantifiers, simplify_theory, simplify_variable_lists,
+        simplify_redundant_quantifiers, simplify_theory, simplify_variable_lists, simplify_conjunction_tree_with_equality,
     };
+
+    use crate::syntax_tree::fol::{Variable, Sort};
 
     #[test]
     fn test_basic_simplify() {
@@ -813,6 +839,23 @@ mod tests {
                 simplify_variable_lists(src.parse().unwrap()),
                 target.parse().unwrap()
             )
+        }
+    }
+
+    #[test]
+    fn test_simplify_conjunction_tree() {
+        for (src, target) in [
+            ((
+                "X = Z and not q(X)", 
+                vec![
+                    Variable { name: "X".to_string(), sort: Sort::General, },
+                    Variable { name: "Y".to_string(), sort: Sort::General, },
+                    ]
+            ), "not q(Z)"),
+        ] {
+            let result = simplify_conjunction_tree_with_equality(src.0.parse().unwrap(), src.1).0;
+            let target = target.parse().unwrap();
+            assert_eq!(result, target, "{result} != {target}")
         }
     }
 

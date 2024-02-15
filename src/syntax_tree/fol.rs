@@ -595,6 +595,34 @@ impl Formula {
         }
     }
 
+    // Replacing var with term within self is unsafe if self contains a subformula
+    // of the form QxF, where var is free in F and a variable in term occurs in x
+    pub fn unsafe_substitution(self, var: &Variable, term: &GeneralTerm) -> bool {
+        match self {
+            Formula::AtomicFormula(_) => false,
+            Formula::UnaryFormula {
+                formula,
+                ..
+            } => formula.unsafe_substitution(var, term),
+            Formula::BinaryFormula {
+                lhs,
+                rhs,
+                ..
+            } => {
+                lhs.unsafe_substitution(var, term) || rhs.unsafe_substitution(var, term)
+            }
+            Formula::QuantifiedFormula {
+                quantification,
+                formula,
+            } => {
+                let tvars = term.variables();
+                let qvars = HashSet::from_iter(quantification.variables);
+                let overlap: HashSet<&Variable> = tvars.intersection(&qvars).collect();
+                formula.contains_free_variable(var) && !overlap.is_empty() 
+            }
+        }
+    }
+
     pub fn rename_variables(self, count: usize) -> (Formula, usize) {
         match self {
             Formula::QuantifiedFormula {
@@ -687,7 +715,7 @@ impl_node!(Specification, Format, SpecificationParser);
 
 #[cfg(test)]
 mod tests {
-    use super::Formula;
+    use super::{Formula, Variable, GeneralTerm};
 
     #[test]
     fn test_formula_conjoin() {
@@ -796,6 +824,23 @@ mod tests {
                     .substitute(src[1].parse().unwrap(), src[2].parse().unwrap()),
                 target.parse().unwrap()
             )
+        }
+    }
+
+    #[test]
+    fn test_unsafe_substitution() {
+        for (src, target) in [
+            (vec!["exists X (p(X, V))", "V", "Y"], false),      // Safe
+            (vec!["exists X (p(X, V))", "V", "X"], true),       // Unsafe
+            (vec!["forall Y (q(Y)) and exists X (p(X) or X < V)", "V", "3"], false),
+            (vec!["forall Y (q(Y)) and exists X (p(X) or X < V)", "V", "X"], true),
+            (vec!["q(V) -> exists X Y$ Z$ (X = Y$ or Z$ < 1 and p(V))", "V", "(Y$+1)*3"], true),
+            (vec!["q(V) -> exists X Z$ (X = Y$ or Z$ < 1 and p(V))", "V", "(Y$+1)*3"], false),
+        ] {
+            let f: Formula = src[0].parse().unwrap();
+            let v: Variable = src[1].parse().unwrap();
+            let t: GeneralTerm = src[2].parse().unwrap();
+            assert_eq!(f.unsafe_substitution(&v, &t), target)
         }
     }
 }
