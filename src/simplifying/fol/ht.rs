@@ -896,6 +896,10 @@ mod tests {
                 "exists Z Z1 ( Z = I and (exists K$i (K$i = I) and Z = Z1) )",
                 "exists Z1 ( exists K$i (K$i = I) and I = Z1)",
             ),
+            (
+                "forall X V (p(X) and X = V -> q(V))",
+                "forall V (p(V) -> q(V))",
+            ),
         ] {
             let src =
                 simplify_empty_quantifiers(simplify_redundant_quantifiers(src.parse().unwrap()));
