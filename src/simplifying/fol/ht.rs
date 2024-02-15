@@ -345,8 +345,8 @@ fn subsort_equality(var: Variable, term: GeneralTerm, formula: Formula) -> (Form
 // Given a tree of conjunctions, F1, .. Fi, .. Fn, identify an equality formula Fi: X = t or t = X
 // If possible, substitute t for X within the tree and drop Fi
 // Return the original formula and None if not possible
-// Otherwise, return the simplified formula and the variable that was replaced 
-fn simplify_conjunction_tree_with_equality(formula: Formula, enclosing_variables: Vec<Variable>) -> (Formula, Option<Variable>) {
+// Otherwise, return the simplified formula and the (X, t) substitution pair
+fn simplify_conjunction_tree_with_equality(formula: Formula, enclosing_variables: Vec<Variable>) -> (Formula, Option<(Variable, GeneralTerm)>) {
     let mut result = (formula.clone(), None);
     let conjunctive_terms = Formula::conjoin_invert(formula.clone());
     for ct in conjunctive_terms.iter() {
@@ -406,10 +406,10 @@ fn simplify_conjunction_tree_with_equality(formula: Formula, enclosing_variables
                         if let Some(v1) = lhs_is_var {
                             if enclosing_variables.contains(&v1) {
                                 let simplification_result =
-                                    subsort_equality(v1.clone(), g.term, simplified.clone());
+                                    subsort_equality(v1.clone(), g.term.clone(), simplified.clone());
                                 safety = false;
                                 if simplification_result.1 {
-                                    result = (simplification_result.0, Some(v1));
+                                    result = (simplification_result.0, Some((v1, g.term)));
                                 } else {
                                     result = (formula.clone(), None);
                                 }    
@@ -424,7 +424,7 @@ fn simplify_conjunction_tree_with_equality(formula: Formula, enclosing_variables
                                 );
                                 safety = false;
                                 if simplification_result.1 {
-                                    result = (simplification_result.0, Some(v2));
+                                    result = (simplification_result.0, Some((v2, term.clone())));
                                 } else {
                                     result = (formula.clone(), None);
                                 }
@@ -465,8 +465,8 @@ pub fn simplify_redundant_quantifiers_outer(formula: Formula) -> Formula {
             } => {
                 let simplification_result = simplify_conjunction_tree_with_equality(f, variables.clone());
                 match simplification_result.1 {
-                    Some(var) => {
-                        variables.retain(|v| v != &var);
+                    Some(sub_pair) => {
+                        variables.retain(|v| v != &sub_pair.0);
                         Formula::QuantifiedFormula {
                             quantification: Quantification {
                                 quantifier: Quantifier::Exists,
@@ -486,27 +486,52 @@ pub fn simplify_redundant_quantifiers_outer(formula: Formula) -> Formula {
         // A universally quantified implication can sometimes be simplified
         // e.g. forall X1 .. Xj .. Xn  (F1 and .. Fi .. and Fm -> G), where Fi is Xj=t, and Xj doesn’t occur in t, and free variables occurring in t are not bound by quantifiers in F1, F2, ..
         // becomes forall X1 .. Xn  (F1 and .. and Fm -> G)
-        // UnboxedFormula::QuantifiedFormula {
-        //     quantification:
-        //         Quantification {
-        //             quantifier: Quantifier::Forall,
-        //             variables,
-        //         },
-        //     formula: Formula::BinaryFormula {
-        //         connective: BinaryConnective::Implication,
-        //         lhs,
-        //         rhs,
-        //     },
-        // } => {
-        //     match lhs.clone().unbox() {
-        //         UnboxedFormula::BinaryFormula {
-        //             connective: BinaryConnective::Conjunction,
-        //             ..
-        //         }
+        UnboxedFormula::QuantifiedFormula {
+            quantification:
+                Quantification {
+                    quantifier: Quantifier::Forall,
+                    mut variables,
+                },
+            formula: Formula::BinaryFormula {
+                connective: BinaryConnective::Implication,
+                lhs,
+                rhs,
+            },
+        } => {
+            match lhs.clone().unbox() {
+                UnboxedFormula::BinaryFormula {
+                    connective: BinaryConnective::Conjunction,
+                    ..
+                } => {
+                    let mut f = formula;
+                    let lhs_simplify = simplify_conjunction_tree_with_equality(*lhs, variables.clone());
+                    match lhs_simplify.1 {
+                        Some(sub_pair) => {   
+                            if !rhs.clone().unsafe_substitution(&sub_pair.0, &sub_pair.1) {
+                                variables.retain(|v| v != &sub_pair.0);
+                                f = Formula::QuantifiedFormula {
+                                    quantification: Quantification {
+                                        quantifier: Quantifier::Forall,
+                                        variables,
+                                    },
+                                    formula: Formula::BinaryFormula {
+                                        connective: BinaryConnective::Implication,
+                                        lhs: lhs_simplify.0.into(),
+                                        rhs: rhs.substitute(sub_pair.0, sub_pair.1).into(),
+                                    }.into(),
+                                };
+                            }
+                            f
+                        },
+                        None => {
+                            f
+                        }
+                    }
+                }
 
-        //         _ => formula,
-        //     }
-        // },
+                _ => formula,
+            }
+        },
 
         _ => formula,
     }
