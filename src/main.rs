@@ -14,9 +14,8 @@ use {
         simplifying::fol::ht as ht_simplifications,
         syntax_tree::{asp, fol},
         translating::completion::completion,
-        translating::tau_star::tau_star,
         translating::gamma::gamma,
-        formatting::fol::tptp::Format,
+        translating::tau_star::tau_star,
     },
     anyhow::{Context, Result},
     clap::Parser as _,
@@ -146,9 +145,9 @@ fn main() -> Result<()> {
 
     //let f1: fol::Formula = "forall Y (exists Z (exists I$ J$ (Z = I$ + J$ and Y = I$ and J$ = 1) and q(Z)) -> r(Y))".parse().unwrap();
     //let f2: fol::Formula = "forall Y (q(Y) -> exists Z (exists I$ J$ (Z = I$ - J$ and Y = I$ and J$ = 1) and r(Z)))".parse().unwrap();
-    let f3: fol::Formula = "forall Y( exists Z (exists I$ J$ (Z = I$ - J$ and Y = I$ and J$ = 1) and q(Y) -> r(Z)))".parse().unwrap();
+    //let f3: fol::Formula = "forall Y( exists Z (exists I$ J$ (Z = I$ - J$ and Y = I$ and J$ = 1) and q(Y) -> r(Z)))".parse().unwrap();
 
-    println!("tff(con1, conjecture, {}).", Format(&f3));
+    //println!("tff(con1, conjecture, {}).", Format(&f3));
 
     match Arguments::parse().command {
         Command::Translate { with, input } => {

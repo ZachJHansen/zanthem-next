@@ -11,10 +11,7 @@ use crate::{
     },
 };
 
-use {
-    evalexpr::*,
-    log::debug,
-};
+use {evalexpr::*, log::debug};
 
 pub fn simplify_theory(theory: Theory) -> Theory {
     //todo
@@ -38,6 +35,10 @@ pub fn simplify(formula: Formula, prettify: bool) -> Formula {
         f2 = simplify_redundant_quantifiers(f2);
         f2 = simplify_empty_quantifiers(simplify_variable_lists(f2));
         debug!("Formula after redundant quantifier elimination: \n{f2}\n");
+
+        f2 = extend_quantifier_scope(f2);
+        f2 = simplify_empty_quantifiers(simplify_variable_lists(f2));
+        debug!("Formula after extending quantifier scope: \n{f2}\n");
 
         f2 = simplify_nested_quantifiers(f2);
         f2 = simplify_empty_quantifiers(simplify_variable_lists(f2));
@@ -131,7 +132,7 @@ pub fn relation_simplify_outer(formula: Formula) -> Formula {
                             }
                         }
                         GeneralTerm::GeneralVariable(_) => (),
-                        GeneralTerm::IntegerTerm(_) => (),  // LHS could be an integer-valued placeholder, so no simplifications are possible
+                        GeneralTerm::IntegerTerm(_) => (), // LHS could be an integer-valued placeholder, so no simplifications are possible
                     },
                     GeneralTerm::GeneralVariable(lhs) => match rhs {
                         GeneralTerm::GeneralVariable(v) => {
@@ -256,6 +257,101 @@ pub fn basic_simplify_outer(formula: Formula) -> Formula {
     }
 }
 
+pub fn extend_quantifier_scope(formula: Formula) -> Formula {
+    formula.apply(&mut extend_quantifier_scope_outer)
+}
+
+pub fn extend_quantifier_scope_outer(formula: Formula) -> Formula {
+    match formula.clone().unbox() {
+        // Bring a conjunctive or disjunctive term into the scope of a quantifer
+        // e.g. exists X ( F(X) ) & G => exists X ( F(X) & G )
+        // where X does not occur free in G
+        UnboxedFormula::BinaryFormula {
+            connective,
+            lhs:
+                Formula::QuantifiedFormula {
+                    quantification:
+                        Quantification {
+                            quantifier,
+                            variables,
+                        },
+                    formula: f,
+                },
+            rhs,
+        } => match connective {
+            BinaryConnective::Conjunction | BinaryConnective::Disjunction => {
+                let mut collision = false;
+                for var in variables.iter() {
+                    if rhs.contains_free_variable(var) {
+                        collision = true;
+                        break;
+                    }
+                }
+
+                match collision {
+                    true => formula,
+                    false => Formula::QuantifiedFormula {
+                        quantification: Quantification {
+                            quantifier,
+                            variables,
+                        },
+                        formula: Formula::BinaryFormula {
+                            connective,
+                            lhs: f,
+                            rhs: rhs.into(),
+                        }
+                        .into(),
+                    },
+                }
+            }
+            _ => formula,
+        },
+
+        UnboxedFormula::BinaryFormula {
+            connective,
+            lhs,
+            rhs:
+                Formula::QuantifiedFormula {
+                    quantification:
+                        Quantification {
+                            quantifier,
+                            variables,
+                        },
+                    formula: f,
+                },
+        } => match connective {
+            BinaryConnective::Conjunction | BinaryConnective::Disjunction => {
+                let mut collision = false;
+                for var in variables.iter() {
+                    if lhs.contains_free_variable(var) {
+                        collision = true;
+                        break;
+                    }
+                }
+
+                match collision {
+                    true => formula,
+                    false => Formula::QuantifiedFormula {
+                        quantification: Quantification {
+                            quantifier,
+                            variables,
+                        },
+                        formula: Formula::BinaryFormula {
+                            connective,
+                            lhs: lhs.into(),
+                            rhs: f,
+                        }
+                        .into(),
+                    },
+                }
+            }
+            _ => formula,
+        },
+
+        x => x.rebox(),
+    }
+}
+
 pub fn simplify_nested_quantifiers(formula: Formula) -> Formula {
     formula.apply(&mut simplify_nested_quantifiers_outer)
 }
@@ -303,7 +399,7 @@ pub fn simplify_nested_quantifiers_outer(formula: Formula) -> Formula {
 // ASSUMES formula has the form:
 // F(var) & var = term  OR
 // F(var) & term = var
-// If var is a variable of sort S and term is a term of a subsort of S, 
+// If var is a variable of sort S and term is a term of a subsort of S,
 // and term doesn't contain variables quantified within F, return `F(term)`
 // Otherwise, return the original formula
 fn subsort_equality(var: Variable, term: GeneralTerm, formula: Formula) -> (Formula, bool) {
@@ -315,27 +411,29 @@ fn subsort_equality(var: Variable, term: GeneralTerm, formula: Formula) -> (Form
             lhs,
             ..
         } => {
-            let term_vars = term.variables();   // term must not contain var
+            let term_vars = term.variables(); // term must not contain var
             match var.sort {
                 Sort::General => {
-                    if !term_vars.contains(&var) && !lhs.clone().unsafe_substitution(&var, &term) {               
+                    if !term_vars.contains(&var) && !lhs.clone().unsafe_substitution(&var, &term) {
                         modified = true;
                         simplified_formula = lhs.substitute(var, term);
                     }
-                },
+                }
                 Sort::Integer => match term.clone() {
                     GeneralTerm::IntegerTerm(_) => {
-                        if !term_vars.contains(&var) && !lhs.clone().unsafe_substitution(&var, &term) {
+                        if !term_vars.contains(&var)
+                            && !lhs.clone().unsafe_substitution(&var, &term)
+                        {
                             modified = true;
                             simplified_formula = lhs.substitute(var, term);
                         }
-                    },
+                    }
                     _ => {
                         simplified_formula = formula;
                     }
                 },
             }
-        },
+        }
 
         _ => panic!("you're using the subsort equality fn wrong"),
     }
@@ -346,16 +444,15 @@ fn subsort_equality(var: Variable, term: GeneralTerm, formula: Formula) -> (Form
 // If possible, substitute t for X within the tree and drop Fi
 // Return the original formula and None if not possible
 // Otherwise, return the simplified formula and the (X, t) substitution pair
-fn simplify_conjunction_tree_with_equality(formula: Formula, enclosing_variables: Vec<Variable>) -> (Formula, Option<(Variable, GeneralTerm)>) {
+fn simplify_conjunction_tree_with_equality(
+    formula: Formula,
+    enclosing_variables: Vec<Variable>,
+) -> (Formula, Option<(Variable, GeneralTerm)>) {
     let mut result = (formula.clone(), None);
     let conjunctive_terms = Formula::conjoin_invert(formula.clone());
     for ct in conjunctive_terms.iter() {
         // Search for an equality formula
-        if let Formula::AtomicFormula(AtomicFormula::Comparison(Comparison {
-            term,
-            guards,
-        })) = ct
-        {
+        if let Formula::AtomicFormula(AtomicFormula::Comparison(Comparison { term, guards })) = ct {
             if guards.len() == 1 {
                 let g = guards[0].clone();
                 match g.relation {
@@ -365,11 +462,9 @@ fn simplify_conjunction_tree_with_equality(formula: Formula, enclosing_variables
                                 sort: Sort::General,
                                 name: v,
                             }),
-                            GeneralTerm::IntegerTerm(
-                                IntegerTerm::BasicIntegerTerm(
-                                    BasicIntegerTerm::IntegerVariable(v),
-                                ),
-                            ) => Some(Variable {
+                            GeneralTerm::IntegerTerm(IntegerTerm::BasicIntegerTerm(
+                                BasicIntegerTerm::IntegerVariable(v),
+                            )) => Some(Variable {
                                 sort: Sort::Integer,
                                 name: v,
                             }),
@@ -380,11 +475,9 @@ fn simplify_conjunction_tree_with_equality(formula: Formula, enclosing_variables
                                 sort: Sort::General,
                                 name: v,
                             }),
-                            GeneralTerm::IntegerTerm(
-                                IntegerTerm::BasicIntegerTerm(
-                                    BasicIntegerTerm::IntegerVariable(v),
-                                ),
-                            ) => Some(Variable {
+                            GeneralTerm::IntegerTerm(IntegerTerm::BasicIntegerTerm(
+                                BasicIntegerTerm::IntegerVariable(v),
+                            )) => Some(Variable {
                                 sort: Sort::Integer,
                                 name: v,
                             }),
@@ -392,7 +485,7 @@ fn simplify_conjunction_tree_with_equality(formula: Formula, enclosing_variables
                         };
 
                         let mut safety = true; // Simplify var = term or term = var but not both
-                        // Don't restructure the conjunction tree unless simplification occurs
+                                               // Don't restructure the conjunction tree unless simplification occurs
                         let mut restructured = vec![]; // Make the equality formula the top rhs leaf of a new conjunction tree
                         for i in 0..conjunctive_terms.len() {
                             if conjunctive_terms[i] != *ct {
@@ -405,35 +498,31 @@ fn simplify_conjunction_tree_with_equality(formula: Formula, enclosing_variables
 
                         if let Some(v1) = lhs_is_var {
                             if enclosing_variables.contains(&v1) {
-                                let simplification_result =
-                                    subsort_equality(v1.clone(), g.term.clone(), simplified.clone());
-                                safety = false;
+                                let simplification_result = subsort_equality(
+                                    v1.clone(),
+                                    g.term.clone(),
+                                    simplified.clone(),
+                                );
                                 if simplification_result.1 {
                                     result = (simplification_result.0, Some((v1, g.term)));
-                                } else {
-                                    result = (formula.clone(), None);
-                                }    
+                                    safety = false;
+                                }
                             }
                         }
                         if let Some(v2) = rhs_is_var {
                             if enclosing_variables.contains(&v2) && safety {
-                                let simplification_result = subsort_equality(
-                                    v2.clone(),
-                                    term.clone(),
-                                    simplified,
-                                );
-                                safety = false;
+                                let simplification_result =
+                                    subsort_equality(v2.clone(), term.clone(), simplified);
                                 if simplification_result.1 {
                                     result = (simplification_result.0, Some((v2, term.clone())));
-                                } else {
-                                    result = (formula.clone(), None);
+                                    safety = false;
                                 }
                             }
                         }
                         if !safety {
                             break;
                         }
-                    },
+                    }
 
                     _ => (),
                 }
@@ -463,7 +552,8 @@ pub fn simplify_redundant_quantifiers_outer(formula: Formula) -> Formula {
                 connective: BinaryConnective::Conjunction,
                 ..
             } => {
-                let simplification_result = simplify_conjunction_tree_with_equality(f, variables.clone());
+                let simplification_result =
+                    simplify_conjunction_tree_with_equality(f, variables.clone());
                 match simplification_result.1 {
                     Some(sub_pair) => {
                         variables.retain(|v| v != &sub_pair.0);
@@ -474,10 +564,8 @@ pub fn simplify_redundant_quantifiers_outer(formula: Formula) -> Formula {
                             },
                             formula: simplification_result.0.into(),
                         }
-                    },
-                    None => {
-                        formula
                     }
+                    None => formula,
                 }
             }
             _ => formula,
@@ -492,45 +580,43 @@ pub fn simplify_redundant_quantifiers_outer(formula: Formula) -> Formula {
                     quantifier: Quantifier::Forall,
                     mut variables,
                 },
-            formula: Formula::BinaryFormula {
-                connective: BinaryConnective::Implication,
-                lhs,
-                rhs,
-            },
-        } => {
-            match lhs.clone().unbox() {
-                UnboxedFormula::BinaryFormula {
-                    connective: BinaryConnective::Conjunction,
-                    ..
-                } => {
-                    let mut f = formula;
-                    let lhs_simplify = simplify_conjunction_tree_with_equality(*lhs, variables.clone());
-                    match lhs_simplify.1 {
-                        Some(sub_pair) => {   
-                            if !rhs.clone().unsafe_substitution(&sub_pair.0, &sub_pair.1) {
-                                variables.retain(|v| v != &sub_pair.0);
-                                f = Formula::QuantifiedFormula {
-                                    quantification: Quantification {
-                                        quantifier: Quantifier::Forall,
-                                        variables,
-                                    },
-                                    formula: Formula::BinaryFormula {
-                                        connective: BinaryConnective::Implication,
-                                        lhs: lhs_simplify.0.into(),
-                                        rhs: rhs.substitute(sub_pair.0, sub_pair.1).into(),
-                                    }.into(),
-                                };
-                            }
-                            f
-                        },
-                        None => {
-                            f
+            formula:
+                Formula::BinaryFormula {
+                    connective: BinaryConnective::Implication,
+                    lhs,
+                    rhs,
+                },
+        } => match lhs.clone().unbox() {
+            UnboxedFormula::BinaryFormula {
+                connective: BinaryConnective::Conjunction,
+                ..
+            } => {
+                let mut f = formula;
+                let lhs_simplify = simplify_conjunction_tree_with_equality(*lhs, variables.clone());
+                match lhs_simplify.1 {
+                    Some(sub_pair) => {
+                        if !rhs.clone().unsafe_substitution(&sub_pair.0, &sub_pair.1) {
+                            variables.retain(|v| v != &sub_pair.0);
+                            f = Formula::QuantifiedFormula {
+                                quantification: Quantification {
+                                    quantifier: Quantifier::Forall,
+                                    variables,
+                                },
+                                formula: Formula::BinaryFormula {
+                                    connective: BinaryConnective::Implication,
+                                    lhs: lhs_simplify.0.into(),
+                                    rhs: rhs.substitute(sub_pair.0, sub_pair.1).into(),
+                                }
+                                .into(),
+                            };
                         }
+                        f
                     }
+                    None => f,
                 }
-
-                _ => formula,
             }
+
+            _ => formula,
         },
 
         _ => formula,
@@ -693,13 +779,24 @@ pub fn restrict_quantifiers_outer(formula: Formula) -> Formula {
                                                                     name: fvar,
                                                                     sort: Sort::Integer,
                                                                 });
-                                                                simplified_formula = Formula::QuantifiedFormula {
-                                                                quantification: Quantification {
-                                                                    quantifier: outer_quantifier.clone(),
-                                                                    variables: new_outer,
-                                                                },
-                                                                formula: f.clone().substitute(ovar.clone(), fvar_term).into(),
-                                                            };
+                                                                simplified_formula =
+                                                                    Formula::QuantifiedFormula {
+                                                                        quantification:
+                                                                            Quantification {
+                                                                                quantifier:
+                                                                                    outer_quantifier
+                                                                                        .clone(),
+                                                                                variables:
+                                                                                    new_outer,
+                                                                            },
+                                                                        formula: f
+                                                                            .clone()
+                                                                            .substitute(
+                                                                                ovar.clone(),
+                                                                                fvar_term,
+                                                                            )
+                                                                            .into(),
+                                                                    };
                                                                 break;
                                                             }
                                                         }
@@ -725,12 +822,13 @@ pub fn restrict_quantifiers_outer(formula: Formula) -> Formula {
 #[cfg(test)]
 mod tests {
     use super::{
-        basic_simplify, basic_simplify_outer, relation_simplify_outer, restrict_quantifiers,
-        simplify, simplify_empty_quantifiers, simplify_nested_quantifiers,
-        simplify_redundant_quantifiers, simplify_theory, simplify_variable_lists, simplify_conjunction_tree_with_equality,
+        basic_simplify, basic_simplify_outer, extend_quantifier_scope, relation_simplify_outer,
+        restrict_quantifiers, simplify, simplify_conjunction_tree_with_equality,
+        simplify_empty_quantifiers, simplify_nested_quantifiers, simplify_redundant_quantifiers,
+        simplify_theory, simplify_variable_lists,
     };
 
-    use crate::syntax_tree::fol::{Variable, Sort};
+    use crate::syntax_tree::fol::{Sort, Variable};
 
     #[test]
     fn test_basic_simplify() {
@@ -869,16 +967,49 @@ mod tests {
 
     #[test]
     fn test_simplify_conjunction_tree() {
-        for (src, target) in [
-            ((
-                "X = Z and not q(X)", 
+        for (src, target) in [(
+            (
+                "X = Z and not q(X)",
                 vec![
-                    Variable { name: "X".to_string(), sort: Sort::General, },
-                    Variable { name: "Y".to_string(), sort: Sort::General, },
-                    ]
-            ), "not q(Z)"),
-        ] {
+                    Variable {
+                        name: "X".to_string(),
+                        sort: Sort::General,
+                    },
+                    Variable {
+                        name: "Y".to_string(),
+                        sort: Sort::General,
+                    },
+                ],
+            ),
+            "not q(Z)",
+        )] {
             let result = simplify_conjunction_tree_with_equality(src.0.parse().unwrap(), src.1).0;
+            let target = target.parse().unwrap();
+            assert_eq!(result, target, "{result} != {target}")
+        }
+    }
+
+    #[test]
+    fn test_extend_quantification_scope() {
+        for (src, target) in [
+            (
+                "exists X (q(X) and 1 < 3) and p(Z)",
+                "exists X (q(X) and 1 < 3 and p(Z))",
+            ),
+            (
+                "exists X (q(X) and 1 < 3) and p(X)",
+                "exists X (q(X) and 1 < 3) and p(X)",
+            ),
+            (
+                "forall Z X (q(X) and 1 < Z) or p(Y,Z$)",
+                "forall Z X (q(X) and 1 < Z or p(Y,Z$))",
+            ),
+            (
+                "p(Z) and exists X (q(X) and 1 < 3)",
+                "exists X (p(Z) and (q(X) and 1 < 3))",
+            ),
+        ] {
+            let result = extend_quantifier_scope(src.parse().unwrap());
             let target = target.parse().unwrap();
             assert_eq!(result, target, "{result} != {target}")
         }
@@ -948,16 +1079,16 @@ mod tests {
             ),
             (
                 "exists X Y ( exists N1$i N2$i ( V1 = N1$i * N2$i and N1$i = X and N2$i = Y) and X > 1 and Y > 1)",
-                "exists N$i N3$i ((V1 = N3$i * N$i) and N3$i > 1 and N$i > 1)",
+                "exists N1$i N2$i (V1 = N1$i * N2$i and N1$i > 1 and N2$i > 1)",
             ),
             (
                 "forall V1 (composite(V1) <-> exists I J (exists I1$i J1$i (V1 = I1$i * J1$i and I1$i = I and J1$i = J) and (exists Z Z1 (Z = I and exists I$i J$i K$i (I$i = 2 and J$i = N$i and Z1 = K$i and I$i <= K$i <= J$i) and Z = Z1) and exists Z Z1 (Z = J and exists I$i J$i K$i (I$i = 2 and J$i = N$i and Z1 = K$i and I$i <= K$i <= J$i) and Z = Z1))))",
-                "forall V1 (composite(V1) <-> exists K2$i K3$i (V1 = K3$i * K2$i and (2 <= K3$i <= N$i and 2 <= K2$i <= N$i))) ",
+                "forall V1 (composite(V1) <-> exists K$i K1$i (V1 = K1$i * K$i and 2 <= K1$i <= N$i and 2 <= K$i <= N$i))",
             ),
-            // (
-            //     "forall V1 (prime(V1) <-> exists I (V1 = I and (exists Z Z1 (Z = I and exists I$i J$i K$i (I$i = 2 and J$i = n and Z1 = K$i and I$i <= K$i <= J$i) and Z = Z1) and exists Z (Z = I and not composite(Z)))))",
-            //     "forall V1 (prime(V1) <-> exists J$i K$i (J$i = n and V1 = K$i and 2 <= K$i <= J$i) and not composite(V1))",
-            // ),
+            (
+                "forall V1 (prime(V1) <-> exists I (V1 = I and (exists Z Z1 (Z = I and exists I$i J$i K$i (I$i = 2 and J$i = n and Z1 = K$i and I$i <= K$i <= J$i) and Z = Z1) and exists Z (Z = I and not composite(Z)))))",
+                "forall V1 (prime(V1) <-> exists J$i K1$i (J$i = n and 2 <= K1$i <= J$i and V1 = K1$i and not composite(V1)))",
+            ),
             // (
             //     "forall V1 (composite(V1) <-> exists I J (exists I1$i J1$i (V1 = I1$i * J1$i and I1$i = I and J1$i = J) and (exists Z Z1 (Z = I and Z1 = 1 and Z > Z1) and exists Z Z1 (Z = J and Z1 = 1 and Z > Z1))))",
             //     "",
@@ -971,7 +1102,7 @@ mod tests {
             // ),
             (
                 "exists Z Z1 ( Z = I and (exists K$i (K$i = 2) and Z = Z1) )",
-                "exists K$i(K$i = 2)",
+                "exists Z1 (I = Z1)",
             ),
             (
                 "forall I (exists Z Z1 ( Z = I and ((q(Z)) and Z = Z1) ))",
