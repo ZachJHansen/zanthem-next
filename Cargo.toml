@@ -15,7 +15,12 @@ license = "MIT"
 [dependencies]
 anyhow = "1"
 clap = { version = "4", features = ["derive"] }
+indexmap = "2"
 lazy_static = "1"
 pest = "2"
 pest_derive = "2"
 regex = "1"
+evalexpr = "11"
+assert_cmd = "2"
+env_logger = "0.11"
+log = "0.4"

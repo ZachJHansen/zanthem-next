@@ -85,3 +85,19 @@ formula = { prefix* ~ primary ~ (infix ~ prefix* ~ primary)* }
 
 // TODO: Think about a proper way to handle the whitespace at the end of programs
 theory = { (formula ~ ".")* ~ WHITESPACE* }
+
+placeholder = { symbolic_constant ~ "-> integer" }
+
+lemma = { forward_lemma | backward_lemma | universal_lemma }
+    forward_lemma   = { "lemma(forward):" ~ formula ~ "." }
+    backward_lemma  = { "lemma(backward):" ~ formula ~ "." }
+    universal_lemma = { "lemma:" ~ formula ~ "." }
+
+spec = { input | output | placeholder_declaration | assumption | conjecture | lemma }
+    input                   = { "input:" ~ predicate ~ ("," ~ predicate)* ~ "." }
+    output                  = { "output:" ~ predicate ~ ("," ~ predicate)* ~ "." }
+    placeholder_declaration = { "input:" ~ placeholder ~ ("," ~ placeholder)* ~ "." }
+    assumption              = { "assume:" ~ formula ~ "." }
+    conjecture              = { "spec:" ~ formula ~ "." }
+
+specification = { (spec ~ WHITESPACE*)* }

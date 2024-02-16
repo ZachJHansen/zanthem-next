@@ -2,8 +2,9 @@ use crate::{
     parsing::PestParser,
     syntax_tree::fol::{
         Atom, AtomicFormula, BasicIntegerTerm, BinaryConnective, BinaryOperator, Comparison,
-        Formula, GeneralTerm, Guard, IntegerTerm, Predicate, Quantification, Quantifier, Relation,
-        Sort, Theory, UnaryConnective, UnaryOperator, Variable,
+        Direction, Formula, GeneralTerm, Guard, IntegerTerm, Lemma, Placeholder, Predicate,
+        Quantification, Quantifier, Relation, Sort, Spec, Specification, Theory, UnaryConnective,
+        UnaryOperator, Variable,
     },
 };
 
@@ -505,6 +506,208 @@ impl PestParser for TheoryParser {
     }
 }
 
+pub struct PlaceholderParser;
+
+impl PestParser for PlaceholderParser {
+    type Node = Placeholder;
+
+    type InternalParser = internal::Parser;
+    type Rule = internal::Rule;
+    const RULE: Self::Rule = internal::Rule::placeholder;
+
+    fn translate_pair(pair: pest::iterators::Pair<'_, Self::Rule>) -> Self::Node {
+        if pair.as_rule() != internal::Rule::placeholder {
+            Self::report_unexpected_pair(pair)
+        }
+
+        let mut pairs = pair.into_inner();
+        let name = pairs
+            .next()
+            .unwrap_or_else(|| Self::report_missing_pair())
+            .as_str()
+            .into();
+
+        Placeholder { name }
+    }
+}
+
+pub struct LemmaParser;
+
+impl PestParser for LemmaParser {
+    type Node = Lemma;
+
+    type InternalParser = internal::Parser;
+    type Rule = internal::Rule;
+    const RULE: Self::Rule = internal::Rule::lemma;
+
+    fn translate_pair(pair: pest::iterators::Pair<'_, Self::Rule>) -> Self::Node {
+        match pair.as_rule() {
+            internal::Rule::lemma => Self::translate_pairs(pair.into_inner()),
+            internal::Rule::forward_lemma => {
+                if pair.as_rule() != internal::Rule::forward_lemma {
+                    Self::report_unexpected_pair(pair)
+                }
+
+                let mut pairs = pair.into_inner();
+
+                let formula = FormulaParser::translate_pair(
+                    pairs.next().unwrap_or_else(|| Self::report_missing_pair()),
+                );
+
+                Lemma {
+                    direction: Direction::Forward,
+                    formula,
+                }
+            }
+            internal::Rule::backward_lemma => {
+                if pair.as_rule() != internal::Rule::backward_lemma {
+                    Self::report_unexpected_pair(pair)
+                }
+
+                let mut pairs = pair.into_inner();
+
+                let formula = FormulaParser::translate_pair(
+                    pairs.next().unwrap_or_else(|| Self::report_missing_pair()),
+                );
+
+                Lemma {
+                    direction: Direction::Backward,
+                    formula,
+                }
+            }
+            internal::Rule::universal_lemma => {
+                if pair.as_rule() != internal::Rule::universal_lemma {
+                    Self::report_unexpected_pair(pair)
+                }
+
+                let mut pairs = pair.into_inner();
+
+                let formula = FormulaParser::translate_pair(
+                    pairs.next().unwrap_or_else(|| Self::report_missing_pair()),
+                );
+
+                Lemma {
+                    direction: Direction::Universal,
+                    formula,
+                }
+            }
+            _ => Self::report_unexpected_pair(pair),
+        }
+    }
+}
+
+pub struct SpecParser;
+
+impl PestParser for SpecParser {
+    type Node = Spec;
+
+    type InternalParser = internal::Parser;
+    type Rule = internal::Rule;
+    const RULE: Self::Rule = internal::Rule::spec;
+
+    fn translate_pair(pair: pest::iterators::Pair<'_, Self::Rule>) -> Self::Node {
+        match pair.as_rule() {
+            internal::Rule::spec => SpecParser::translate_pairs(pair.into_inner()),
+
+            internal::Rule::input => {
+                if pair.as_rule() != internal::Rule::input {
+                    Self::report_unexpected_pair(pair)
+                }
+
+                let mut pairs = pair.into_inner();
+
+                let first_predicate = pairs.next().unwrap_or_else(|| Self::report_missing_pair());
+                let remaining_predicates: Vec<_> =
+                    pairs.map(PredicateParser::translate_pair).collect();
+
+                let mut predicates = vec![PredicateParser::translate_pair(first_predicate)];
+                predicates.extend(remaining_predicates);
+
+                Spec::Input { predicates }
+            }
+            internal::Rule::output => {
+                if pair.as_rule() != internal::Rule::output {
+                    Self::report_unexpected_pair(pair)
+                }
+
+                let mut pairs = pair.into_inner();
+
+                let first_predicate = pairs.next().unwrap_or_else(|| Self::report_missing_pair());
+                let remaining_predicates: Vec<_> =
+                    pairs.map(PredicateParser::translate_pair).collect();
+
+                let mut predicates = vec![PredicateParser::translate_pair(first_predicate)];
+                predicates.extend(remaining_predicates);
+
+                Spec::Output { predicates }
+            }
+            internal::Rule::placeholder_declaration => {
+                if pair.as_rule() != internal::Rule::placeholder_declaration {
+                    Self::report_unexpected_pair(pair)
+                }
+
+                let mut pairs = pair.into_inner();
+
+                let first_placeholder = pairs.next().unwrap_or_else(|| Self::report_missing_pair());
+                let remaining_placeholders: Vec<_> =
+                    pairs.map(PlaceholderParser::translate_pair).collect();
+
+                let mut placeholders = vec![PlaceholderParser::translate_pair(first_placeholder)];
+                placeholders.extend(remaining_placeholders);
+
+                Spec::PlaceholderDeclaration { placeholders }
+            }
+            internal::Rule::assumption => {
+                if pair.as_rule() != internal::Rule::assumption {
+                    Self::report_unexpected_pair(pair)
+                }
+
+                let mut pairs = pair.into_inner();
+
+                let formula = FormulaParser::translate_pair(
+                    pairs.next().unwrap_or_else(|| Self::report_missing_pair()),
+                );
+
+                Spec::Assumption { formula }
+            }
+            internal::Rule::conjecture => {
+                if pair.as_rule() != internal::Rule::conjecture {
+                    Self::report_unexpected_pair(pair)
+                }
+
+                let mut pairs = pair.into_inner();
+
+                let formula = FormulaParser::translate_pair(
+                    pairs.next().unwrap_or_else(|| Self::report_missing_pair()),
+                );
+
+                Spec::Conjecture { formula }
+            }
+            internal::Rule::lemma => Spec::Lemma(LemmaParser::translate_pair(pair)),
+            _ => Self::report_unexpected_pair(pair),
+        }
+    }
+}
+
+pub struct SpecificationParser;
+
+impl PestParser for SpecificationParser {
+    type Node = Specification;
+
+    type InternalParser = internal::Parser;
+    type Rule = internal::Rule;
+    const RULE: Self::Rule = internal::Rule::specification;
+
+    fn translate_pair(pair: pest::iterators::Pair<'_, Self::Rule>) -> Self::Node {
+        if pair.as_rule() != internal::Rule::specification {
+            Self::report_unexpected_pair(pair)
+        }
+        Specification {
+            specs: pair.into_inner().map(SpecParser::translate_pair).collect(),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::vec;
@@ -513,16 +716,18 @@ mod tests {
         super::{
             AtomParser, AtomicFormulaParser, BasicIntegerTermParser, BinaryConnectiveParser,
             BinaryOperatorParser, ComparisonParser, FormulaParser, GeneralTermParser, GuardParser,
-            IntegerTermParser, PredicateParser, QuantificationParser, QuantifierParser,
-            RelationParser, TheoryParser, UnaryConnectiveParser, UnaryOperatorParser,
+            IntegerTermParser, LemmaParser, PlaceholderParser, PredicateParser,
+            QuantificationParser, QuantifierParser, RelationParser, SpecParser,
+            SpecificationParser, TheoryParser, UnaryConnectiveParser, UnaryOperatorParser,
             VariableParser,
         },
         crate::{
             parsing::TestedParser,
             syntax_tree::fol::{
                 Atom, AtomicFormula, BasicIntegerTerm, BinaryConnective, BinaryOperator,
-                Comparison, Formula, GeneralTerm, Guard, IntegerTerm, Predicate, Quantification,
-                Quantifier, Relation, Sort, Theory, UnaryConnective, UnaryOperator, Variable,
+                Comparison, Direction, Formula, GeneralTerm, Guard, IntegerTerm, Lemma,
+                Placeholder, Predicate, Quantification, Quantifier, Relation, Sort, Spec,
+                Specification, Theory, UnaryConnective, UnaryOperator, Variable,
             },
         },
     };
@@ -797,6 +1002,20 @@ mod tests {
                     Predicate {
                         symbol: "_p".into(),
                         arity: 1,
+                    },
+                ),
+                (
+                    "p/0",
+                    Predicate {
+                        symbol: "p".to_string(),
+                        arity: 0,
+                    },
+                ),
+                (
+                    "composite/3",
+                    Predicate {
+                        symbol: "composite".to_string(),
+                        arity: 3,
                     },
                 ),
             ])
@@ -1354,5 +1573,297 @@ mod tests {
                 },
             ),
         ]);
+    }
+
+    #[test]
+    fn parse_placeholder() {
+        PlaceholderParser
+            .should_parse_into([(
+                "n -> integer",
+                Placeholder {
+                    name: "n".to_string(),
+                },
+            )])
+            .should_reject(["n -> int"]);
+    }
+
+    #[test]
+    fn parse_lemma() {
+        LemmaParser
+            .should_parse_into([
+                (
+                    "lemma: a > 1.",
+                    Lemma {
+                        direction: Direction::Universal,
+                        formula: Formula::AtomicFormula(AtomicFormula::Comparison(Comparison {
+                            term: GeneralTerm::Symbol("a".to_string()),
+                            guards: vec![Guard {
+                                relation: Relation::Greater,
+                                term: GeneralTerm::IntegerTerm(IntegerTerm::BasicIntegerTerm(
+                                    BasicIntegerTerm::Numeral(1),
+                                )),
+                            }],
+                        })),
+                    },
+                ),
+                (
+                    "lemma(forward): a > 1.",
+                    Lemma {
+                        direction: Direction::Forward,
+                        formula: Formula::AtomicFormula(AtomicFormula::Comparison(Comparison {
+                            term: GeneralTerm::Symbol("a".to_string()),
+                            guards: vec![Guard {
+                                relation: Relation::Greater,
+                                term: GeneralTerm::IntegerTerm(IntegerTerm::BasicIntegerTerm(
+                                    BasicIntegerTerm::Numeral(1),
+                                )),
+                            }],
+                        })),
+                    },
+                ),
+                (
+                    "lemma(backward): #false.",
+                    Lemma {
+                        direction: Direction::Backward,
+                        formula: Formula::AtomicFormula(AtomicFormula::Falsity),
+                    },
+                ),
+            ])
+            .should_reject(["lemma: X", "lemma: a > 1"]);
+    }
+
+    #[test]
+    fn parse_spec() {
+        SpecParser
+            .should_parse_into([
+                (
+                    "input: p/0.",
+                    Spec::Input {
+                        predicates: vec![Predicate {
+                            symbol: "p".to_string(),
+                            arity: 0,
+                        }],
+                    },
+                ),
+                (
+                    "output: p/0, composite/3, prime/10.",
+                    Spec::Output {
+                        predicates: vec![
+                            Predicate {
+                                symbol: "p".to_string(),
+                                arity: 0,
+                            },
+                            Predicate {
+                                symbol: "composite".to_string(),
+                                arity: 3,
+                            },
+                            Predicate {
+                                symbol: "prime".to_string(),
+                                arity: 10,
+                            },
+                        ],
+                    },
+                ),
+                (
+                    "input: a -> integer, bar -> integer.",
+                    Spec::PlaceholderDeclaration {
+                        placeholders: vec![
+                            Placeholder {
+                                name: "a".to_string(),
+                            },
+                            Placeholder {
+                                name: "bar".to_string(),
+                            },
+                        ],
+                    },
+                ),
+                (
+                    "assume: #false.",
+                    Spec::Assumption {
+                        formula: Formula::AtomicFormula(AtomicFormula::Falsity),
+                    },
+                ),
+                (
+                    "spec: forall X (p(X) <-> q(X)).",
+                    Spec::Conjecture {
+                        formula: Formula::QuantifiedFormula {
+                            quantification: Quantification {
+                                quantifier: Quantifier::Forall,
+                                variables: vec![Variable {
+                                    name: "X".to_string(),
+                                    sort: Sort::General,
+                                }],
+                            },
+                            formula: Formula::BinaryFormula {
+                                connective: BinaryConnective::Equivalence,
+                                lhs: Formula::AtomicFormula(AtomicFormula::Atom(Atom {
+                                    predicate_symbol: "p".to_string(),
+                                    terms: vec![GeneralTerm::GeneralVariable("X".to_string())],
+                                }))
+                                .into(),
+                                rhs: Formula::AtomicFormula(AtomicFormula::Atom(Atom {
+                                    predicate_symbol: "q".to_string(),
+                                    terms: vec![GeneralTerm::GeneralVariable("X".to_string())],
+                                }))
+                                .into(),
+                            }
+                            .into(),
+                        },
+                    },
+                ),
+                (
+                    "lemma: forall X (p(X) <-> q(X)).",
+                    Spec::Lemma(Lemma {
+                        direction: Direction::Universal,
+                        formula: Formula::QuantifiedFormula {
+                            quantification: Quantification {
+                                quantifier: Quantifier::Forall,
+                                variables: vec![Variable {
+                                    name: "X".to_string(),
+                                    sort: Sort::General,
+                                }],
+                            },
+                            formula: Formula::BinaryFormula {
+                                connective: BinaryConnective::Equivalence,
+                                lhs: Formula::AtomicFormula(AtomicFormula::Atom(Atom {
+                                    predicate_symbol: "p".to_string(),
+                                    terms: vec![GeneralTerm::GeneralVariable("X".to_string())],
+                                }))
+                                .into(),
+                                rhs: Formula::AtomicFormula(AtomicFormula::Atom(Atom {
+                                    predicate_symbol: "q".to_string(),
+                                    terms: vec![GeneralTerm::GeneralVariable("X".to_string())],
+                                }))
+                                .into(),
+                            }
+                            .into(),
+                        },
+                    }),
+                ),
+            ])
+            .should_reject(["p/0", "input: p/1 q/2."]);
+    }
+
+    #[test]
+    fn parse_specification() {
+        SpecificationParser
+            .should_parse_into([
+                (
+                    "output: p/0. assume: #true.\ninput: n -> integer.",
+                    Specification {
+                        specs: vec![
+                            Spec::Output {
+                                predicates: vec![Predicate {
+                                    symbol: "p".to_string(),
+                                    arity: 0,
+                                }],
+                            },
+                            Spec::Assumption {
+                                formula: Formula::AtomicFormula(AtomicFormula::Truth),
+                            },
+                            Spec::PlaceholderDeclaration {
+                                placeholders: vec![Placeholder {
+                                    name: "n".to_string(),
+                                }],
+                            },
+                        ],
+                    },
+                ),
+                (
+                    "input: n -> integer. output: prime/1. assume: n > 1.",
+                    Specification {
+                        specs: vec![
+                            Spec::PlaceholderDeclaration {
+                                placeholders: vec![Placeholder {
+                                    name: "n".to_string(),
+                                }],
+                            },
+                            Spec::Output {
+                                predicates: vec![Predicate {
+                                    symbol: "prime".to_string(),
+                                    arity: 1,
+                                }],
+                            },
+                            Spec::Assumption {
+                                formula: Formula::AtomicFormula(AtomicFormula::Comparison(
+                                    Comparison {
+                                        term: GeneralTerm::Symbol("n".to_string()),
+                                        guards: vec![Guard {
+                                            relation: Relation::Greater,
+                                            term: GeneralTerm::IntegerTerm(
+                                                IntegerTerm::BasicIntegerTerm(
+                                                    BasicIntegerTerm::Numeral(1),
+                                                ),
+                                            ),
+                                        }],
+                                    },
+                                )),
+                            },
+                        ],
+                    },
+                ),
+                (
+                    "lemma(forward): a > 1.",
+                    Specification {
+                        specs: vec![Spec::Lemma(Lemma {
+                            direction: Direction::Forward,
+                            formula: Formula::AtomicFormula(AtomicFormula::Comparison(
+                                Comparison {
+                                    term: GeneralTerm::Symbol("a".to_string()),
+                                    guards: vec![Guard {
+                                        relation: Relation::Greater,
+                                        term: GeneralTerm::IntegerTerm(
+                                            IntegerTerm::BasicIntegerTerm(
+                                                BasicIntegerTerm::Numeral(1),
+                                            ),
+                                        ),
+                                    }],
+                                },
+                            )),
+                        })],
+                    },
+                ),
+                (
+                    "assume: #true. lemma: forall X (p(X) <-> q(X)).",
+                    Specification {
+                        specs: vec![
+                            Spec::Assumption {
+                                formula: Formula::AtomicFormula(AtomicFormula::Truth),
+                            },
+                            Spec::Lemma(Lemma {
+                                direction: Direction::Universal,
+                                formula: Formula::QuantifiedFormula {
+                                    quantification: Quantification {
+                                        quantifier: Quantifier::Forall,
+                                        variables: vec![Variable {
+                                            name: "X".to_string(),
+                                            sort: Sort::General,
+                                        }],
+                                    },
+                                    formula: Formula::BinaryFormula {
+                                        connective: BinaryConnective::Equivalence,
+                                        lhs: Formula::AtomicFormula(AtomicFormula::Atom(Atom {
+                                            predicate_symbol: "p".to_string(),
+                                            terms: vec![GeneralTerm::GeneralVariable(
+                                                "X".to_string(),
+                                            )],
+                                        }))
+                                        .into(),
+                                        rhs: Formula::AtomicFormula(AtomicFormula::Atom(Atom {
+                                            predicate_symbol: "q".to_string(),
+                                            terms: vec![GeneralTerm::GeneralVariable(
+                                                "X".to_string(),
+                                            )],
+                                        }))
+                                        .into(),
+                                    }
+                                    .into(),
+                                },
+                            }),
+                        ],
+                    },
+                ),
+            ])
+            .should_reject(["output: p/0, assumption: #true."]);
     }
 }

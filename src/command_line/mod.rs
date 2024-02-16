@@ -21,12 +21,62 @@ pub enum Command {
         /// The file to translate
         input: PathBuf,
     },
+    Verify {
+        #[arg(long, value_enum)]
+        with: Verification,
+
+        program: PathBuf,
+
+        specification: PathBuf,
+
+        user_guide: PathBuf,
+
+        lemmas: Option<PathBuf>,
+
+        #[arg(long, default_value_t = 4)]
+        cores: u16,
+
+        #[clap(long, short, action)]
+        break_equivalences: bool,
+
+        #[clap(long, short, action)]
+        parallel: bool,
+
+        #[clap(long, short, action)]
+        simplify: bool,
+    },
+    VerifyAlt {
+        #[arg(long, value_enum)]
+        with: Verification,
+
+        directory: PathBuf,
+
+        #[arg(long, default_value_t = 4)]
+        cores: u16,
+
+        #[clap(long, short, action)]
+        break_equivalences: bool,
+
+        #[clap(long, short, action)]
+        parallel: bool,
+
+        #[clap(long, short, action)]
+        simplify: bool,
+    },
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
 pub enum Translation {
     Gamma,
     TauStar,
+    Completion,
+    Simplify,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
+pub enum Verification {
+    Default,
+    Sequential,
 }
 
 #[cfg(test)]
