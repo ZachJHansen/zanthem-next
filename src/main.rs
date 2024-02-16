@@ -15,6 +15,7 @@ use {
         syntax_tree::{asp, fol},
         translating::completion::completion,
         translating::tau_star::tau_star,
+        translating::gamma::gamma,
         formatting::fol::tptp::Format,
     },
     anyhow::{Context, Result},

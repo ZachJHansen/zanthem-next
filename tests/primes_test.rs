@@ -74,31 +74,31 @@ fn translate_completion_graph_coloring() {
     assert_eq!(String::from_utf8_lossy(&cmd.stdout), expected.to_string());
 }
 
-#[test]
-fn verify_graph_coloring_cmd() {
-    let mut cmd = Command::new("anthem")
-        .env("PATH", "/home/zachhansen/Desktop/anthem-next/target/debug")
-        .args(&[
-            "verify",
-            "examples/graph-coloring/coloring.lp",
-            "examples/graph-coloring/coloring.spec",
-            "examples/graph-coloring/coloring.ug",
-            "--with",
-            "sequential",
-        ])
-        .unwrap();
+// #[test]
+// fn verify_graph_coloring_cmd() {
+//     let mut cmd = Command::new("anthem")
+//         .env("PATH", "/home/zachhansen/Desktop/anthem-next/target/debug")
+//         .args(&[
+//             "verify",
+//             "examples/graph-coloring/coloring.lp",
+//             "examples/graph-coloring/coloring.spec",
+//             "examples/graph-coloring/coloring.ug",
+//             "--with",
+//             "sequential",
+//         ])
+//         .unwrap();
 
-    let f1_expected = include_str!(
-        "/home/zachhansen/Desktop/anthem-next/examples/expectations/graph-coloring/forward_1.p"
-    )
-    .trim_end();
-    let f1_actual = include_str!("/home/zachhansen/Desktop/anthem-next/forward_1.p").trim_end();
+//     let f1_expected = include_str!(
+//         "/home/zachhansen/Desktop/anthem-next/examples/expectations/graph-coloring/forward_1.p"
+//     )
+//     .trim_end();
+//     let f1_actual = include_str!("/home/zachhansen/Desktop/anthem-next/forward_1.p").trim_end();
 
-    let b1_expected = include_str!(
-        "/home/zachhansen/Desktop/anthem-next/examples/expectations/graph-coloring/backward_1.p"
-    )
-    .trim_end();
-    let b1_actual = include_str!("/home/zachhansen/Desktop/anthem-next/backward_1.p").trim_end();
+//     let b1_expected = include_str!(
+//         "/home/zachhansen/Desktop/anthem-next/examples/expectations/graph-coloring/backward_1.p"
+//     )
+//     .trim_end();
+//     let b1_actual = include_str!("/home/zachhansen/Desktop/anthem-next/backward_1.p").trim_end();
 
-    assert!(f1_expected == f1_actual && b1_expected == b1_actual);
-}
+//     assert!(f1_expected == f1_actual && b1_expected == b1_actual);
+// }

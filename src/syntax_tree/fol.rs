@@ -102,28 +102,6 @@ impl IntegerTerm {
             },
         }
     }
-
-    pub fn substitute(self, var: Variable, term: IntegerTerm) -> Self {
-        match self {
-            IntegerTerm::BasicIntegerTerm(t) => match t {
-                BasicIntegerTerm::IntegerVariable(s)
-                    if var.name == s && var.sort == Sort::Integer =>
-                {
-                    term
-                }
-                _ => IntegerTerm::BasicIntegerTerm(t),
-            },
-            IntegerTerm::UnaryOperation { op, arg } => IntegerTerm::UnaryOperation {
-                op,
-                arg: arg.substitute(var, term).into(),
-            },
-            IntegerTerm::BinaryOperation { op, lhs, rhs } => IntegerTerm::BinaryOperation {
-                op,
-                lhs: lhs.substitute(var.clone(), term.clone()).into(),
-                rhs: rhs.substitute(var, term).into(),
-            },
-        }
-    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
@@ -144,19 +122,6 @@ impl GeneralTerm {
                 sort: Sort::General,
             }]),
             GeneralTerm::IntegerTerm(t) => t.variables(),
-        }
-    }
-
-    pub fn substitute(self, var: Variable, term: GeneralTerm) -> Self {
-        match self {
-            GeneralTerm::GeneralVariable(s) if var.name == s && var.sort == Sort::General => term,
-            GeneralTerm::IntegerTerm(t) if var.sort == Sort::Integer => match term {
-                GeneralTerm::IntegerTerm(term) => GeneralTerm::IntegerTerm(t.substitute(var, term)),
-                _ => panic!(
-                    "cannot substitute general term `{term}` for the integer variable `{var}`"
-                ),
-            },
-            t => t,
         }
     }
 
