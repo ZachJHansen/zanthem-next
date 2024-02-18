@@ -2,7 +2,7 @@ use assert_cmd::Command;
 
 #[test]
 fn help_ok() {
-    let mut cmd = Command::new("anthem")
+    let cmd = Command::new("anthem")
         .env("PATH", "/home/zachhansen/Desktop/anthem-next/target/debug")
         .args(&["--help"])
         .ok();
@@ -11,7 +11,7 @@ fn help_ok() {
 
 #[test]
 fn translate_tau_graph_coloring_ok() {
-    let mut cmd = Command::new("anthem")
+    let cmd = Command::new("anthem")
         .env("PATH", "/home/zachhansen/Desktop/anthem-next/target/debug")
         .args(&[
             "translate",
@@ -25,7 +25,7 @@ fn translate_tau_graph_coloring_ok() {
 
 #[test]
 fn translate_completion_graph_coloring_ok() {
-    let mut cmd = Command::new("anthem")
+    let cmd = Command::new("anthem")
         .env("PATH", "/home/zachhansen/Desktop/anthem-next/target/debug")
         .args(&[
             "translate",
@@ -39,7 +39,7 @@ fn translate_completion_graph_coloring_ok() {
 
 #[test]
 fn verify_graph_coloring_ok() {
-    let mut cmd = Command::new("anthem")
+    let cmd = Command::new("anthem")
         .env("PATH", "/home/zachhansen/Desktop/anthem-next/target/debug")
         .args(&[
             "verify-alt",

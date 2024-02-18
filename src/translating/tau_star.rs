@@ -989,6 +989,7 @@ mod tests {
         for (src, target) in [
             ("p(a). p(b). q(X, Y) :- p(X), p(Y).", "forall V1 (V1 = a -> p(V1)). forall V1 (V1 = b -> p(V1)). forall X Y (p(X) and p(Y) -> q(X,Y))."),
             ("p.", "#true -> p."),
+            ("{color(X,Z)} :- vertex(X), color(Z).", "forall X Z (vertex(X) and color(Z) and not not color(X, Z) -> color(X, Z))."),
             ("composite(I*J) :- I>1, J>1.", "forall I J V1 (exists I1$i J1$i (V1 = I1$i * J1$i and I1$i = I and J1$i = J and (I > 1 and J > 1)) -> composite(V1))."),
             ] {
             let src = ht::simplify_theory(tau_star(src.parse().unwrap()));
