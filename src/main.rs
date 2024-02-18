@@ -191,11 +191,11 @@ fn main() -> Result<()> {
                     }
                 }
                 Translation::Simplify => {
-                    let theory: fol::Formula = content
+                    let theory: fol::Theory = content
                         .parse()
                         .with_context(|| format!("could not parse file `{}`", input.display()))?;
 
-                    let simple = ht_simplifications::restrict_quantifiers(theory);
+                    let simple = ht_simplifications::simplify_theory(theory, true);
                     // match completion(&theory) {
                     //     Some(completion) => {
                     //         println!("{completion}")

@@ -992,13 +992,25 @@ mod tests {
             ("{color(X,Z)} :- vertex(X), color(Z).", "forall X Z (vertex(X) and color(Z) and not not color(X, Z) -> color(X, Z))."),
             ("composite(I*J) :- I>1, J>1.", "forall I J V1 (exists I1$i J1$i (V1 = I1$i * J1$i and I1$i = I and J1$i = J and (I > 1 and J > 1)) -> composite(V1))."),
             ] {
-            let src = ht::simplify_theory(tau_star(src.parse().unwrap()));
+            let src = ht::simplify_theory(tau_star(src.parse().unwrap()), false);
             let target = target.parse().unwrap();
             assert_eq!(
                 src,
                 target,
                 "\n{src} != \n{target}"
             )
+        }
+    }
+
+    #[test]
+    fn test_tau_star_simplified_full() {
+        for (src, target) in [(
+            "composite(I*J) :- I>1, J>1.",
+            "forall I2$i J2$i (I2$i > 1 and J2$i > 1 -> composite(I2$i * J2$i)).",
+        )] {
+            let src = ht::simplify_theory(tau_star(src.parse().unwrap()), true);
+            let target = target.parse().unwrap();
+            assert_eq!(src, target, "\n{src} != \n{target}")
         }
     }
 }

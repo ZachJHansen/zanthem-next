@@ -13,16 +13,20 @@ use crate::{
 
 use {evalexpr::*, log::debug};
 
-pub fn simplify_theory(theory: Theory) -> Theory {
+pub fn simplify_theory(theory: Theory, full: bool) -> Theory {
     //todo
     let mut formulas = theory.formulas;
     for i in 0..formulas.len() {
-        formulas[i] = simplify(formulas[i].clone(), false);
+        formulas[i] = simplify(formulas[i].clone(), false, full);
     }
     Theory { formulas }
 }
 
-pub fn simplify(formula: Formula, prettify: bool) -> Formula {
+// Applies simplifications in a loop, until no further simplifications are possible
+// Optionally renames variables for consistent presentation (prettify)
+// Some simplifications are too aggressive for use in between tau* and completion
+// (completion expects formulas of a specific form) - these can be omitted with full=false
+pub fn simplify(formula: Formula, prettify: bool, full: bool) -> Formula {
     let mut f1 = formula;
     let mut f2;
     debug!("Formula prior to simplification: \n{f1}\n");
@@ -44,9 +48,11 @@ pub fn simplify(formula: Formula, prettify: bool) -> Formula {
         f2 = simplify_empty_quantifiers(simplify_variable_lists(f2));
         debug!("Formula after nested quantifier joining: \n{f2}\n");
 
-        f2 = restrict_quantifiers(f2);
-        f2 = simplify_empty_quantifiers(simplify_variable_lists(f2));
-        debug!("Formula after quantifier scope restriction: \n{f2}\n");
+        if full {
+            f2 = restrict_quantifiers(f2);
+            f2 = simplify_empty_quantifiers(simplify_variable_lists(f2));
+            debug!("Formula after quantifier scope restriction: \n{f2}\n");
+        }
 
         if f1 == f2 {
             break;
@@ -726,7 +732,6 @@ fn replacement_helper(
         let fvar_term = GeneralTerm::IntegerTerm(IntegerTerm::BasicIntegerTerm(
             BasicIntegerTerm::IntegerVariable(fvar.clone()),
         ));
-
         match formula.clone() {
             Formula::QuantifiedFormula {
                 quantification:
@@ -804,8 +809,9 @@ pub fn restrict_quantifiers_outer(formula: Formula) -> Formula {
                                         {
                                             let replacement_result =
                                                 replacement_helper(&ivar, &ovar, &comp, &formula);
-                                            simplified_formula = replacement_result.0;
+
                                             if replacement_result.1 {
+                                                simplified_formula = replacement_result.0;
                                                 replaced = true;
                                                 break;
                                             }
@@ -861,8 +867,8 @@ pub fn restrict_quantifiers_outer(formula: Formula) -> Formula {
                                         if !rhs.contains_free_variable(&ovar) {
                                             let replacement_result =
                                                 replacement_helper(&ivar, &ovar, &comp, &formula);
-                                            simplified_formula = replacement_result.0;
                                             if replacement_result.1 {
+                                                simplified_formula = replacement_result.0;
                                                 replaced = true;
                                                 break;
                                             }
@@ -1188,9 +1194,6 @@ mod tests {
             // ),
             // (            // (
             //     "forall V1 (prime(V1) <-> exists I (V1 = I and (exists Z Z1 (Z = I and exists I$i J$i K$i (I$i = 2 and J$i = n and Z1 = K$i and I$i <= K$i <= J$i) and Z = Z1) and exists Z (Z = I and not composite(Z)))))",
-            //     "forall V1 (prime(V1) <-> exists J$i K$i (J$i = n and V1 = K$i and 2 <= K$i <= J$i) and not composite(V1))",
-            // ),
-            //     "forall V1 (prime(V1) <-> exists I (V1 = I and (exists Z Z1 (Z = I and exists I$i J$i K$i (I$i = 2 and J$i = n and Z1 = K$i and I$i <= K$i <= J$i) and Z = Z1) and exists Z (Z = I and not composite(Z)))))",
             //     "",
             // ),
             (
@@ -1202,7 +1205,7 @@ mod tests {
                 "forall I ( q(I) )",
             ),
         ] {
-            let src = simplify(src.parse().unwrap(), false);
+            let src = simplify(src.parse().unwrap(), false, true);
             let target = target.parse().unwrap();
             assert_eq!(src, target, "{src} != {target}")
         }
@@ -1215,7 +1218,7 @@ mod tests {
             "exists Y Z ( p(Y,Z) ). exists Y ( q or (t and q(Y))).",
         )] {
             assert_eq!(
-                simplify_theory(src.parse().unwrap()),
+                simplify_theory(src.parse().unwrap(), true),
                 target.parse().unwrap()
             )
         }
