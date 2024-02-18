@@ -150,19 +150,38 @@ fn main() -> Result<()> {
     //println!("tff(con1, conjecture, {}).", Format(&f3));
 
     match Arguments::parse().command {
-        Command::Translate { with, input } => {
+        Command::Translate { with, input, simplify } => {
             let content = read_to_string(&input)
                 .with_context(|| format!("could not read file `{}`", input.display()))?;
 
             match with {
                 Translation::Gamma => {
-                    let theory: fol::Theory = content
-                        .parse()
-                        .with_context(|| format!("could not parse file `{}`", input.display()))?;
+                    let theory = match input.extension() {
+                        Some(extension) => match extension.to_str() {
+                            Some(ext) => match ext {
+                                "lp" => {
+                                    let program: asp::Program = content.parse().with_context(|| format!("could not parse file `{}`", input.display()))?;
+                                    tau_star(program)
+                                },
+                                "spec" => {
+                                    let theory: fol::Theory = content.parse().with_context(|| format!("could not parse file `{}`", input.display()))?;
+                                    theory
+                                },
+                                _ => todo!(),
+                            },
+                            None => todo!(),
+                        },
+                        None => todo!(),
+                    };
 
                     let theory = gamma(theory);
 
-                    println!("{theory}")
+                    if simplify {
+                        let simple = ht_simplifications::simplify_theory(theory, true);
+                        println!("{simple}");
+                    } else {
+                        println!("{theory}");
+                    } 
                 }
 
                 Translation::TauStar => {
@@ -172,18 +191,40 @@ fn main() -> Result<()> {
 
                     let theory = tau_star(program);
 
-                    println!("{theory}")
+                    if simplify {
+                        let simple = ht_simplifications::simplify_theory(theory, false);
+                        println!("{simple}");
+                    } else {
+                        println!("{theory}");
+                    } 
                 }
                 Translation::Completion => {
-                    let program: asp::Program = content
-                        .parse()
-                        .with_context(|| format!("could not parse file `{}`", input.display()))?;
-
-                    let theory = tau_star(program);
-
+                    let theory = match input.extension() {
+                        Some(extension) => match extension.to_str() {
+                            Some(ext) => match ext {
+                                "lp" => {
+                                    let program: asp::Program = content.parse().with_context(|| format!("could not parse file `{}`", input.display()))?;
+                                    tau_star(program)
+                                },
+                                "spec" => {
+                                    let theory: fol::Theory = content.parse().with_context(|| format!("could not parse file `{}`", input.display()))?;
+                                    theory
+                                },
+                                _ => todo!(),
+                            },
+                            None => todo!(),
+                        },
+                        None => todo!(),
+                    };
+                    
                     match completion(&theory) {
                         Some(completion) => {
-                            println!("{completion}")
+                            if simplify {
+                                let simple = ht_simplifications::simplify_theory(completion, true);
+                                println!("{simple}");
+                            } else {
+                                println!("{completion}");
+                            } 
                         }
                         None => {
                             println!("Not a completable theory.")
@@ -196,14 +237,6 @@ fn main() -> Result<()> {
                         .with_context(|| format!("could not parse file `{}`", input.display()))?;
 
                     let simple = ht_simplifications::simplify_theory(theory, true);
-                    // match completion(&theory) {
-                    //     Some(completion) => {
-                    //         println!("{completion}")
-                    //     }
-                    //     None => {
-                    //         println!("Not a completable theory.")
-                    //     }
-                    // }
 
                     println!("{simple}");
                 }

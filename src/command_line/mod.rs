@@ -20,6 +20,10 @@ pub enum Command {
 
         /// The file to translate
         input: PathBuf,
+
+        /// Simplify
+        #[clap(long, short, action)]
+        simplify: bool,
     },
     Verify {
         #[arg(long, value_enum)]
