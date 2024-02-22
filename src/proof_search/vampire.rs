@@ -198,7 +198,7 @@ pub fn verify_with_vampire_parallel(handler: ProblemHandler, cores: u16) {
                     ProblemStatus::Unknown
                 }
                 _ => {
-                    summary.push_str("\n%%%%% Claim status: Not a Theorem %%%%%\n");
+                    summary.push_str("\n%%%%% Claim status: Not Proven %%%%%\n");
                     ProblemStatus::Timeout
                 }
             };
