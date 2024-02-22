@@ -1,0 +1,10 @@
+input: a -> integer, b -> integer.
+output: prime/1.
+input: squareLEb/1.
+
+assume: a > 1.
+assume: b >=a.
+
+assume: forall X (squareLEb(X) <-> exists N$i (N$i=X and N$i >= 1 and N$i <= b and N$i*N$i <= b)).
+
+assume: squareLEb(1) and forall N$i (N$i >= 1 and squareLEb(N$i) -> squareLEb(N$i + 1)) -> forall N$i (N$i >= 1 -> squareLEb(N$i)).
