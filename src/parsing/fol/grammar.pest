@@ -7,6 +7,7 @@
 // can be transformed into TPTP formulas (Vampire-compatible input).
 
 WHITESPACE = _{ " " | NEWLINE }
+COMMENT = _{ "%" ~ (!NEWLINE ~ ANY)* ~ (NEWLINE | EOI) }
 
 keyword = _{ primitive | binary_connective | unary_connective | quantifier }
 

@@ -1572,6 +1572,15 @@ mod tests {
                     }))],
                 },
             ),
+            (
+                "% First comment. \na. %%%% Second comment %%%%\n%Last comment",
+                Theory {
+                    formulas: vec![Formula::AtomicFormula(AtomicFormula::Atom(Atom {
+                        predicate_symbol: "a".into(),
+                        terms: vec![],
+                    }))],
+                },
+            ),
         ]);
     }
 
