@@ -1,0 +1,3 @@
+forall V1 X Y (exists I$i J$i (V1 = I$i * J$i and I$i = X and J$i = Y) and (exists Z Z1 (Z = X and exists I$i J$i K$i (I$i = 2 and J$i = b and Z1 = K$i and I$i <= K$i <= J$i) and Z = Z1) and exists Z Z1 (Z = Y and exists I$i J$i K$i (I$i = 2 and J$i = b and Z1 = K$i and I$i <= K$i <= J$i) and Z = Z1)) -> composite(V1)).
+forall V1 X (V1 = X and (exists Z Z1 (Z = X and exists I$i J$i K$i (I$i = a and J$i = b and Z1 = K$i and I$i <= K$i <= J$i) and Z = Z1) and exists Z (Z = X and not composite(Z))) -> prime(V1)).
+
