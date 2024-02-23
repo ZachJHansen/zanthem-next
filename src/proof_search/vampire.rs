@@ -5,6 +5,7 @@ use {
     },
     anyhow::anyhow,
     lazy_static::lazy_static,
+    log::info,
     regex::Regex,
     std::{process, thread, time::Instant},
 };
@@ -78,7 +79,7 @@ pub fn verify_with_vampire_sequential(handler: ProblemHandler, cores: u16) {
     let mut task_status = ProblemStatus::Unknown;
     for (claim, problems) in handler.goals.iter() {
         let mut claim_status = ProblemStatus::Unknown;
-        println!("Proving Claim... \n%%%%%%%%%%\n{}", claim.display());
+        info!("\nProving Claim... \n%%%%%%%%%%\n{}", claim.display());
         for p in problems.iter() {
             let now = Instant::now();
             let result = run_vampire(
@@ -94,22 +95,17 @@ pub fn verify_with_vampire_sequential(handler: ProblemHandler, cores: u16) {
                     "300",
                 ]),
             );
+            println!("Conjecture: {}", p.conjecture);
             match result {
                 Ok(status) => match status {
                     ProblemStatus::Theorem => {
-                        println!(
-                            "Conjecture: {} \n\t| Status: Proven - {} millisecs",
-                            p.conjecture,
-                            now.elapsed().as_millis()
-                        );
+                        println!("\t| Status: Proven");
+                        info!("Proven in {} milliseconds", now.elapsed().as_millis());
                     }
                     _ => {
                         claim_status = ProblemStatus::Timeout; // TODO - Differentiate between different vampire errors/non-theorem results
-                        println!(
-                            "Conjecture: {} \n\t| Status: Not Proven - {} millisecs",
-                            p.conjecture,
-                            now.elapsed().as_millis()
-                        );
+                        println!("\t| Status: Not Proven");
+                        info!("Not proven in {} milliseconds", now.elapsed().as_millis());
                         break;
                     }
                 },

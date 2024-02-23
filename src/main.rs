@@ -345,11 +345,11 @@ fn main() -> Result<()> {
             assert!(user_guides.len() == 1);
             assert!(lemmas.len() < 2);
 
-            println!("Treating {:?} as the program...", programs[0]);
-            println!("Treating {:?} as the specification...", specs[0]);
-            println!("Treating {:?} as the user guide...", user_guides[0]);
+            info!("Treating {:?} as the program...", programs[0]);
+            info!("Treating {:?} as the specification...", specs[0]);
+            info!("Treating {:?} as the user guide...", user_guides[0]);
             if lemmas.len() > 0 {
-                println!("Treating {:?} as the lemmas...", lemmas[0]);
+                info!("Treating {:?} as the lemmas...", lemmas[0]);
             }
 
             if lemmas.len() > 0 {

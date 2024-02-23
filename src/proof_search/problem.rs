@@ -6,6 +6,7 @@ use {
         syntax_tree::{asp, fol},
         translating::{completion::completion, tau_star::tau_star},
     },
+    log::info,
     regex::Regex,
     std::collections::{HashMap, HashSet},
     std::fs,
@@ -505,16 +506,16 @@ impl ProblemHandler {
             }
         };
 
-        println!(
-            "Spec private predicates: {:?}",
+        info!(
+            "Specification private predicates: {:?}",
             specification_private_predicates
         );
 
         let program_private_predicates =
             prog_private_predicates(program, &public_predicates, needs_renaming, false);
 
-        println!(
-            "program private predicates: {:?}",
+        info!(
+            "Program private predicates: {:?}",
             program_private_predicates
         );
 
