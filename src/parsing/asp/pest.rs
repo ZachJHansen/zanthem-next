@@ -475,15 +475,17 @@ mod tests {
                 ("a", PrecomputedTerm::Symbol("a".into())),
                 ("aa", PrecomputedTerm::Symbol("aa".into())),
                 ("aA", PrecomputedTerm::Symbol("aA".into())),
+                ("_a", PrecomputedTerm::Symbol("_a".into())),
+                ("a_", PrecomputedTerm::Symbol("a_".into())),
                 ("noto", PrecomputedTerm::Symbol("noto".into())),
                 ("#sup", PrecomputedTerm::Supremum),
                 ("#supremum", PrecomputedTerm::Supremum),
             ])
             .should_reject([
-                "_a",
                 "'a",
                 "_'x'_'x'_",
                 "A",
+                "_A",
                 "4 2",
                 "00",
                 "-0",
@@ -773,14 +775,30 @@ mod tests {
     #[test]
     fn parse_predicate() {
         PredicateParser
-            .should_parse_into([(
-                "p/1",
-                Predicate {
-                    symbol: "p".into(),
-                    arity: 1,
-                },
-            )])
-            .should_reject(["p", "1/1", "p/00", "p/01", "_/1", "p/p", "_p/1"]);
+            .should_parse_into([
+                (
+                    "p/1",
+                    Predicate {
+                        symbol: "p".into(),
+                        arity: 1,
+                    },
+                ),
+                (
+                    "p_/1",
+                    Predicate {
+                        symbol: "p_".into(),
+                        arity: 1,
+                    },
+                ),
+                (
+                    "_p/1",
+                    Predicate {
+                        symbol: "_p".into(),
+                        arity: 1,
+                    },
+                ),
+            ])
+            .should_reject(["p", "1/1", "p/00", "p/01", "_/1", "p/p"]);
     }
 
     #[test]
@@ -805,6 +823,13 @@ mod tests {
                     "p(1)",
                     Atom {
                         predicate_symbol: "p".into(),
+                        terms: vec![Term::PrecomputedTerm(PrecomputedTerm::Numeral(1))],
+                    },
+                ),
+                (
+                    "sqrt_b(1)",
+                    Atom {
+                        predicate_symbol: "sqrt_b".into(),
                         terms: vec![Term::PrecomputedTerm(PrecomputedTerm::Numeral(1))],
                     },
                 ),

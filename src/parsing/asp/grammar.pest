@@ -3,7 +3,7 @@ WHITESPACE = _{ " " | NEWLINE }
 precomputed_term = { infimum | integer | symbol | supremum }
     infimum = @{ "#infimum" | "#inf" }
     integer = @{ "0" | "-"? ~ ASCII_NONZERO_DIGIT ~ ASCII_DIGIT* }
-    symbol = @{ !negation ~ ASCII_ALPHA_LOWER ~ ASCII_ALPHANUMERIC* }
+    symbol = @{ !negation ~ "_"? ~ ASCII_ALPHA_LOWER ~ (ASCII_ALPHANUMERIC | "_")* }
     supremum = @{ "#supremum" | "#sup" }
 
 variable = @{ ASCII_ALPHA_UPPER ~ ASCII_ALPHANUMERIC* }
