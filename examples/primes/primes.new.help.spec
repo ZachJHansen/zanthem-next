@@ -1,1 +1,1 @@
-lemma: forall X N1$i N2$i ( (N1$i > 1 and N2$i > 1 and X = N1$i * N2$i) -> (N1$i <= X and N2$i <= X) ).
+lemma: forall M$i N$i( M$i >= 1 and N$i >= 1  -> M$i * N$i >= M$i ).
