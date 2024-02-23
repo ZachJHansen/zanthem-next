@@ -20,11 +20,13 @@ use {
     anyhow::{Context, Result},
     clap::Parser as _,
     lazy_static::lazy_static,
+    log::info,
     regex::Regex,
     std::{
         fs::{read_dir, read_to_string},
         io,
         path::PathBuf,
+        time::Instant,
     },
 };
 
@@ -143,6 +145,8 @@ fn collect_files(dir: PathBuf) -> io::Result<Vec<PathBuf>> {
 fn main() -> Result<()> {
     env_logger::init();
 
+    let now = Instant::now();
+
     //let f1: fol::Formula = "forall Y (exists Z (exists I$ J$ (Z = I$ + J$ and Y = I$ and J$ = 1) and q(Z)) -> r(Y))".parse().unwrap();
     //let f2: fol::Formula = "forall Y (q(Y) -> exists Z (exists I$ J$ (Z = I$ - J$ and Y = I$ and J$ = 1) and r(Z)))".parse().unwrap();
     //let f3: fol::Formula = "forall Y( exists Z (exists I$ J$ (Z = I$ - J$ and Y = I$ and J$ = 1) and q(Y) -> r(Z)))".parse().unwrap();
@@ -150,7 +154,11 @@ fn main() -> Result<()> {
     //println!("tff(con1, conjecture, {}).", Format(&f3));
 
     match Arguments::parse().command {
-        Command::Translate { with, input, simplify } => {
+        Command::Translate {
+            with,
+            input,
+            simplify,
+        } => {
             let content = read_to_string(&input)
                 .with_context(|| format!("could not read file `{}`", input.display()))?;
 
@@ -160,13 +168,19 @@ fn main() -> Result<()> {
                         Some(extension) => match extension.to_str() {
                             Some(ext) => match ext {
                                 "lp" => {
-                                    let program: asp::Program = content.parse().with_context(|| format!("could not parse file `{}`", input.display()))?;
+                                    let program: asp::Program =
+                                        content.parse().with_context(|| {
+                                            format!("could not parse file `{}`", input.display())
+                                        })?;
                                     tau_star(program)
-                                },
+                                }
                                 "spec" => {
-                                    let theory: fol::Theory = content.parse().with_context(|| format!("could not parse file `{}`", input.display()))?;
+                                    let theory: fol::Theory =
+                                        content.parse().with_context(|| {
+                                            format!("could not parse file `{}`", input.display())
+                                        })?;
                                     theory
-                                },
+                                }
                                 _ => todo!(),
                             },
                             None => todo!(),
@@ -181,7 +195,7 @@ fn main() -> Result<()> {
                         println!("{simple}");
                     } else {
                         println!("{theory}");
-                    } 
+                    }
                 }
 
                 Translation::TauStar => {
@@ -196,27 +210,33 @@ fn main() -> Result<()> {
                         println!("{simple}");
                     } else {
                         println!("{theory}");
-                    } 
+                    }
                 }
                 Translation::Completion => {
                     let theory = match input.extension() {
                         Some(extension) => match extension.to_str() {
                             Some(ext) => match ext {
                                 "lp" => {
-                                    let program: asp::Program = content.parse().with_context(|| format!("could not parse file `{}`", input.display()))?;
+                                    let program: asp::Program =
+                                        content.parse().with_context(|| {
+                                            format!("could not parse file `{}`", input.display())
+                                        })?;
                                     tau_star(program)
-                                },
+                                }
                                 "spec" => {
-                                    let theory: fol::Theory = content.parse().with_context(|| format!("could not parse file `{}`", input.display()))?;
+                                    let theory: fol::Theory =
+                                        content.parse().with_context(|| {
+                                            format!("could not parse file `{}`", input.display())
+                                        })?;
                                     theory
-                                },
+                                }
                                 _ => todo!(),
                             },
                             None => todo!(),
                         },
                         None => todo!(),
                     };
-                    
+
                     match completion(&theory) {
                         Some(completion) => {
                             if simplify {
@@ -224,7 +244,7 @@ fn main() -> Result<()> {
                                 println!("{simple}");
                             } else {
                                 println!("{completion}");
-                            } 
+                            }
                         }
                         None => {
                             println!("Not a completable theory.")
@@ -241,7 +261,7 @@ fn main() -> Result<()> {
                     println!("{simple}");
                 }
             }
-
+            info!("System runtime: {} milliseconds", now.elapsed().as_millis());
             Ok(())
         }
         Command::Verify {
@@ -266,6 +286,7 @@ fn main() -> Result<()> {
                 parallel,
                 simplify,
             )?;
+            info!("System runtime: {} milliseconds", now.elapsed().as_millis());
             Ok(())
         }
         Command::VerifyAlt {
@@ -356,6 +377,7 @@ fn main() -> Result<()> {
                     simplify,
                 )?;
             }
+            info!("System runtime: {} milliseconds", now.elapsed().as_millis());
             Ok(())
         }
     }
