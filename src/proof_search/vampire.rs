@@ -82,6 +82,7 @@ pub fn verify_with_vampire_sequential(handler: ProblemHandler, cores: u16) {
         info!("\nProving Claim... \n%%%%%%%%%%\n{}", claim.display());
         for p in problems.iter() {
             let now = Instant::now();
+            println!("Conjecture: {}", p.conjecture);
             let result = run_vampire(
                 &p.display(true),
                 Some(&[
@@ -95,7 +96,6 @@ pub fn verify_with_vampire_sequential(handler: ProblemHandler, cores: u16) {
                     "300",
                 ]),
             );
-            println!("Conjecture: {}", p.conjecture);
             match result {
                 Ok(status) => match status {
                     ProblemStatus::Theorem => {
