@@ -29,9 +29,9 @@ pub enum Command {
         #[arg(long, value_enum)]
         with: Verification,
 
-        program: PathBuf,
-
         specification: PathBuf,
+
+        program: PathBuf,
 
         user_guide: PathBuf,
 

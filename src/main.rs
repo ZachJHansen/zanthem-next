@@ -266,8 +266,8 @@ fn main() -> Result<()> {
         }
         Command::Verify {
             with,
-            program,
             specification,
+            program,
             user_guide,
             lemmas,
             cores,
