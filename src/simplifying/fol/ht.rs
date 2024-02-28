@@ -537,69 +537,117 @@ fn simplify_conjunction_tree_with_equality(
 // Checks if two equality comparisons V1 = t1 (t1 = V1) and V2 = t2 (t2 = V2)
 // satisfy that V1 is subsorteq to V2 and t1 = t2 and V1 and V2 occur in variables
 // Returns keep_var, drop_var, drop_term
-fn transitive_equality(c1: Comparison, c2: Comparison, variables: Vec<Variable>) -> Option<(Variable, Variable, Comparison)> {
-    let lhs1 = c1.term;
-    let rhs1 = c1.guards[0].term;
-    let lhs2 = c2.term;
-    let rhs2 = c2.guards[0].term;
+pub fn transitive_equality(c1: Comparison, c2: Comparison, variables: Vec<Variable>) -> Option<(Variable, Variable, Comparison)> {
+    let lhs1 = c1.term.clone();
+    let rhs1 = c1.guards[0].term.clone();
+    let lhs2 = c2.term.clone();
+    let rhs2 = c2.guards[0].term.clone();
     
     // Is V1 a variable?
     let lhs1_is_var = match lhs1 {
-        GeneralTerm::GeneralVariable(v) => Some(Variable {
-            sort: Sort::General,
-            name: v,
-        }),
+        GeneralTerm::GeneralVariable(ref v) => {
+            let var = Variable {
+                sort: Sort::General,
+                name: v.to_string(),
+            };
+            match variables.contains(&var) {
+                true => Some(var),
+                false => None,
+            }
+        },
         GeneralTerm::IntegerTerm(IntegerTerm::BasicIntegerTerm(
-            BasicIntegerTerm::IntegerVariable(v),
-        )) => Some(Variable {
-            sort: Sort::Integer,
-            name: v,
-        }),
+            BasicIntegerTerm::IntegerVariable(ref v),
+        )) => {
+            let var = Variable {
+                sort: Sort::Integer,
+                name: v.to_string(),
+            };
+            match variables.contains(&var) {
+                true => Some(var),
+                false => None,
+            }
+        },
         _ => None,
     };
 
     // Is V2 a variable?
     let lhs2_is_var = match lhs2 {
-        GeneralTerm::GeneralVariable(v) => Some(Variable {
-            sort: Sort::General,
-            name: v,
-        }),
+        GeneralTerm::GeneralVariable(ref v) => {
+            let var = Variable {
+                sort: Sort::General,
+                name: v.to_string(),
+            };
+            match variables.contains(&var) {
+                true => Some(var),
+                false => None,
+            }
+        },
         GeneralTerm::IntegerTerm(IntegerTerm::BasicIntegerTerm(
-            BasicIntegerTerm::IntegerVariable(v),
-        )) => Some(Variable {
-            sort: Sort::Integer,
-            name: v,
-        }),
+            BasicIntegerTerm::IntegerVariable(ref v),
+        )) => {
+            let var = Variable {
+                sort: Sort::Integer,
+                name: v.to_string(),
+            };
+            match variables.contains(&var) {
+                true => Some(var),
+                false => None,
+            }
+        },
         _ => None,
     };
 
     // Is t1 a variable?
     let rhs1_is_var = match rhs1 {
-        GeneralTerm::GeneralVariable(v) => Some(Variable {
-            sort: Sort::General,
-            name: v,
-        }),
+        GeneralTerm::GeneralVariable(ref v) => {
+            let var = Variable {
+                sort: Sort::General,
+                name: v.to_string(),
+            };
+            match variables.contains(&var) {
+                true => Some(var),
+                false => None,
+            }
+        },
         GeneralTerm::IntegerTerm(IntegerTerm::BasicIntegerTerm(
-            BasicIntegerTerm::IntegerVariable(v),
-        )) => Some(Variable {
-            sort: Sort::Integer,
-            name: v,
-        }),
+            BasicIntegerTerm::IntegerVariable(ref v),
+        )) => {
+            let var = Variable {
+                sort: Sort::Integer,
+                name: v.to_string(),
+            };
+            match variables.contains(&var) {
+                true => Some(var),
+                false => None,
+            }
+        },
         _ => None,
     };
 
     // Is t2 a variable?
-    let rhs2_is_var = match lhs2 {
-        GeneralTerm::GeneralVariable(v) => Some(Variable {
-            sort: Sort::General,
-            name: v,
-        }),
+    let rhs2_is_var = match rhs2 {
+        GeneralTerm::GeneralVariable(ref v) => {
+            let var = Variable {
+                sort: Sort::General,
+                name: v.to_string(),
+            };
+            match variables.contains(&var) {
+                true => Some(var),
+                false => None,
+            }
+        },
         GeneralTerm::IntegerTerm(IntegerTerm::BasicIntegerTerm(
-            BasicIntegerTerm::IntegerVariable(v),
-        )) => Some(Variable {
-            sort: Sort::Integer,
-            name: v,
-        }),
+            BasicIntegerTerm::IntegerVariable(ref v),
+        )) => {
+            let var = Variable {
+                sort: Sort::Integer,
+                name: v.to_string(),
+            };
+            match variables.contains(&var) {
+                true => Some(var),
+                false => None,
+            }
+        },
         _ => None,
     };
 
@@ -607,7 +655,7 @@ fn transitive_equality(c1: Comparison, c2: Comparison, variables: Vec<Variable>)
     match lhs1_is_var {
         Some(v1) => match lhs2_is_var {         // v1 = rhs1
             Some(v2) => {                       // v1 = rhs1, v2 = rhs2
-                if rhs1 == rhs2 && (variables.contains(&v1) && variables.contains(&v2)) {
+                if rhs1 == rhs2 {
                     if subsort(&v1, &v2) {
                         result = Some((v1, v2, c2));
                     } else {
@@ -619,7 +667,7 @@ fn transitive_equality(c1: Comparison, c2: Comparison, variables: Vec<Variable>)
             },
             None => match rhs2_is_var {         
                 Some(v2) => {                   // v1 = rhs1, lhs2 = v2
-                    if rhs1 == lhs2 && (variables.contains(&v1) && variables.contains(&v2)) {
+                    if rhs1 == lhs2 {
                         if subsort(&v1, &v2) {
                             result = Some((v1, v2, c2));
                         } else {
@@ -638,7 +686,7 @@ fn transitive_equality(c1: Comparison, c2: Comparison, variables: Vec<Variable>)
             Some(v1) => {                       // lhs1 = v1
                 match lhs2_is_var {
                     Some(v2) => {               // lhs1 = v1, v2 = rhs2
-                        if lhs1 == rhs2 && (variables.contains(&v1) && variables.contains(&v2)) {
+                        if lhs1 == rhs2 {
                             if subsort(&v1, &v2) {
                                 result = Some((v1, v2, c2));
                             } else {
@@ -650,7 +698,7 @@ fn transitive_equality(c1: Comparison, c2: Comparison, variables: Vec<Variable>)
                     },
                     None => match rhs2_is_var {
                         Some(v2) => {           // lhs1 = v1, lhs2 = v2
-                            if lhs1 == lhs2 && (variables.contains(&v1) && variables.contains(&v2)) {
+                            if lhs1 == lhs2 {
                                 if subsort(&v1, &v2) {
                                     result = Some((v1, v2, c2));
                                 } else {
@@ -1085,10 +1133,40 @@ mod tests {
         basic_simplify, basic_simplify_outer, extend_quantifier_scope, relation_simplify_outer,
         restrict_quantifiers, simplify, simplify_conjunction_tree_with_equality,
         simplify_empty_quantifiers, simplify_nested_quantifiers, simplify_redundant_quantifiers,
-        simplify_theory, simplify_variable_lists,
+        simplify_theory, simplify_variable_lists, transitive_equality,
     };
 
-    use crate::syntax_tree::fol::{Sort, Variable};
+    use crate::syntax_tree::fol::{Sort, Variable, Comparison};
+
+    #[test]
+    fn test_transitive_equality() {
+        for (c1, c2, vars, keep_var, drop_var, drop_term) in [
+            ("X = 5", "Y = 5", vec!["X","Y"], "X", "Y", "Y = 5"),
+            ("5 = X", "Y = 5", vec!["X","Y"], "X", "Y", "Y = 5"),
+            ("X = 5", "5 = Y", vec!["X","Y"], "X", "Y", "5 = Y"),
+            ("I$ = J$", "K$ = J$", vec!["I$","K$"], "I$", "K$", "K$ = J$"),
+            ("I$ = Z", "K$ = Z", vec!["I$","K$"], "I$", "K$", "K$ = Z"),
+            ("I$ = Z", "X = Z", vec!["I$","X"], "I$", "X", "X = Z"),
+            ("X = Z", "I$ = Z", vec!["I$","X"], "I$", "X", "X = Z"),
+            ("Z = X", "I$ = Z", vec!["I$","X"], "I$", "X", "Z = X"),
+        ] {
+            let c1: Comparison = c1.parse().unwrap();
+            let c2: Comparison = c2.parse().unwrap();
+            let mut variables = vec![];
+            for vstr in vars.iter() {
+                let v: Variable = vstr.parse().unwrap(); 
+                variables.push(v);
+            }
+            let keep_var: Variable = keep_var.parse().unwrap();
+            let drop_var: Variable = drop_var.parse().unwrap();
+            let drop_term: Comparison = drop_term.parse().unwrap();
+
+            assert_eq!(
+                transitive_equality(c1, c2, variables),
+                Some((keep_var, drop_var, drop_term))
+            )
+        }
+    }
 
     #[test]
     fn test_basic_simplify() {
