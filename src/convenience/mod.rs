@@ -6,17 +6,13 @@ use {crate::syntax_tree::fol, std::collections::HashSet};
 /// True if v1 is subsorteq to v2 and False otherwise
 pub fn subsort(v1: &fol::Variable, v2: &fol::Variable) -> bool {
     match v1.sort {
-        fol::Sort::General => {
-            match v2.sort {
-                fol::Sort::General => true,
-                fol::Sort::Integer => false,
-            }
+        fol::Sort::General => match v2.sort {
+            fol::Sort::General => true,
+            fol::Sort::Integer => false,
         },
-        fol::Sort::Integer => {
-            match v2.sort {
-                fol::Sort::General => true,
-                fol::Sort::Integer => true,
-            }
+        fol::Sort::Integer => match v2.sort {
+            fol::Sort::General => true,
+            fol::Sort::Integer => true,
         },
     }
 }

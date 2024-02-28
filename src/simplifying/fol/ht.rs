@@ -2,8 +2,7 @@ use crate::{
     convenience::{
         apply::Apply as _,
         apply::ApplyCount as _,
-        subsort,
-        choose_fresh_variable_names,
+        choose_fresh_variable_names, subsort,
         unbox::{fol::UnboxedFormula, Unbox as _},
     },
     syntax_tree::fol::{
@@ -48,6 +47,10 @@ pub fn simplify(formula: Formula, prettify: bool, full: bool) -> Formula {
         f2 = simplify_nested_quantifiers(f2);
         f2 = simplify_empty_quantifiers(simplify_variable_lists(f2));
         debug!("Formula after nested quantifier joining: \n{f2}\n");
+
+        f2 = simplify_transitive_equality(f2);
+        f2 = simplify_empty_quantifiers(simplify_variable_lists(f2));
+        debug!("Formula after simplifying transitive equalities: \n{f2}\n");
 
         if full {
             f2 = restrict_quantifiers(f2);
@@ -491,7 +494,7 @@ fn simplify_conjunction_tree_with_equality(
                 };
 
                 let mut safety = true; // Simplify var = term or term = var but not both
-                                        // Don't restructure the conjunction tree unless simplification occurs
+                                       // Don't restructure the conjunction tree unless simplification occurs
                 let mut restructured = vec![]; // Make the equality formula the top rhs leaf of a new conjunction tree
                 for i in 0..conjunctive_terms.len() {
                     if conjunctive_terms[i] != *ct {
@@ -504,11 +507,8 @@ fn simplify_conjunction_tree_with_equality(
 
                 if let Some(v1) = lhs_is_var {
                     if enclosing_variables.contains(&v1) {
-                        let simplification_result = subsort_equality(
-                            v1.clone(),
-                            g.term.clone(),
-                            simplified.clone(),
-                        );
+                        let simplification_result =
+                            subsort_equality(v1.clone(), g.term.clone(), simplified.clone());
                         if simplification_result.1 {
                             result = (simplification_result.0, Some((v1, g.term)));
                             safety = false;
@@ -537,12 +537,16 @@ fn simplify_conjunction_tree_with_equality(
 // Checks if two equality comparisons V1 = t1 (t1 = V1) and V2 = t2 (t2 = V2)
 // satisfy that V1 is subsorteq to V2 and t1 = t2 and V1 and V2 occur in variables
 // Returns keep_var, drop_var, drop_term
-pub fn transitive_equality(c1: Comparison, c2: Comparison, variables: Vec<Variable>) -> Option<(Variable, Variable, Comparison)> {
+pub fn transitive_equality(
+    c1: Comparison,
+    c2: Comparison,
+    variables: Vec<Variable>,
+) -> Option<(Variable, Variable, Comparison)> {
     let lhs1 = c1.term.clone();
     let rhs1 = c1.guards[0].term.clone();
     let lhs2 = c2.term.clone();
     let rhs2 = c2.guards[0].term.clone();
-    
+
     // Is V1 a variable?
     let lhs1_is_var = match lhs1 {
         GeneralTerm::GeneralVariable(ref v) => {
@@ -554,7 +558,7 @@ pub fn transitive_equality(c1: Comparison, c2: Comparison, variables: Vec<Variab
                 true => Some(var),
                 false => None,
             }
-        },
+        }
         GeneralTerm::IntegerTerm(IntegerTerm::BasicIntegerTerm(
             BasicIntegerTerm::IntegerVariable(ref v),
         )) => {
@@ -566,7 +570,7 @@ pub fn transitive_equality(c1: Comparison, c2: Comparison, variables: Vec<Variab
                 true => Some(var),
                 false => None,
             }
-        },
+        }
         _ => None,
     };
 
@@ -581,7 +585,7 @@ pub fn transitive_equality(c1: Comparison, c2: Comparison, variables: Vec<Variab
                 true => Some(var),
                 false => None,
             }
-        },
+        }
         GeneralTerm::IntegerTerm(IntegerTerm::BasicIntegerTerm(
             BasicIntegerTerm::IntegerVariable(ref v),
         )) => {
@@ -593,7 +597,7 @@ pub fn transitive_equality(c1: Comparison, c2: Comparison, variables: Vec<Variab
                 true => Some(var),
                 false => None,
             }
-        },
+        }
         _ => None,
     };
 
@@ -608,7 +612,7 @@ pub fn transitive_equality(c1: Comparison, c2: Comparison, variables: Vec<Variab
                 true => Some(var),
                 false => None,
             }
-        },
+        }
         GeneralTerm::IntegerTerm(IntegerTerm::BasicIntegerTerm(
             BasicIntegerTerm::IntegerVariable(ref v),
         )) => {
@@ -620,7 +624,7 @@ pub fn transitive_equality(c1: Comparison, c2: Comparison, variables: Vec<Variab
                 true => Some(var),
                 false => None,
             }
-        },
+        }
         _ => None,
     };
 
@@ -635,7 +639,7 @@ pub fn transitive_equality(c1: Comparison, c2: Comparison, variables: Vec<Variab
                 true => Some(var),
                 false => None,
             }
-        },
+        }
         GeneralTerm::IntegerTerm(IntegerTerm::BasicIntegerTerm(
             BasicIntegerTerm::IntegerVariable(ref v),
         )) => {
@@ -647,14 +651,16 @@ pub fn transitive_equality(c1: Comparison, c2: Comparison, variables: Vec<Variab
                 true => Some(var),
                 false => None,
             }
-        },
+        }
         _ => None,
     };
 
     let mut result = None;
     match lhs1_is_var {
-        Some(v1) => match lhs2_is_var {         // v1 = rhs1
-            Some(v2) => {                       // v1 = rhs1, v2 = rhs2
+        Some(v1) => match lhs2_is_var {
+            // v1 = rhs1
+            Some(v2) => {
+                // v1 = rhs1, v2 = rhs2
                 if rhs1 == rhs2 {
                     if subsort(&v1, &v2) {
                         result = Some((v1, v2, c2));
@@ -664,9 +670,10 @@ pub fn transitive_equality(c1: Comparison, c2: Comparison, variables: Vec<Variab
                         }
                     }
                 }
-            },
-            None => match rhs2_is_var {         
-                Some(v2) => {                   // v1 = rhs1, lhs2 = v2
+            }
+            None => match rhs2_is_var {
+                Some(v2) => {
+                    // v1 = rhs1, lhs2 = v2
                     if rhs1 == lhs2 {
                         if subsort(&v1, &v2) {
                             result = Some((v1, v2, c2));
@@ -676,16 +683,16 @@ pub fn transitive_equality(c1: Comparison, c2: Comparison, variables: Vec<Variab
                             }
                         }
                     }
-                },
-                None => {
-                    result = None
-                },
-            }
+                }
+                None => result = None,
+            },
         },
-        None => match rhs1_is_var {             
-            Some(v1) => {                       // lhs1 = v1
+        None => match rhs1_is_var {
+            Some(v1) => {
+                // lhs1 = v1
                 match lhs2_is_var {
-                    Some(v2) => {               // lhs1 = v1, v2 = rhs2
+                    Some(v2) => {
+                        // lhs1 = v1, v2 = rhs2
                         if lhs1 == rhs2 {
                             if subsort(&v1, &v2) {
                                 result = Some((v1, v2, c2));
@@ -695,9 +702,10 @@ pub fn transitive_equality(c1: Comparison, c2: Comparison, variables: Vec<Variab
                                 }
                             }
                         }
-                    },
+                    }
                     None => match rhs2_is_var {
-                        Some(v2) => {           // lhs1 = v1, lhs2 = v2
+                        Some(v2) => {
+                            // lhs1 = v1, lhs2 = v2
                             if lhs1 == lhs2 {
                                 if subsort(&v1, &v2) {
                                     result = Some((v1, v2, c2));
@@ -707,32 +715,32 @@ pub fn transitive_equality(c1: Comparison, c2: Comparison, variables: Vec<Variab
                                     }
                                 }
                             }
-                        },
+                        }
                         None => {
                             result = None;
-                        },
-                    }
+                        }
+                    },
                 }
-            },
+            }
             None => {
                 result = None;
-            },
+            }
         },
     }
     result
 }
 
 pub fn simplify_transitive_equality(formula: Formula) -> Formula {
-    formula.apply(&mut simplify_redundant_quantifiers_outer)
+    formula.apply(&mut simplify_transitive_equality_outer)
 }
 
 pub fn simplify_transitive_equality_outer(formula: Formula) -> Formula {
     match formula.clone().unbox() {
         // When X is a subsort of Y (or sort(X) = sort(Y)) and t is a term:
-        // exists X Y (X = t and Y = t and F) 
+        // exists X Y (X = t and Y = t and F)
         // =>
         // exists X (X = t and F(X))
-        // Replace Y with X within F 
+        // Replace Y with X within F
         UnboxedFormula::QuantifiedFormula {
             quantification:
                 Quantification {
@@ -745,20 +753,71 @@ pub fn simplify_transitive_equality_outer(formula: Formula) -> Formula {
                 connective: BinaryConnective::Conjunction,
                 ..
             } => {
-                // let conjunctive_terms = Formula::conjoin_invert(f.clone());
-                // for (i, ct1) in conjunctive_terms.iter().enumerate() {          // Search for an equality formula
-                //     if ct1.equality_comparison() {
-                //         for (j, ct2) in conjunctive_terms.iter().enumerate() {  // Search for a second equality formula
-                //             if ct2.equality_comparison && i != j {
-                //                 if transitive_equality(ct1, ct2, variables) {
-                //                     // do stuff
-                //                 }
-                //             }
-                //         }
-                //     }
-                // }
-                todo!()
-            },
+                let mut simplified = formula.clone();
+                let mut simplify = false;
+                let conjunctive_terms = Formula::conjoin_invert(f.clone());
+                let mut ct_copy = conjunctive_terms.clone();
+                for (i, ct1) in conjunctive_terms.iter().enumerate() {
+                    // Search for an equality formula
+                    if let Formula::AtomicFormula(AtomicFormula::Comparison(c1)) = ct1 {
+                        if c1.equality_comparison() {
+                            for (j, ct2) in conjunctive_terms.iter().enumerate() {
+                                // Search for a second equality formula
+                                if let Formula::AtomicFormula(AtomicFormula::Comparison(c2)) = ct2 {
+                                    if c2.equality_comparison() && i != j {
+                                        match transitive_equality(
+                                            c1.clone(),
+                                            c2.clone(),
+                                            variables.clone(),
+                                        ) {
+                                            Some((keep_var, drop_var, drop_term)) => {
+                                                variables.retain(|x| x != &drop_var);
+                                                ct_copy.retain(|t| {
+                                                    t != &Formula::AtomicFormula(
+                                                        AtomicFormula::Comparison(
+                                                            drop_term.clone(),
+                                                        ),
+                                                    )
+                                                });
+                                                let keep = match keep_var.sort {
+                                                    Sort::General => {
+                                                        GeneralTerm::GeneralVariable(keep_var.name)
+                                                    }
+                                                    Sort::Integer => GeneralTerm::IntegerTerm(
+                                                        IntegerTerm::BasicIntegerTerm(
+                                                            BasicIntegerTerm::IntegerVariable(
+                                                                keep_var.name,
+                                                            ),
+                                                        ),
+                                                    ),
+                                                };
+                                                let inner = Formula::conjoin(ct_copy.clone())
+                                                    .substitute(drop_var, keep);
+                                                simplified = Formula::QuantifiedFormula {
+                                                    quantification: Quantification {
+                                                        quantifier: Quantifier::Exists,
+                                                        variables: variables.clone(),
+                                                    },
+                                                    formula: inner.into(),
+                                                };
+                                                simplify = true;
+                                            }
+                                            None => (),
+                                        }
+                                    }
+                                }
+                                if simplify {
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    if simplify {
+                        break;
+                    }
+                }
+                simplified
+            }
 
             _ => formula,
         },
@@ -1133,28 +1192,36 @@ mod tests {
         basic_simplify, basic_simplify_outer, extend_quantifier_scope, relation_simplify_outer,
         restrict_quantifiers, simplify, simplify_conjunction_tree_with_equality,
         simplify_empty_quantifiers, simplify_nested_quantifiers, simplify_redundant_quantifiers,
-        simplify_theory, simplify_variable_lists, transitive_equality,
+        simplify_theory, simplify_transitive_equality, simplify_variable_lists,
+        transitive_equality,
     };
 
-    use crate::syntax_tree::fol::{Sort, Variable, Comparison};
+    use crate::syntax_tree::fol::{Comparison, Sort, Variable};
 
     #[test]
     fn test_transitive_equality() {
         for (c1, c2, vars, keep_var, drop_var, drop_term) in [
-            ("X = 5", "Y = 5", vec!["X","Y"], "X", "Y", "Y = 5"),
-            ("5 = X", "Y = 5", vec!["X","Y"], "X", "Y", "Y = 5"),
-            ("X = 5", "5 = Y", vec!["X","Y"], "X", "Y", "5 = Y"),
-            ("I$ = J$", "K$ = J$", vec!["I$","K$"], "I$", "K$", "K$ = J$"),
-            ("I$ = Z", "K$ = Z", vec!["I$","K$"], "I$", "K$", "K$ = Z"),
-            ("I$ = Z", "X = Z", vec!["I$","X"], "I$", "X", "X = Z"),
-            ("X = Z", "I$ = Z", vec!["I$","X"], "I$", "X", "X = Z"),
-            ("Z = X", "I$ = Z", vec!["I$","X"], "I$", "X", "Z = X"),
+            ("X = 5", "Y = 5", vec!["X", "Y"], "X", "Y", "Y = 5"),
+            ("5 = X", "Y = 5", vec!["X", "Y"], "X", "Y", "Y = 5"),
+            ("X = 5", "5 = Y", vec!["X", "Y"], "X", "Y", "5 = Y"),
+            (
+                "I$ = J$",
+                "K$ = J$",
+                vec!["I$", "K$"],
+                "I$",
+                "K$",
+                "K$ = J$",
+            ),
+            ("I$ = Z", "K$ = Z", vec!["I$", "K$"], "I$", "K$", "K$ = Z"),
+            ("I$ = Z", "X = Z", vec!["I$", "X"], "I$", "X", "X = Z"),
+            ("X = Z", "I$ = Z", vec!["I$", "X"], "I$", "X", "X = Z"),
+            ("Z = X", "I$ = Z", vec!["I$", "X"], "I$", "X", "Z = X"),
         ] {
             let c1: Comparison = c1.parse().unwrap();
             let c2: Comparison = c2.parse().unwrap();
             let mut variables = vec![];
             for vstr in vars.iter() {
-                let v: Variable = vstr.parse().unwrap(); 
+                let v: Variable = vstr.parse().unwrap();
                 variables.push(v);
             }
             let keep_var: Variable = keep_var.parse().unwrap();
@@ -1425,6 +1492,18 @@ mod tests {
     }
 
     #[test]
+    fn test_simplify_transitive_equality() {
+        for (src, target) in [(
+            "exists X Y Z ( X = 5 and Y = 5 and not p(X,Y))",
+            "exists X Z ( X = 5 and not p(X,X))",
+        )] {
+            let src = simplify_transitive_equality(src.parse().unwrap());
+            let target = target.parse().unwrap();
+            assert_eq!(src, target, "{src} != {target}")
+        }
+    }
+
+    #[test]
     fn test_full_simplify() {
         for (src, target) in [
             (
@@ -1462,6 +1541,10 @@ mod tests {
             (
                 "forall I (exists Z Z1 ( Z = I and ((q(Z)) and Z = Z1) ))",
                 "forall I ( q(I) )",
+            ),
+            (
+                "forall V1 (sqrtb(V1) <-> exists I (V1 = I and (exists Z Z1 (Z = I and exists I$i J$i K$i (I$i = 1 and J$i = b and Z1 = K$i and I$i <= K$i <= J$i) and Z = Z1) and exists Z Z1 (exists I1$i J$i (Z = I1$i * J$i and I1$i = I and J$i = I) and Z1 = b and Z <= Z1) and exists Z Z1 (exists I1$i J$i (Z = I1$i * J$i and exists I2$i J$i (I1$i = I2$i + J$i and I2$i = I and J$i = 1) and exists I1$i J1$i (J$i = I1$i + J1$i and I1$i = I and J1$i = 1)) and Z1 = b and Z > Z1))))",
+                "forall V1 (sqrtb(V1) <-> exists J$i K1$i (J$i = b and 1 <= K1$i <= J$i and V1 = K1$i and K1$i * K1$i <= b and (K1$i + 1) * (K1$i + 1) > b))"
             ),
         ] {
             let src = simplify(src.parse().unwrap(), false, true);
