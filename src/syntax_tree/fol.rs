@@ -38,6 +38,7 @@ impl BasicIntegerTerm {
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub enum UnaryOperator {
     Negative,
+    Absolute,
 }
 
 impl_node!(UnaryOperator, Format, UnaryOperatorParser);
