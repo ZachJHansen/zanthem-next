@@ -7,7 +7,7 @@ use {
             IntegerTermParser, LemmaParser, PlaceholderParser, PredicateParser,
             QuantificationParser, QuantifierParser, RelationParser, SpecParser,
             SpecificationParser, TheoryParser, UnaryConnectiveParser, UnaryOperatorParser,
-            VariableParser,
+            VariableParser, FunctionSymbolParser, FunctionParser,
         },
         syntax_tree::{impl_node, Node},
     },
@@ -44,6 +44,13 @@ pub enum UnaryOperator {
 impl_node!(UnaryOperator, Format, UnaryOperatorParser);
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
+pub enum FunctionSymbol {
+    AbsoluteValue
+}
+
+impl_node!(FunctionSymbol, Format, FunctionSymbolParser);
+
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub enum BinaryOperator {
     Add,
     Subtract,
@@ -55,6 +62,7 @@ impl_node!(BinaryOperator, Format, BinaryOperatorParser);
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub enum IntegerTerm {
     BasicIntegerTerm(BasicIntegerTerm),
+    Function(Function),
     UnaryOperation {
         op: UnaryOperator,
         arg: Box<IntegerTerm>,
@@ -145,6 +153,14 @@ impl GeneralTerm {
         }
     }
 }
+
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+pub struct Function {
+    pub symbol: FunctionSymbol,
+    pub terms: Vec<IntegerTerm>,
+}
+
+impl_node!(Function, Format, FunctionParser);
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub struct Predicate {

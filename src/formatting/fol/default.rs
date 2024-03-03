@@ -6,7 +6,7 @@ use {
                 Atom, AtomicFormula, BasicIntegerTerm, BinaryConnective, BinaryOperator,
                 Comparison, Direction, Formula, GeneralTerm, Guard, IntegerTerm, Lemma,
                 Placeholder, Predicate, Quantification, Quantifier, Relation, Sort, Spec,
-                Specification, Theory, UnaryConnective, UnaryOperator, Variable,
+                Specification, Theory, UnaryConnective, UnaryOperator, Variable, FunctionSymbol, Function,
             },
             Node,
         },
@@ -35,6 +35,14 @@ impl Display for Format<'_, UnaryOperator> {
     }
 }
 
+impl Display for Format<'_, FunctionSymbol> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self.0 {
+            FunctionSymbol::AbsoluteValue => write!(f, "abs"),
+        }
+    }
+}
+
 impl Display for Format<'_, BinaryOperator> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self.0 {
@@ -55,7 +63,8 @@ impl Precedence for Format<'_, IntegerTerm> {
                 op: UnaryOperator::Negative,
                 ..
             }
-            | IntegerTerm::BasicIntegerTerm(_) => 0,
+            | IntegerTerm::BasicIntegerTerm(_)
+            | IntegerTerm::Function(_) => 0,
             IntegerTerm::BinaryOperation {
                 op: BinaryOperator::Multiply,
                 ..
@@ -76,6 +85,7 @@ impl Precedence for Format<'_, IntegerTerm> {
             IntegerTerm::UnaryOperation { op, .. } => write!(f, "{}", Format(op)),
             IntegerTerm::BinaryOperation { op, .. } => write!(f, " {} ", Format(op)),
             IntegerTerm::BasicIntegerTerm(_) => unreachable!(),
+            _ => todo!()
         }
     }
 }
@@ -88,6 +98,7 @@ impl Display for Format<'_, IntegerTerm> {
             IntegerTerm::BinaryOperation { lhs, rhs, .. } => {
                 self.fmt_binary(Format(lhs.as_ref()), Format(rhs.as_ref()), f)
             }
+            _ => todo!()
         }
     }
 }
@@ -116,6 +127,27 @@ impl Display for Format<'_, Atom> {
         let terms = &self.0.terms;
 
         write!(f, "{predicate}")?;
+
+        if !terms.is_empty() {
+            let mut iter = terms.iter().map(Format);
+            write!(f, "({}", iter.next().unwrap())?;
+            for term in iter {
+                write!(f, ", {term}")?;
+            }
+            write!(f, ")")?;
+        }
+
+        Ok(())
+    }
+}
+
+// TODO - zero-arity function constants shouldn't be supported
+impl Display for Format<'_, Function> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        let function = &self.0.symbol;
+        let terms = &self.0.terms;
+
+        write!(f, "{function}")?;
 
         if !terms.is_empty() {
             let mut iter = terms.iter().map(Format);
