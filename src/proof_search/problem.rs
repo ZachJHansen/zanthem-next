@@ -8,8 +8,8 @@ use {
     },
     log::info,
     regex::Regex,
-    std::collections::{HashMap, HashSet},
-    std::fs,
+    indexmap::IndexMap,
+    std::{fs, collections::HashSet},
 };
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -478,7 +478,7 @@ pub struct ProblemHandler {
     functions: Vec<Statement>,
     interpretation: Interpretation,
     memory: Vec<Claim>,
-    pub goals: HashMap<Claim, Vec<Problem>>,
+    pub goals: IndexMap<Claim, Vec<Problem>>,
 }
 
 // Forward direction: assume program publics, prove spec publics
@@ -653,7 +653,7 @@ impl ProblemHandler {
             });
         }
 
-        let mut goals: HashMap<Claim, Vec<Problem>> = HashMap::new();
+        let mut goals: IndexMap<Claim, Vec<Problem>> = IndexMap::new();
         goals.insert(
             forward.clone(),
             //forward.decompose_claim(&predicates, &function_statements),
@@ -676,7 +676,7 @@ impl ProblemHandler {
     }
 
     pub fn default_decomposition(&mut self, break_equivalences: bool) {
-        let mut goals: HashMap<Claim, Vec<Problem>> = HashMap::new();
+        let mut goals: IndexMap<Claim, Vec<Problem>> = IndexMap::new();
         for c in self.goals.keys() {
             let claim = c.clone();
             goals.insert(
@@ -692,7 +692,7 @@ impl ProblemHandler {
     }
 
     pub fn sequential_decomposition(&mut self, break_equivalences: bool) {
-        let mut goals: HashMap<Claim, Vec<Problem>> = HashMap::new();
+        let mut goals: IndexMap<Claim, Vec<Problem>> = IndexMap::new();
         for c in self.goals.keys() {
             let claim = c.clone();
             goals.insert(
@@ -790,7 +790,7 @@ impl ProblemHandler {
             status: ProblemStatus::Unknown,
         };
 
-        let mut goals: HashMap<Claim, Vec<Problem>> = HashMap::new();
+        let mut goals: IndexMap<Claim, Vec<Problem>> = IndexMap::new();
         goals.insert(forward.clone(), Vec::new());
         goals.insert(backward.clone(), Vec::new());
 
