@@ -1,6 +1,7 @@
 use {
     crate::{
         proof_search::problem::{FileType, ProblemHandler, ProblemStatus},
+        command_line::Direction,
         syntax_tree::{asp, fol},
     },
     anyhow::anyhow,
@@ -26,12 +27,13 @@ pub fn default_verification(
     specification: &FileType,
     user_guide: &fol::Specification,
     lemmas: Option<fol::Specification>,
+    direction: Direction,
     cores: u16,
     break_equivalences: bool,
     parallelize: bool,
     simplify: bool,
 ) {
-    let mut h = ProblemHandler::new(program, specification, user_guide, simplify);
+    let mut h = ProblemHandler::new(program, specification, user_guide, simplify, direction);
     match lemmas {
         Some(l) => {
             println!("Warning - adding lemmas to default verification is useless. Try --with sequential.");
@@ -54,12 +56,13 @@ pub fn sequential_verification(
     specification: &FileType,
     user_guide: &fol::Specification,
     lemmas: Option<fol::Specification>,
+    direction: Direction,
     cores: u16,
     break_equivalences: bool,
     parallelize: bool,
     simplify: bool,
 ) {
-    let mut h = ProblemHandler::new(program, specification, user_guide, simplify);
+    let mut h = ProblemHandler::new(program, specification, user_guide, simplify, direction);
     match lemmas {
         Some(l) => {
             h.add_lemmas(l);

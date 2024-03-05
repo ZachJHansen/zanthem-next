@@ -37,6 +37,9 @@ pub enum Command {
 
         lemmas: Option<PathBuf>,
 
+        #[arg(long, value_enum, default_value_t = Direction::Both)]
+        direction: Direction,
+
         #[arg(long, default_value_t = 4)]
         cores: u16,
 
@@ -54,6 +57,9 @@ pub enum Command {
         with: Verification,
 
         directory: PathBuf,
+
+        #[arg(long, value_enum, default_value_t = Direction::Both)]
+        direction: Direction,
 
         #[arg(long, default_value_t = 4)]
         cores: u16,
@@ -82,6 +88,14 @@ pub enum Verification {
     Default,
     Sequential,
 }
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
+pub enum Direction {
+    Forward,
+    Backward,
+    Both,
+}
+
 
 #[cfg(test)]
 mod tests {

@@ -1,6 +1,7 @@
 use {
     crate::{
         convenience::{apply::Apply as _, unbox::fol::UnboxedFormula, unbox::Unbox},
+        command_line::Direction,
         formatting::fol::tptp::Format,
         simplifying::fol::ht::simplify as ht_simplify,
         syntax_tree::{asp, fol},
@@ -489,6 +490,7 @@ impl ProblemHandler {
         specification: &FileType,
         user_guide: &fol::Specification,
         simplify: bool,
+        direction: Direction,
     ) -> Self {
         let needs_renaming = match &specification {
             &FileType::MiniGringoProgram { .. } => true,
@@ -654,16 +656,33 @@ impl ProblemHandler {
         }
 
         let mut goals: IndexMap<Claim, Vec<Problem>> = IndexMap::new();
-        goals.insert(
-            forward.clone(),
-            //forward.decompose_claim(&predicates, &function_statements),
-            Vec::new(),
-        );
-        goals.insert(
-            backward.clone(),
-            //backward.decompose_claim(&predicates, &function_statements),
-            Vec::new(),
-        );
+
+        // TODO - the current implementation does redundant work by assembling goals that 
+        // might not be inserted into the goal list (but it is more readable this way)
+        match direction {
+            Direction::Forward => {
+                goals.insert(
+                    forward.clone(),
+                    Vec::new(),
+                );
+            },
+            Direction::Backward => {
+                goals.insert(
+                    backward.clone(),
+                    Vec::new(),
+                );
+            },
+            Direction::Both => {
+                goals.insert(
+                    forward.clone(),
+                    Vec::new(),
+                );
+                goals.insert(
+                    backward.clone(),
+                    Vec::new(),
+                );
+            },
+        }
 
         ProblemHandler {
             placeholders,
@@ -730,15 +749,6 @@ impl ProblemHandler {
     }
 
     pub fn add_lemmas(&mut self, lemmas: fol::Specification) {
-        let mut problem_claims = Vec::new();
-        for claim in self.goals.keys() {
-            problem_claims.push(claim.clone());
-        }
-        problem_claims.sort_by_key(|c| c.name.clone());
-
-        assert_eq!(problem_claims[0].name, "backward");
-        assert_eq!(problem_claims[1].name, "forward");
-
         // Insert lemmas as the first claim conclusions to be proven
         let mut forward_lemmas = Vec::new();
         let mut backward_lemmas = Vec::new();
@@ -773,27 +783,32 @@ impl ProblemHandler {
         placeholder_replacements(&mut forward_lemmas, &self.placeholders);
         placeholder_replacements(&mut backward_lemmas, &self.placeholders);
 
-        forward_lemmas.extend(problem_claims[1].conclusions.clone());
-        backward_lemmas.extend(problem_claims[0].conclusions.clone());
-
-        let forward = Claim {
-            name: "forward".to_string(),
-            premises: problem_claims[1].premises.clone(),
-            conclusions: forward_lemmas,
-            status: ProblemStatus::Unknown,
-        };
-
-        let backward = Claim {
-            name: "backward".to_string(),
-            premises: problem_claims[0].premises.clone(),
-            conclusions: backward_lemmas,
-            status: ProblemStatus::Unknown,
-        };
-
         let mut goals: IndexMap<Claim, Vec<Problem>> = IndexMap::new();
-        goals.insert(forward.clone(), Vec::new());
-        goals.insert(backward.clone(), Vec::new());
-
+        for claim in self.goals.keys() {
+            match claim.name.as_str() {
+                "forward" => {
+                    forward_lemmas.extend(claim.conclusions.clone());
+                    let forward = Claim {
+                        name: "forward".to_string(),
+                        premises: claim.premises.clone(),
+                        conclusions: forward_lemmas.clone(),
+                        status: ProblemStatus::Unknown,
+                    };
+                    goals.insert(forward.clone(), Vec::new());
+                },
+                "backward" => {
+                    backward_lemmas.extend(claim.conclusions.clone());
+                    let backward = Claim {
+                        name: "backward".to_string(),
+                        premises: claim.premises.clone(),
+                        conclusions: backward_lemmas.clone(),
+                        status: ProblemStatus::Unknown,
+                    };
+                    goals.insert(backward.clone(), Vec::new());
+                },
+                _ => panic!("can't add lemma with forward/backward direction to a goal with an unspecified direction"),
+            }
+        }
         self.goals = goals;
     }
 
