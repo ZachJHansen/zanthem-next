@@ -330,8 +330,13 @@ impl Display for Format<'_, Theory> {
 impl Display for Format<'_, Placeholder> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         let name = &self.0.name;
-        write!(f, "{name}")?;
-        Ok(())
+        let sort = &self.0.sort;
+
+        // TODO - does this really make sense?
+        match sort {
+            Sort::General => write!(f, "{name}"),
+            Sort::Integer => write!(f, "{name}"),
+        }
     }
 }
 
@@ -370,9 +375,12 @@ impl Display for Format<'_, Spec> {
                 Ok(())
             }
             Spec::PlaceholderDeclaration { placeholders } => {
-                let iter = placeholders.iter().map(Format);
-                for place in iter {
-                    writeln!(f, "input: {place} -> integer.")?;
+                for place in placeholders.iter() {
+                    let name = &place.name;
+                    match place.sort {
+                        Sort::General => writeln!(f, "input: {name} -> general."),
+                        Sort::Integer => writeln!(f, "input: {name} -> integer."),
+                    }?
                 }
                 Ok(())
             }
@@ -816,10 +824,19 @@ mod tests {
     fn format_placeholder() {
         assert_eq!(
             Format(&Placeholder {
-                name: "n".to_string()
+                name: "n".to_string(),
+                sort: Sort::Integer,
             })
             .to_string(),
             "n"
+        );
+        assert_eq!(
+            Format(&Placeholder {
+                name: "place".to_string(),
+                sort: Sort::General,
+            })
+            .to_string(),
+            "place"
         );
     }
 

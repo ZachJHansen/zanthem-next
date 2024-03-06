@@ -87,7 +87,9 @@ formula = { prefix* ~ primary ~ (infix ~ prefix* ~ primary)* }
 // TODO: Think about a proper way to handle the whitespace at the end of programs
 theory = { (formula ~ ".")* ~ WHITESPACE* }
 
-placeholder = { symbolic_constant ~ "-> integer" }
+placeholder = { integer_placeholder | general_placeholder }
+    integer_placeholder = { symbolic_constant ~ "-> integer" }
+    general_placeholder = { symbolic_constant ~ "-> general" }
 
 lemma = { forward_lemma | backward_lemma | universal_lemma }
     forward_lemma   = { "lemma(forward):" ~ formula ~ "." }

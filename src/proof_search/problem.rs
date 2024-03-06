@@ -102,11 +102,14 @@ impl Statement {
             } => {
                 let intermediate =
                     format!("\ntff({}, {}, {}).", name, role.display(), Format(formula)); // Placeholders special chars need to be replaced with actual names
-                let re = Regex::new(r"%-(?P<ph>[[:alpha:]]+)-%").unwrap();
+                let re = Regex::new(r"%-(?P<ph>[[:alpha:]]+)-%(?P<srt>[g|i])").unwrap();
                 let mut modified = intermediate.clone();
                 for caps in re.captures_iter(&intermediate) {
-                    let ph_specific_re =
-                        Regex::new(format!(r"%-{}-%i", &caps["ph"]).as_str()).unwrap();
+                    let ph_specific_re = match &caps["srt"] {
+                        "g" => Regex::new(format!(r"%-{}-%g", &caps["ph"]).as_str()).unwrap(),
+                        "i" => Regex::new(format!(r"%-{}-%i", &caps["ph"]).as_str()).unwrap(),
+                        _ => todo!(),
+                    };
                     modified = ph_specific_re
                         .replace_all(&modified, &caps["ph"].to_lowercase())
                         .to_string();
@@ -615,11 +618,15 @@ impl ProblemHandler {
 
         let mut function_statements = Vec::<Statement>::new();
         for ph in placeholders.iter() {
+            let ph_sort = match ph.sort {
+                fol::Sort::General => VampireTypes::Object,
+                fol::Sort::Integer => VampireTypes::Int,
+            };
             function_statements.push(Statement::TypedAtom {
                 name: "placeholder".to_string(),
                 atom: ph.to_string(),
                 spec: TypeSpec {
-                    return_type: VampireTypes::Int,
+                    return_type: ph_sort,
                     args: vec![],
                 },
             });
@@ -1279,12 +1286,8 @@ pub fn rename_predicates(
     }
 }
 
-fn insert_replacement(formula: fol::Formula, placeholder: &str) -> fol::Formula {
-    let replacement_name = format!("%-{}-%", placeholder.to_uppercase().to_string());
-    let replacement = fol::GeneralTerm::IntegerTerm(fol::IntegerTerm::BasicIntegerTerm(
-        fol::BasicIntegerTerm::IntegerVariable(replacement_name.clone()),
-    ));
-    let original = fol::GeneralTerm::Symbol(placeholder.to_string());
+fn insert_replacement(formula: fol::Formula, symbol: &String, replacement: fol::GeneralTerm) -> fol::Formula {
+    let original = fol::GeneralTerm::Symbol(symbol.clone());
 
     formula.apply(&mut |formula| match formula {
         fol::Formula::AtomicFormula(fol::AtomicFormula::Atom(mut a)) => {
@@ -1318,17 +1321,17 @@ fn insert_replacement(formula: fol::Formula, placeholder: &str) -> fol::Formula 
     })
 }
 
-pub fn replace_placeholders(formula: fol::Formula, placeholder: &str) -> fol::Formula {
+pub fn replace_placeholders(formula: fol::Formula, symbol: &String, replacement: fol::GeneralTerm) -> fol::Formula {
     //println!("Replacing {placeholder} within {formula}");
     match formula {
-        x @ fol::Formula::AtomicFormula(_) => insert_replacement(x, placeholder),
+        x @ fol::Formula::AtomicFormula(_) => insert_replacement(x, symbol, replacement),
 
         fol::Formula::UnaryFormula {
             connective: connective @ fol::UnaryConnective::Negation,
             formula,
         } => fol::Formula::UnaryFormula {
             connective,
-            formula: insert_replacement(*formula, placeholder).into(),
+            formula: insert_replacement(*formula, symbol, replacement).into(),
         },
 
         fol::Formula::BinaryFormula {
@@ -1337,8 +1340,8 @@ pub fn replace_placeholders(formula: fol::Formula, placeholder: &str) -> fol::Fo
             rhs,
         } => fol::Formula::BinaryFormula {
             connective,
-            lhs: insert_replacement(*lhs, placeholder).into(),
-            rhs: insert_replacement(*rhs, placeholder).into(),
+            lhs: insert_replacement(*lhs, symbol, replacement.clone()).into(),
+            rhs: insert_replacement(*rhs, symbol, replacement).into(),
         },
 
         fol::Formula::QuantifiedFormula {
@@ -1346,7 +1349,7 @@ pub fn replace_placeholders(formula: fol::Formula, placeholder: &str) -> fol::Fo
             formula,
         } => fol::Formula::QuantifiedFormula {
             quantification,
-            formula: insert_replacement(*formula, placeholder).into(),
+            formula: insert_replacement(*formula, symbol, replacement).into(),
         },
     }
 }
@@ -1355,19 +1358,27 @@ pub fn placeholder_replacements(
     formulas: &mut Vec<fol::Formula>,
     placeholders: &HashSet<fol::Placeholder>,
 ) {
-    let mut borrow_nightmare = HashSet::new();
+    let mut placeholder_replacements = HashSet::new();
     for ph in placeholders.iter() {
-        borrow_nightmare.insert(ph.name.clone());
+        let original_name = ph.name.clone();
+        let replacement_name = format!("%-{}-%", original_name.clone().to_uppercase().to_string());
+        let term = match ph.sort {
+            fol::Sort::General => fol::GeneralTerm::GeneralVariable(replacement_name.clone()),
+            fol::Sort::Integer => fol::GeneralTerm::IntegerTerm(fol::IntegerTerm::BasicIntegerTerm(
+                fol::BasicIntegerTerm::IntegerVariable(replacement_name.clone()),
+            )),
+        };
+        placeholder_replacements.insert((original_name, term));
     }
-    //println!("Replacing {} placeholders within {} formulas", placeholders.len(), formulas.len());
+
     let n = formulas.len();
     for i in 0..=n - 1 {
-        for ph in borrow_nightmare.iter() {
-            formulas[i] = replace_placeholders(formulas[i].clone(), ph);
-            //println!("\n\n%%%%%\nNew formula: {}\n%%%%%%", formulas[i]);
+        for ph_pair in placeholder_replacements.iter() {
+            formulas[i] = replace_placeholders(formulas[i].clone(), &ph_pair.0, ph_pair.1.clone());
         }
     }
 }
+
 
 #[cfg(test)]
 mod tests {

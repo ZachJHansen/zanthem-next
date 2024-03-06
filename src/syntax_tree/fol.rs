@@ -366,8 +366,6 @@ pub enum Sort {
     General,
 }
 
-// TODO: Should Sort be a Node?
-
 #[derive(Clone, Debug, Eq, PartialEq, Hash, Ord, PartialOrd)]
 pub struct Variable {
     pub name: String,
@@ -663,6 +661,7 @@ impl_node!(Theory, Format, TheoryParser);
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub struct Placeholder {
     pub name: String,
+    pub sort: Sort,
 }
 
 impl_node!(Placeholder, Format, PlaceholderParser);

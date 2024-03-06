@@ -516,18 +516,26 @@ impl PestParser for PlaceholderParser {
     const RULE: Self::Rule = internal::Rule::placeholder;
 
     fn translate_pair(pair: pest::iterators::Pair<'_, Self::Rule>) -> Self::Node {
-        if pair.as_rule() != internal::Rule::placeholder {
-            Self::report_unexpected_pair(pair)
+        match pair.as_rule() {
+            internal::Rule::placeholder => PlaceholderParser::translate_pairs(pair.into_inner()),
+            internal::Rule::integer_placeholder => match pair.into_inner().next() {
+                Some(pair) if pair.as_rule() == internal::Rule::symbolic_constant => Placeholder {
+                    name: pair.as_str().into(),
+                    sort: Sort::Integer,
+                },
+                Some(pair) => Self::report_unexpected_pair(pair),
+                None => Self::report_missing_pair(),
+            },
+            internal::Rule::general_placeholder => match pair.into_inner().next() {
+                Some(pair) if pair.as_rule() == internal::Rule::symbolic_constant => Placeholder {
+                    name: pair.as_str().into(),
+                    sort: Sort::General,
+                },
+                Some(pair) => Self::report_unexpected_pair(pair),
+                None => Self::report_missing_pair(),
+            },
+            _ => Self::report_unexpected_pair(pair),
         }
-
-        let mut pairs = pair.into_inner();
-        let name = pairs
-            .next()
-            .unwrap_or_else(|| Self::report_missing_pair())
-            .as_str()
-            .into();
-
-        Placeholder { name }
     }
 }
 
@@ -1591,6 +1599,7 @@ mod tests {
                 "n -> integer",
                 Placeholder {
                     name: "n".to_string(),
+                    sort: Sort::Integer,
                 },
             )])
             .should_reject(["n -> int"]);
@@ -1674,14 +1683,16 @@ mod tests {
                     },
                 ),
                 (
-                    "input: a -> integer, bar -> integer.",
+                    "input: a -> general, bar -> integer.",
                     Spec::PlaceholderDeclaration {
                         placeholders: vec![
                             Placeholder {
                                 name: "a".to_string(),
+                                sort: Sort::General,
                             },
                             Placeholder {
                                 name: "bar".to_string(),
+                                sort: Sort::Integer,
                             },
                         ],
                     },
@@ -1758,7 +1769,7 @@ mod tests {
         SpecificationParser
             .should_parse_into([
                 (
-                    "output: p/0. assume: #true.\ninput: n -> integer.",
+                    "output: p/0. assume: #true.\ninput: n -> general.",
                     Specification {
                         specs: vec![
                             Spec::Output {
@@ -1773,6 +1784,7 @@ mod tests {
                             Spec::PlaceholderDeclaration {
                                 placeholders: vec![Placeholder {
                                     name: "n".to_string(),
+                                    sort: Sort::General,
                                 }],
                             },
                         ],
@@ -1785,6 +1797,7 @@ mod tests {
                             Spec::PlaceholderDeclaration {
                                 placeholders: vec![Placeholder {
                                     name: "n".to_string(),
+                                    sort: Sort::Integer,
                                 }],
                             },
                             Spec::Output {
