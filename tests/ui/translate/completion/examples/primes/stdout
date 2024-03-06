@@ -1,0 +1,3 @@
+forall V1 (composite(V1) <-> exists J$i K$i K1$i (V1 = K$i * K1$i and J$i = n and 2 <= K$i <= J$i and exists J$i (J$i = n and 2 <= K1$i <= J$i))).
+forall I (prime(I) <-> exists J$i K$i (J$i = n and 2 <= K$i <= J$i and I = K$i and not composite(I))).
+

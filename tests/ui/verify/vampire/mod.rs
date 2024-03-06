@@ -19,7 +19,7 @@ fn verify_examples() {
         let mut cmd = Command::cargo_bin(env!("CARGO_PKG_NAME")).unwrap();
         let assert = cmd
             .arg("verify-alt")
-            .arg(program)
+            .arg(problem_dir)
             .arg("--with")
             .arg("sequential")
             .arg("-b")

@@ -1,0 +1,17 @@
+Conjecture: forall X (p(X) <- q(X) or X = %-A-%)
+	| Status: Proven
+Conjecture: forall X (p(X) -> q(X) or X = %-A-%)
+	| Status: Proven
+
+%%%%% Claim status: Theorem %%%%%
+
+Conjecture: forall V1 (p(V1) <- exists Z1 (q(V1) or Z1 = %-A-% and V1 = Z1))
+	| Status: Proven
+Conjecture: forall V1 (p(V1) -> exists Z1 (q(V1) or Z1 = %-A-% and V1 = Z1))
+	| Status: Proven
+
+%%%%% Claim status: Theorem %%%%%
+
+
+%%%%% Task status: Successfully proved all claims. %%%%%
+

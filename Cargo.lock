@@ -65,7 +65,6 @@ version = "0.1.0-dev"
 dependencies = [
  "anyhow",
  "assert_cmd",
- "assert_cmd",
  "clap",
  "env_logger",
  "evalexpr",
