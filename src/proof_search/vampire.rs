@@ -43,7 +43,7 @@ pub fn default_verification(
     }
     h.default_decomposition(break_equivalences);
     //h.display();
-    h.generate_problem_files();
+    //h.generate_problem_files();
     if parallelize {
         verify_with_vampire_parallel(h, cores);
     } else {
@@ -70,7 +70,7 @@ pub fn sequential_verification(
         None => (),
     }
     h.sequential_decomposition(break_equivalences);
-    h.generate_problem_files();
+    //h.generate_problem_files();
     if parallelize {
         verify_with_vampire_parallel(h, cores);
     } else {
