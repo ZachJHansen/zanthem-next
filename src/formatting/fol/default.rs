@@ -30,7 +30,6 @@ impl Display for Format<'_, UnaryOperator> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self.0 {
             UnaryOperator::Negative => write!(f, "-"),
-            UnaryOperator::Absolute => write!(f, "abs"),
         }
     }
 }

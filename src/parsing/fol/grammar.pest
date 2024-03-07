@@ -9,10 +9,7 @@
 WHITESPACE = _{ " " | NEWLINE }
 COMMENT = _{ "%" ~ (!NEWLINE ~ ANY)* ~ (NEWLINE | EOI) }
 
-keyword = _{ function | primitive | binary_connective | unary_connective | quantifier }
-
-    function = _{ absolute }
-        absolute = { "abs" }
+keyword = _{ primitive | binary_connective | unary_connective | quantifier }
 
     primitive = _{ infimum | supremum }
         infimum  = { "#inf" }
@@ -50,7 +47,7 @@ binary_operator = _{ add | subtract | multiply }
     multiply = { "*" }
 
 integer_term = { unary_operator* ~ n_primary ~ (binary_operator ~ unary_operator* ~ n_primary)* }
-    n_primary = _{ basic_integer_term | function? ~ "(" ~ integer_term ~ ")" }
+    n_primary = _{ basic_integer_term | "(" ~ integer_term ~ ")" }
 
 general_term = { integer_term | symbolic_constant | general_variable }
     symbolic_constant = @{ !keyword ~ "_"? ~ ASCII_ALPHA_LOWER ~ (ASCII_ALPHANUMERIC | "_")* }
