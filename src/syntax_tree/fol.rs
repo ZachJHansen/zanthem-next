@@ -4,9 +4,11 @@ use {
         parsing::fol::pest::{
             AtomParser, AtomicFormulaParser, BasicIntegerTermParser, BinaryConnectiveParser,
             BinaryOperatorParser, ComparisonParser, FormulaParser, GeneralTermParser, GuardParser,
-            IntegerTermParser, PredicateParser, QuantificationParser, QuantifierParser,
-            RelationParser, TheoryParser, UnaryConnectiveParser, UnaryOperatorParser,
-            VariableParser,
+            IntegerTermParser, PlaceholderParser, PredicateParser,
+            QuantificationParser, QuantifierParser, RelationParser, SpecParser,
+            SpecificationParser, TheoryParser, UnaryConnectiveParser, UnaryOperatorParser,
+            VariableParser, FormulaNameParser, AnnotatedFormulaParser, UserGuideParser,
+            RoleParser, DirectionParser,
         },
         syntax_tree::{impl_node, Node},
     },
@@ -124,8 +126,15 @@ impl GeneralTerm {
         }
     }
 
+    pub fn function_constants(&self) -> HashSet<String> {
+        match &self {
+            GeneralTerm::Symbol(s) => HashSet::from([s.to_string()]),
+            GeneralTerm::GeneralVariable(_) | GeneralTerm::IntegerTerm(_) => HashSet::new(),
+        }
+    }
+
     pub fn substitute(self, var: Variable, term: GeneralTerm) -> Self {
-        match self {
+        match self.clone() {
             GeneralTerm::GeneralVariable(s) if var.name == s && var.sort == Sort::General => term,
             GeneralTerm::IntegerTerm(t) if var.sort == Sort::Integer => match term {
                 GeneralTerm::IntegerTerm(term) => GeneralTerm::IntegerTerm(t.substitute(var, term)),
@@ -203,6 +212,10 @@ impl Guard {
     pub fn variables(&self) -> HashSet<Variable> {
         self.term.variables()
     }
+
+    pub fn function_constants(&self) -> HashSet<String> {
+        self.term.function_constants()
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
@@ -227,6 +240,16 @@ impl Comparison {
         }
 
         Comparison { term: lhs, guards }
+    }
+
+    pub fn equality_comparison(&self) -> bool {
+        let guards = &self.guards;
+        let first = &guards[0];
+        if guards.len() == 1 && first.relation == Relation::Equal {
+            return true;
+        } else {
+            return false;
+        }
     }
 }
 
@@ -270,6 +293,36 @@ impl AtomicFormula {
         }
     }
 
+    pub fn function_constants(&self) -> HashSet<String> {
+        match &self {
+            AtomicFormula::Falsity | AtomicFormula::Truth => HashSet::new(),
+            AtomicFormula::Atom(a) => {
+                let mut fns = HashSet::new();
+                for t in a.terms.iter() {
+                    fns.extend(t.function_constants());
+                }
+                fns
+            }
+            AtomicFormula::Comparison(c) => {
+                let mut fns = c.term.function_constants();
+                for guard in c.guards.iter() {
+                    fns.extend(guard.function_constants())
+                }
+                fns
+            }
+        }
+    }
+
+    // TODO
+    pub fn contains_variable(&self, v: &Variable) -> bool {
+        self.variables().contains(v)
+    }
+
+    // TODO
+    pub fn contains_free_variable(&self, v: &Variable) -> bool {
+        self.contains_variable(v)
+    }
+
     pub fn substitute(self, var: Variable, term: GeneralTerm) -> Self {
         match self {
             AtomicFormula::Atom(a) => AtomicFormula::Atom(a.substitute(var, term)),
@@ -302,13 +355,17 @@ pub struct Quantification {
 
 impl_node!(Quantification, Format, QuantificationParser);
 
+impl Quantification {
+    pub fn occurs(&self, v: &Variable) -> bool {
+        self.variables.contains(v)
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq, Hash, Ord, PartialOrd)]
 pub enum Sort {
     Integer,
     General,
 }
-
-// TODO: Should Sort be a Node?
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash, Ord, PartialOrd)]
 pub struct Variable {
@@ -373,6 +430,24 @@ impl Formula {
                 rhs: e.into(),
             })
             .unwrap_or_else(|| Formula::AtomicFormula(AtomicFormula::Truth))
+    }
+
+    // Inverse function to conjoin
+    pub fn conjoin_invert(formula: Formula) -> Vec<Formula> {
+        match formula {
+            Formula::BinaryFormula {
+                connective: BinaryConnective::Conjunction,
+                lhs,
+                rhs,
+            } => {
+                let mut formulas = Self::conjoin_invert(*lhs);
+                formulas.append(&mut Self::conjoin_invert(*rhs));
+                return formulas;
+            }
+            _ => {
+                return vec![formula];
+            }
+        }
     }
 
     /// Recursively turn a list of formulas into a tree of disjunctions
@@ -448,6 +523,38 @@ impl Formula {
         }
     }
 
+    pub fn function_constants(&self) -> HashSet<String> {
+        match &self {
+            Formula::AtomicFormula(f) => f.function_constants(),
+            Formula::UnaryFormula { formula, .. } => formula.function_constants(),
+            Formula::BinaryFormula { lhs, rhs, .. } => {
+                let mut fns = lhs.function_constants();
+                fns.extend(rhs.function_constants());
+                fns
+            }
+            Formula::QuantifiedFormula { formula, .. } => formula.function_constants(),
+        }
+    }
+
+    pub fn contains_free_variable(&self, v: &Variable) -> bool {
+        match &self {
+            Formula::AtomicFormula(a) => a.contains_free_variable(v),
+            Formula::UnaryFormula {
+                connective: _,
+                formula: f,
+            } => f.contains_free_variable(v),
+            Formula::QuantifiedFormula {
+                quantification: q,
+                formula: f,
+            } => f.contains_free_variable(v) && !q.occurs(v),
+            Formula::BinaryFormula {
+                connective: _,
+                lhs: f1,
+                rhs: f2,
+            } => f1.contains_free_variable(v) || f2.contains_free_variable(v),
+        }
+    }
+
     // Replace all free occurences of var with term within the formula
     pub fn substitute(self, var: Variable, term: GeneralTerm) -> Self {
         match self {
@@ -481,6 +588,68 @@ impl Formula {
             } => f,
         }
     }
+
+    // Replacing var with term within self is unsafe if self contains a subformula
+    // of the form QxF, where var is free in F and a variable in term occurs in x
+    pub fn unsafe_substitution(self, var: &Variable, term: &GeneralTerm) -> bool {
+        match self {
+            Formula::AtomicFormula(_) => false,
+            Formula::UnaryFormula { formula, .. } => formula.unsafe_substitution(var, term),
+            Formula::BinaryFormula { lhs, rhs, .. } => {
+                lhs.unsafe_substitution(var, term) || rhs.unsafe_substitution(var, term)
+            }
+            Formula::QuantifiedFormula {
+                quantification,
+                formula,
+            } => {
+                let tvars = term.variables();
+                let qvars = HashSet::from_iter(quantification.variables);
+                let overlap: HashSet<&Variable> = tvars.intersection(&qvars).collect();
+                formula.contains_free_variable(var) && !overlap.is_empty()
+            }
+        }
+    }
+
+    pub fn rename_variables(self, count: usize) -> (Formula, usize) {
+        match self {
+            Formula::QuantifiedFormula {
+                quantification: q,
+                formula: f,
+            } => {
+                let mut fcount = count;
+                let mut f1 = *f;
+                let mut vars = vec![];
+                for (i, var) in q.variables.iter().enumerate() {
+                    let mut x = "X".to_owned();
+                    x.push_str((count + i + 1).to_string().as_str());
+                    let new_var = Variable {
+                        name: x,
+                        sort: var.clone().sort,
+                    };
+                    vars.push(new_var.clone());
+                    let new_term = match var.sort {
+                        Sort::General => GeneralTerm::GeneralVariable(new_var.name),
+                        Sort::Integer => GeneralTerm::IntegerTerm(IntegerTerm::BasicIntegerTerm(
+                            BasicIntegerTerm::IntegerVariable(new_var.clone().name),
+                        )),
+                    };
+                    f1 = f1.substitute(var.clone(), new_term);
+                    fcount = count + i + 1;
+                }
+                (
+                    Formula::QuantifiedFormula {
+                        quantification: Quantification {
+                            quantifier: q.quantifier,
+                            variables: vars,
+                        },
+                        formula: f1.into(),
+                    },
+                    fcount,
+                )
+            }
+            x => (x, count),
+        }
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
@@ -490,9 +659,91 @@ pub struct Theory {
 
 impl_node!(Theory, Format, TheoryParser);
 
+///////// End of FOL Language /////////
+
+///////// Start of Control Language /////////
+
+/// A Placeholder is a uninterpreted function constant of a given sort
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+pub struct Placeholder {
+    pub name: String,
+    pub sort: Sort,
+}
+
+impl_node!(Placeholder, Format, PlaceholderParser);
+
+/// A Role dictates how a formula is used within a verification task
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+pub enum Role {
+    Assumption,
+    Conjecture,
+    Lemma,
+}
+
+impl_node!(Role, Format, RoleParser);
+
+/// The Direction dictates which direction of an equivalence verification 
+/// task a formula should be used within
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+pub enum Direction {
+    Forward,
+    Backward,
+    Universal,
+}
+
+impl_node!(Direction, Format, DirectionParser);
+
+/// An AnnotatedFormula can be optionally named
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+pub struct FormulaName (pub Option<String>);
+
+impl_node!(FormulaName, Format, FormulaNameParser);
+
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+pub struct AnnotatedFormula {
+    pub role: Role,
+    pub direction: Direction,
+    pub name: FormulaName,
+    pub formula: Formula,
+}
+
+impl_node!(AnnotatedFormula, Format, AnnotatedFormulaParser);
+
+/// A User Guide contains Placeholder Declarations, input/output Predicates, and
+/// certain universal assumptions of a verification task
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+pub struct UserGuide {
+    pub input_predicates: Vec<Predicate>,
+    pub output_predicates: Vec<Predicate>,
+    pub placeholders: Vec<Placeholder>,
+    pub assumptions: Vec<AnnotatedFormula>,
+}
+
+impl_node!(UserGuide, Format, UserGuideParser);
+
+/// User Guides are lists of Specs
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+pub enum Spec {
+    Input { predicates: Vec<Predicate> },
+    Output { predicates: Vec<Predicate> },
+    PlaceholderDeclaration { placeholders: Vec<Placeholder> },
+    AnnotatedFormula(AnnotatedFormula),
+}
+
+impl_node!(Spec, Format, SpecParser);
+
+/// A Specification defines additional universal assumptions and 
+/// the conjectures against which a program is compared
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+pub struct Specification {
+    pub formulas: Vec<AnnotatedFormula>,
+}
+
+impl_node!(Specification, Format, SpecificationParser);
+
 #[cfg(test)]
 mod tests {
-    use super::Formula;
+    use super::{Formula, GeneralTerm, Variable};
 
     #[test]
     fn test_formula_conjoin() {
@@ -504,6 +755,21 @@ mod tests {
             assert_eq!(
                 Formula::conjoin(src.iter().map(|x| x.parse().unwrap())),
                 target.parse().unwrap(),
+            )
+        }
+    }
+
+    #[test]
+    fn test_conjoin_invert() {
+        for src in [
+            vec!["X = Y"],
+            vec!["X = Y", "p(a)", "q(X)"],
+            vec!["X < Y < 3", "exists Y (Y > 1)"],
+        ] {
+            let formulas: Vec<Formula> = src.iter().map(|x| x.parse().unwrap()).collect();
+            assert_eq!(
+                Formula::conjoin_invert(Formula::conjoin(formulas.clone())),
+                formulas,
             )
         }
     }
@@ -523,6 +789,21 @@ mod tests {
     }
 
     #[test]
+    fn test_rename_variables() {
+        for (src, target) in [
+            ("exists X Y (X = Y)", "exists X1 X2 (X1 = X2)"),
+            (
+                "exists N M (exists N (N = M and p(N)) or q(N))",
+                "exists X1 X2 (exists N (N = X2 and p(N)) or q(X1))",
+            ),
+        ] {
+            let src = src.parse::<Formula>().unwrap().rename_variables(0).0;
+            let target = target.parse().unwrap();
+            assert_eq!(src, target, "{src} != {target}")
+        }
+    }
+
+    #[test]
     fn test_formula_free_variables() {
         for (src, target) in [
             ("forall X (X = Y)", vec!["Y"]),
@@ -533,6 +814,43 @@ mod tests {
                 src.parse::<Formula>().unwrap().free_variables(),
                 target.iter().map(|x| x.parse().unwrap()).collect(),
             )
+        }
+    }
+
+    #[test]
+    fn test_unsafe_substitution() {
+        for (src, target) in [
+            (vec!["exists X (p(X, V))", "V", "Y"], false), // Safe
+            (vec!["exists X (p(X, V))", "V", "X"], true),  // Unsafe
+            (
+                vec!["forall Y (q(Y)) and exists X (p(X) or X < V)", "V", "3"],
+                false,
+            ),
+            (
+                vec!["forall Y (q(Y)) and exists X (p(X) or X < V)", "V", "X"],
+                true,
+            ),
+            (
+                vec![
+                    "q(V) -> exists X Y$ Z$ (X = Y$ or Z$ < 1 and p(V))",
+                    "V",
+                    "(Y$+1)*3",
+                ],
+                true,
+            ),
+            (
+                vec![
+                    "q(V) -> exists X Z$ (X = Y$ or Z$ < 1 and p(V))",
+                    "V",
+                    "(Y$+1)*3",
+                ],
+                false,
+            ),
+        ] {
+            let f: Formula = src[0].parse().unwrap();
+            let v: Variable = src[1].parse().unwrap();
+            let t: GeneralTerm = src[2].parse().unwrap();
+            assert_eq!(f.unsafe_substitution(&v, &t), target)
         }
     }
 

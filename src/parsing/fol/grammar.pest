@@ -86,3 +86,34 @@ formula = { prefix* ~ primary ~ (infix ~ prefix* ~ primary)* }
 
 // TODO: Think about a proper way to handle the whitespace at the end of programs
 theory = { (formula ~ ".")* ~ WHITESPACE* }
+
+///////// End of FOL Language /////////
+
+///////// Start of Control Language /////////
+
+role = { assumption | conjecture | lemma }
+    assumption = { "assume" }
+    conjecture = { "spec" }
+    lemma      = { "lemma" }
+
+direction = { forward | backward | universal }
+    forward   = { "(forward)" }
+    backward  = { "(backward)" }
+    universal = { "(universal)" }
+
+formula_name = { "[" ~ symbolic_constant ~ "]" }
+
+annotated_formula = { role ~ direction? ~ formula_name? ~ ":" ~ formula ~ "." }
+
+specification = { (annotated_formula ~ ".")* ~ WHITESPACE* }
+
+placeholder = { integer_placeholder | general_placeholder }
+    integer_placeholder = { symbolic_constant ~ "-> integer" }
+    general_placeholder = { symbolic_constant ~ "-> general" }
+
+spec = { input | output | placeholder_declaration | annotated_formula }
+    input                   = { "input:" ~ predicate ~ ("," ~ predicate)* ~ "." }
+    output                  = { "output:" ~ predicate ~ ("," ~ predicate)* ~ "." }
+    placeholder_declaration = { "input:" ~ placeholder ~ ("," ~ placeholder)* ~ "." }
+
+user_guide = { (spec ~ ".")* ~ WHITESPACE* }
