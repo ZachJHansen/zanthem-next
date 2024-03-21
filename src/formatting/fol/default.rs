@@ -3,11 +3,11 @@ use {
         formatting::{Associativity, Precedence},
         syntax_tree::{
             fol::{
-                Atom, AtomicFormula, BasicIntegerTerm, BinaryConnective, BinaryOperator,
-                Comparison, Direction, Formula, GeneralTerm, Guard, IntegerTerm,
-                Placeholder, Predicate, Quantification, Quantifier, Relation, Sort, Spec,
-                Specification, Theory, UnaryConnective, UnaryOperator, Variable, FormulaName,
-                Role, AnnotatedFormula, UserGuide,
+                AnnotatedFormula, Atom, AtomicFormula, BasicIntegerTerm, BinaryConnective,
+                BinaryOperator, Comparison, Direction, Formula, FormulaName, GeneralTerm, Guard,
+                IntegerTerm, Placeholder, Predicate, Quantification, Quantifier, Relation, Role,
+                Sort, Spec, Specification, Theory, UnaryConnective, UnaryOperator, UserGuide,
+                Variable,
             },
             Node,
         },
@@ -364,9 +364,11 @@ impl Display for Format<'_, Direction> {
 impl Display for Format<'_, Role> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self.0 {
-            Role::Assumption => write!(f, "assume")?,
-            Role::Conjecture => write!(f, "spec")?,
+            Role::Assumption => write!(f, "assumption")?,
+            Role::Conjecture => write!(f, "conjecture")?,
             Role::Lemma => write!(f, "lemma")?,
+            Role::Definition => write!(f, "definition")?,
+            Role::InductiveLemma => write!(f, "inductive-lemma")?,
         }
         Ok(())
     }
@@ -375,9 +377,21 @@ impl Display for Format<'_, Role> {
 impl Display for Format<'_, AnnotatedFormula> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self.0 {
-            AnnotatedFormula { role, direction, name, formula } => {
-                writeln!(f, "{}({})[{}]: {}.", Format(role), Format(direction), Format(name), Format(formula))?;
-            },
+            AnnotatedFormula {
+                role,
+                direction,
+                name,
+                formula,
+            } => {
+                writeln!(
+                    f,
+                    "{}({})[{}]: {}.",
+                    Format(role),
+                    Format(direction),
+                    Format(name),
+                    Format(formula)
+                )?;
+            }
         }
         Ok(())
     }

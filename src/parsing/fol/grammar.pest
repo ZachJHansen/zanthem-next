@@ -91,10 +91,12 @@ theory = { (formula ~ ".")* ~ WHITESPACE* }
 
 ///////// Start of Control Language /////////
 
-role = { assumption | conjecture | lemma }
-    assumption = { "assume" }
-    conjecture = { "spec" }
-    lemma      = { "lemma" }
+role = { assumption | conjecture | definition | lemma | inductive_lemma }
+    assumption       = { "assumption" }
+    conjecture       = { "conjecture" }
+    definition       = { "definition" }
+    lemma            = { "lemma" }
+    inductive_lemma  = { "inductive-lemma" }
 
 direction = { forward | backward | universal }
     forward   = { "(forward)" }

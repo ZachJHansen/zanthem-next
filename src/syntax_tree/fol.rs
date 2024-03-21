@@ -2,13 +2,12 @@ use {
     crate::{
         formatting::fol::default::Format,
         parsing::fol::pest::{
-            AtomParser, AtomicFormulaParser, BasicIntegerTermParser, BinaryConnectiveParser,
-            BinaryOperatorParser, ComparisonParser, FormulaParser, GeneralTermParser, GuardParser,
-            IntegerTermParser, PlaceholderParser, PredicateParser,
-            QuantificationParser, QuantifierParser, RelationParser, SpecParser,
-            SpecificationParser, TheoryParser, UnaryConnectiveParser, UnaryOperatorParser,
-            VariableParser, FormulaNameParser, AnnotatedFormulaParser, UserGuideParser,
-            RoleParser, DirectionParser,
+            AnnotatedFormulaParser, AtomParser, AtomicFormulaParser, BasicIntegerTermParser,
+            BinaryConnectiveParser, BinaryOperatorParser, ComparisonParser, DirectionParser,
+            FormulaNameParser, FormulaParser, GeneralTermParser, GuardParser, IntegerTermParser,
+            PlaceholderParser, PredicateParser, QuantificationParser, QuantifierParser,
+            RelationParser, RoleParser, SpecParser, SpecificationParser, TheoryParser,
+            UnaryConnectiveParser, UnaryOperatorParser, UserGuideParser, VariableParser,
         },
         syntax_tree::{impl_node, Node},
     },
@@ -677,12 +676,14 @@ impl_node!(Placeholder, Format, PlaceholderParser);
 pub enum Role {
     Assumption,
     Conjecture,
+    Definition,
     Lemma,
+    InductiveLemma,
 }
 
 impl_node!(Role, Format, RoleParser);
 
-/// The Direction dictates which direction of an equivalence verification 
+/// The Direction dictates which direction of an equivalence verification
 /// task a formula should be used within
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub enum Direction {
@@ -695,10 +696,11 @@ impl_node!(Direction, Format, DirectionParser);
 
 /// An AnnotatedFormula can be optionally named
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
-pub struct FormulaName (pub Option<String>);
+pub struct FormulaName(pub Option<String>);
 
 impl_node!(FormulaName, Format, FormulaNameParser);
 
+/// A Claim is composed of AnnotatedFormulas
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub struct AnnotatedFormula {
     pub role: Role,
@@ -721,7 +723,7 @@ pub struct UserGuide {
 
 impl_node!(UserGuide, Format, UserGuideParser);
 
-/// User Guides are lists of Specs
+/// User Guides are lists of Specs.
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub enum Spec {
     Input { predicates: Vec<Predicate> },
@@ -732,8 +734,10 @@ pub enum Spec {
 
 impl_node!(Spec, Format, SpecParser);
 
-/// A Specification defines additional universal assumptions and 
-/// the conjectures against which a program is compared
+/// A Specification defines additional assumptions and
+/// the conjectures against which a program is compared.
+/// It can also contain proof outline instructions (such as Definitions and Inductions),
+/// thus all helper files are Specifications.
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub struct Specification {
     pub formulas: Vec<AnnotatedFormula>,
