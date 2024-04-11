@@ -98,41 +98,42 @@ impl fmt::Display for Problem {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.interpretation)?;
 
+        writeln!(f, "% predicate definitions")?;
         for (i, predicate) in self.predicates().into_iter().enumerate() {
             let symbol = predicate.symbol;
-            // let input: String = repeat("general")
-            //     .take(predicate.arity)
-            //     .intersperse(" * ")
-            //     .collect();
             let input: String =
                 Itertools::intersperse(repeat("general").take(predicate.arity), " * ").collect();
             writeln!(f, "tff(predicate_{i}, type, {symbol}: ({input}) > $o).")?
         }
 
+        writeln!(f, "% symbol definitions")?;
         for (i, symbol) in self.symbols().into_iter().enumerate() {
-            writeln!(f, "tff(type_symbol_{i}, type, {symbol}: symbol).")?
+            writeln!(f, "tff(type_symbol_{i}, type, {symbol}: general).")?;
+            writeln!(
+                f,
+                "tff(axiom_less_symbol_{i}, axiom, ![X: $int]: less(to_general(X),{symbol}))."
+            )?
         }
 
+        writeln!(f, "% function constant definitions")?;
         for (i, constant) in self.function_constants().into_iter().enumerate() {
             let name = crate::formatting::fol::tptp::Format(&constant);
             let sort = match constant.sort {
                 Sort::General => "general",
                 Sort::Integer => "$int",
-                Sort::Symbol => "symbol",
+                Sort::Symbol => "general",
             };
             writeln!(f, "tff(type_function_constant_{i}, type, {name}: {sort}).")?
         }
 
+        writeln!(f, "% symbol order axioms")?;
         let mut symbols = Vec::from_iter(self.symbols());
         symbols.sort_unstable();
         for (i, s) in symbols.windows(2).enumerate() {
-            writeln!(
-                f,
-                "tff(symbol_order_{i}, axiom, p__less__(f__symbolic__({}), f__symbolic__({}))).",
-                s[0], s[1]
-            )?
+            writeln!(f, "tff(symbol_order_{i}, axiom, less({}, {})).", s[0], s[1])?
         }
 
+        writeln!(f, "%formulas")?;
         for formula in &self.formulas {
             formula.fmt(f)?;
         }
