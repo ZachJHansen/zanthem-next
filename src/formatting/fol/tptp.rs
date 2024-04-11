@@ -140,21 +140,34 @@ impl Display for Format<'_, Comparison> {
             if counter > 0 {
                 write!(f, " & ")?;
             }
+
+            // check if left and right term are ints
+            let left_is_int = matches!(previous_term, GeneralTerm::IntegerTerm(_));
+            let right_is_int = matches!(g.term, GeneralTerm::IntegerTerm(_));
+            // if the types don't match a cast is necessary
+            let needs_cast = left_is_int != right_is_int;
+            // if both are ints using the integer comparison in necessary
+            let needs_int_comparison = left_is_int & right_is_int;
+
+            // cast terms if needed
+            let lhs_string = cast_term(previous_term, needs_cast);
+            let rhs_string = cast_term(&g.term, needs_cast);
+
             match g.relation {
-                Relation::Equal | Relation::NotEqual => write!(
-                    f,
-                    "{} {} {}",
-                    Format(previous_term),
-                    Format(&g.relation),
-                    Format(&g.term)
-                ),
-                _ => write!(
-                    f,
-                    "{}({}, {})",
-                    Format(&g.relation),
-                    Format(previous_term),
-                    Format(&g.term)
-                ),
+                Relation::Equal | Relation::NotEqual => {
+                    write!(f, "{} {} {}", lhs_string, Format(&g.relation), rhs_string)
+                }
+                // for other relations need to use the correct version (int or general)
+                _ => match needs_int_comparison {
+                    true => write!(
+                        f,
+                        "${}({}, {})",
+                        Format(&g.relation),
+                        lhs_string,
+                        rhs_string
+                    ),
+                    false => write!(f, "{}({}, {})", Format(&g.relation), lhs_string, rhs_string),
+                },
             }?;
             previous_term = &g.term;
         }
