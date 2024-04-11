@@ -354,19 +354,19 @@ mod tests {
 
     #[test]
     fn format_general_term() {
-        assert_eq!(Format(&GeneralTerm::Infimum).to_string(), "c__infimum__");
-        assert_eq!(Format(&GeneralTerm::Supremum).to_string(), "c__supremum__");
+        assert_eq!(Format(&GeneralTerm::Infimum).to_string(), "infimum");
+        assert_eq!(Format(&GeneralTerm::Supremum).to_string(), "supremum");
         assert_eq!(
             Format(&GeneralTerm::Variable("N1".into())).to_string(),
             "N1"
         );
         assert_eq!(
             Format(&GeneralTerm::SymbolicTerm(SymbolicTerm::Symbol("p".into()))).to_string(),
-            "f__symbolic__(p)"
+            "p"
         );
         assert_eq!(
             Format(&GeneralTerm::IntegerTerm(IntegerTerm::Numeral(1))).to_string(),
-            "f__integer__(1)"
+            "1"
         )
     }
 
@@ -385,7 +385,7 @@ mod tests {
                 ]
             })
             .to_string(),
-            "prime(f__integer__($sum(N1$i, 3)), f__integer__(5))"
+            "prime(to_general($sum(N1$i, 3)), to_general(5))"
         )
     }
 
@@ -400,7 +400,7 @@ mod tests {
                 }]
             })
             .to_string(),
-            "f__integer__(5) = f__integer__(3)"
+            "5 = 3"
         );
         assert_eq!(
             Format(&Comparison {
@@ -411,7 +411,7 @@ mod tests {
                 }]
             })
             .to_string(),
-            "f__integer__(5) != f__integer__(3)"
+            "5 != 3"
         );
         assert_eq!(
             Format(&Comparison {
@@ -422,7 +422,7 @@ mod tests {
                 }]
             })
             .to_string(),
-            "p__less_equal__(f__integer__(5), f__integer__(3))"
+            "$lesseq(5, 3)"
         );
         assert_eq!(
             Format(&Comparison {
@@ -439,7 +439,7 @@ mod tests {
                 ]
             })
             .to_string(),
-            "p__less_equal__(f__integer__(5), f__integer__(3)) & f__integer__(3) = f__integer__(4)"
+            "$lesseq(5, 3) & 3 = 4"
         );
         assert_eq!(
             Format(&Comparison {
@@ -460,7 +460,7 @@ mod tests {
                 ]
             })
             .to_string(),
-            "p__less_equal__(f__integer__(5), f__integer__(3)) & p__less__(f__integer__(3), f__integer__(6)) & f__integer__(6) != f__integer__(5)"
+            "$lesseq(5, 3) & $less(3, 6) & 6 != 5"
         );
     }
 
