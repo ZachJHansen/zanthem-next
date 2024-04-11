@@ -86,6 +86,14 @@ impl Display for Format<'_, GeneralTerm> {
     }
 }
 
+fn cast_term(term: &GeneralTerm, needs_cast: bool) -> String {
+    // only integer terms have to be cast
+    match (matches!(term, GeneralTerm::IntegerTerm(_)) & needs_cast) {
+        true => format!("to_general({})", Format(term)),
+        false => format!("{}", Format(term)),
+    }
+}
+
 impl Display for Format<'_, Atom> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         let predicate = &self.0.predicate_symbol;
@@ -94,10 +102,14 @@ impl Display for Format<'_, Atom> {
         write!(f, "{predicate}")?;
 
         if !terms.is_empty() {
-            let mut iter = terms.iter().map(Format);
-            write!(f, "({}", iter.next().unwrap())?;
-            for term in iter {
-                write!(f, ", {term}")?;
+            write!(f, "(")?;
+            for (counter, t) in terms.iter().enumerate() {
+                let term = cast_term(t, true);
+                if counter == 0 {
+                    write!(f, "{term}")?
+                } else {
+                    write!(f, ", {term}")?
+                }
             }
             write!(f, ")")?;
         }
