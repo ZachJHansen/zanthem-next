@@ -76,12 +76,12 @@ impl Display for Format<'_, SymbolicTerm> {
 impl Display for Format<'_, GeneralTerm> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self.0 {
-            GeneralTerm::Infimum => write!(f, "c__infimum__"),
-            GeneralTerm::Supremum => write!(f, "c__supremum__"),
+            GeneralTerm::Infimum => write!(f, "infimum"),
+            GeneralTerm::Supremum => write!(f, "supremum"),
             GeneralTerm::FunctionConstant(c) => write!(f, "{c}$g"),
             GeneralTerm::Variable(v) => write!(f, "{v}"),
-            GeneralTerm::IntegerTerm(t) => write!(f, "f__integer__({})", Format(t)),
-            GeneralTerm::SymbolicTerm(t) => write!(f, "f__symbolic__({})", Format(t)),
+            GeneralTerm::IntegerTerm(t) => write!(f, "{}", Format(t)),
+            GeneralTerm::SymbolicTerm(t) => write!(f, "{}", Format(t)),
         }
     }
 }
@@ -111,10 +111,10 @@ impl Display for Format<'_, Relation> {
         match self.0 {
             Relation::Equal => write!(f, "="),
             Relation::NotEqual => write!(f, "!="),
-            Relation::GreaterEqual => write!(f, "p__greater_equal__"),
-            Relation::LessEqual => write!(f, "p__less_equal__"),
-            Relation::Greater => write!(f, "p__greater__"),
-            Relation::Less => write!(f, "p__less__"),
+            Relation::GreaterEqual => write!(f, "greatereq"),
+            Relation::LessEqual => write!(f, "lesseq"),
+            Relation::Greater => write!(f, "greater"),
+            Relation::Less => write!(f, "less"),
         }
     }
 }
