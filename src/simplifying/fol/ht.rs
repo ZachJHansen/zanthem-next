@@ -7,7 +7,7 @@ use crate::{
     },
     syntax_tree::fol::{
         AtomicFormula, BasicIntegerTerm, BinaryConnective, Comparison, Formula, GeneralTerm, Guard,
-        IntegerTerm, Quantification, Quantifier, Relation, Sort, Theory, Variable,
+        IntegerTerm, Quantification, Quantifier, Relation, Sort, Theory, UnaryConnective, Variable,
     },
 };
 
@@ -51,6 +51,11 @@ pub fn simplify(formula: Formula, prettify: bool, full: bool) -> Formula {
         f2 = simplify_transitive_equality(f2);
         f2 = simplify_empty_quantifiers(simplify_variable_lists(f2));
         debug!("Formula after simplifying transitive equalities: \n{f2}\n");
+
+        f2 = simplify_negation(f2);
+        f2 = simplify_negated_existentials(f2);
+        f2 = simplify_empty_quantifiers(simplify_variable_lists(f2));
+        debug!("Formula after simplifying negation and negated existentials: \n{f2}\n");
 
         if full {
             f2 = restrict_quantifiers(f2);
@@ -115,6 +120,70 @@ pub fn pretty_outer(formula: Formula, mut count: usize) -> (Formula, usize) {
         }
         Formula::QuantifiedFormula { .. } => formula.rename_variables(count),
         x => (x, count),
+    }
+}
+
+/// F -> #false is rewritten as the abbreviation not F
+pub fn simplify_negation(formula: Formula) -> Formula {
+    formula.apply(&mut simplify_negation_outer)
+}
+
+pub fn simplify_negation_outer(formula: Formula) -> Formula {
+    match formula.unbox() {
+        UnboxedFormula::BinaryFormula {
+            connective: BinaryConnective::Implication,
+            lhs,
+            rhs: Formula::AtomicFormula(AtomicFormula::Falsity),
+        } => Formula::UnaryFormula {
+            connective: UnaryConnective::Negation,
+            formula: lhs.into(),
+        },
+
+        UnboxedFormula::BinaryFormula {
+            connective: BinaryConnective::ReverseImplication,
+            lhs: Formula::AtomicFormula(AtomicFormula::Falsity),
+            rhs,
+        } => Formula::UnaryFormula {
+            connective: UnaryConnective::Negation,
+            formula: rhs.into(),
+        },
+
+        x => x.rebox(),
+    }
+}
+
+/// We want to eliminate existentials where possible by making them universals
+/// not exists X F(X) => forall X (not F(X))
+pub fn simplify_negated_existentials(formula: Formula) -> Formula {
+    formula.apply(&mut simplify_negated_existentials_outer)
+}
+
+pub fn simplify_negated_existentials_outer(formula: Formula) -> Formula {
+    match formula.unbox() {
+        UnboxedFormula::UnaryFormula {
+            connective: UnaryConnective::Negation,
+            formula:
+                Formula::QuantifiedFormula {
+                    quantification:
+                        Quantification {
+                            quantifier: Quantifier::Exists,
+                            variables,
+                        },
+                    formula,
+                },
+        } => Formula::QuantifiedFormula {
+            quantification: Quantification {
+                quantifier: Quantifier::Forall,
+                variables,
+            },
+            formula: Formula::UnaryFormula {
+                connective: UnaryConnective::Negation,
+                formula: formula,
+            }
+            .into(),
+        },
+
+        x => x.rebox(),
     }
 }
 
@@ -1191,9 +1260,9 @@ mod tests {
     use super::{
         basic_simplify, basic_simplify_outer, extend_quantifier_scope, relation_simplify_outer,
         restrict_quantifiers, simplify, simplify_conjunction_tree_with_equality,
-        simplify_empty_quantifiers, simplify_nested_quantifiers, simplify_redundant_quantifiers,
-        simplify_theory, simplify_transitive_equality, simplify_variable_lists,
-        transitive_equality,
+        simplify_empty_quantifiers, simplify_negated_existentials, simplify_nested_quantifiers,
+        simplify_redundant_quantifiers, simplify_theory, simplify_transitive_equality,
+        simplify_variable_lists, transitive_equality,
     };
 
     use crate::syntax_tree::fol::{Comparison, Sort, Variable};
@@ -1504,6 +1573,21 @@ mod tests {
     }
 
     #[test]
+    fn test_simplify_negated_existentials() {
+        for (src, target) in [
+            (
+                "not exists X Y ( X = 5 and Y = 5)",
+                "forall X Y ( not (X = 5 and Y = 5) )",
+            ),
+            ("not exists X ( not q(X) )", "forall X ( not (not q(X)) )"),
+        ] {
+            let src = simplify_negated_existentials(src.parse().unwrap());
+            let target = target.parse().unwrap();
+            assert_eq!(src, target, "{src} != {target}")
+        }
+    }
+
+    #[test]
     fn test_full_simplify() {
         for (src, target) in [
             (
@@ -1545,6 +1629,14 @@ mod tests {
             (
                 "forall V1 (sqrtb(V1) <-> exists I (V1 = I and (exists Z Z1 (Z = I and exists I$i J$i K$i (I$i = 1 and J$i = b and Z1 = K$i and I$i <= K$i <= J$i) and Z = Z1) and exists Z Z1 (exists I1$i J$i (Z = I1$i * J$i and I1$i = I and J$i = I) and Z1 = b and Z <= Z1) and exists Z Z1 (exists I1$i J$i (Z = I1$i * J$i and exists I2$i J$i (I1$i = I2$i + J$i and I2$i = I and J$i = 1) and exists I1$i J1$i (J$i = I1$i + J1$i and I1$i = I and J1$i = 1)) and Z1 = b and Z > Z1))))",
                 "forall V1 (sqrtb(V1) <-> exists J$i K1$i (J$i = b and 1 <= K1$i <= J$i and V1 = K1$i and K1$i * K1$i <= b and (K1$i + 1) * (K1$i + 1) > b))"
+            ),
+            (
+                "(exists Y p(X, Y)) -> #false",
+                "forall Y ( not p(X,Y) )",
+            ),
+            (
+                "forall X ( (exists Y p(X, Y)) -> #false )",
+                "forall X Y ( not p(X,Y) )",
             ),
         ] {
             let src = simplify(src.parse().unwrap(), false, true);
