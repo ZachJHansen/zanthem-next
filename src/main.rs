@@ -17,7 +17,7 @@ use {
     },
     anyhow::{Context, Result},
     clap::Parser as _,
-    std::fs::read_to_string,
+    std::{fs::read_to_string, collections::HashSet},
     translating::gamma::gamma,
 };
 
@@ -48,16 +48,33 @@ fn inductive_lemma_handle(lemma: AnnotatedFormula) -> Option<(AnnotatedFormula, 
                             term,
                             guards,
                         })) => {
-                            let induction_variable = variables[0].clone();  // TODO - check length and type of variables list
-                            let guard = guards[0].clone();          // TODO - check length of guards list
-                            let induction_term = IntegerTerm::BasicIntegerTerm(BasicIntegerTerm::IntegerVariable(induction_variable.name.clone()));
+                            if guards.len() != 1 || variables.len() != 1 {
+                                return None;
+                            }
+
+                            if HashSet::from_iter(variables.clone()) != rhs.free_variables() {
+                                return None;
+                            }
+
+                            let induction_variable = variables[0].clone();
+                            if induction_variable.sort != Sort::Integer {
+                                return None;
+                            }
+
+                            let guard = guards[0].clone();          
+                            let intended_induction_term = IntegerTerm::BasicIntegerTerm(BasicIntegerTerm::IntegerVariable(induction_variable.name.clone()));
                             match term {
                                 GeneralTerm::IntegerTerm(induction_term) => {
+                                    if induction_term != intended_induction_term {
+                                        return None;
+                                    }
+
                                     match guard {
                                         Guard {
                                             relation: Relation::GreaterEqual,
-                                            term: least_term,
+                                            term: GeneralTerm::IntegerTerm(IntegerTerm::BasicIntegerTerm(BasicIntegerTerm::Numeral(n))),
                                         } => {
+                                            let least_term = GeneralTerm::IntegerTerm(IntegerTerm::BasicIntegerTerm(BasicIntegerTerm::Numeral(n)));
                                             let base_case = rhs.clone().substitute(induction_variable.clone(), least_term);
     
                                             let inductive_step_antecedent = Formula::BinaryFormula {
@@ -148,7 +165,7 @@ fn main() -> Result<()> {
                     // println!("{:?}", thing);
                     //print!("{theory}")
 
-                    let thing: fol::AnnotatedFormula = "inductive-lemma[p_int]: forall I$ (I$ >= 0 -> p(I$)).".parse().unwrap();
+                    let thing: fol::AnnotatedFormula = "inductive-lemma[p_int]: forall I$ (I$ >= 5 -> (p(I$) and not q(I$,5))).".parse().unwrap();
                     let res = inductive_lemma_handle(thing.clone());
                     match res {
                         Some((thing1, thing2)) => {
