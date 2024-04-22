@@ -21,7 +21,7 @@ use {
     translating::gamma::gamma,
 };
 
-fn inductive_lemma_handle(lemma: AnnotatedFormula) -> (AnnotatedFormula, AnnotatedFormula) {
+fn inductive_lemma_handle(lemma: AnnotatedFormula) -> Option<(AnnotatedFormula, AnnotatedFormula)> {
     match lemma {
         AnnotatedFormula {
             role: Role::InductiveLemma,
@@ -51,87 +51,70 @@ fn inductive_lemma_handle(lemma: AnnotatedFormula) -> (AnnotatedFormula, Annotat
                             let induction_variable = variables[0].clone();  // TODO - check length and type of variables list
                             let guard = guards[0].clone();          // TODO - check length of guards list
                             let induction_term = IntegerTerm::BasicIntegerTerm(BasicIntegerTerm::IntegerVariable(induction_variable.name.clone()));
-                            if GeneralTerm::IntegerTerm(induction_term.clone()) == term {
-                                match guard {
-                                    Guard {
-                                        relation: Relation::GreaterEqual,
-                                        term: least_term,
-                                    } => {
-                                        let base_case = rhs.clone().substitute(induction_variable, least_term);
+                            match term {
+                                GeneralTerm::IntegerTerm(induction_term) => {
+                                    match guard {
+                                        Guard {
+                                            relation: Relation::GreaterEqual,
+                                            term: least_term,
+                                        } => {
+                                            let base_case = rhs.clone().substitute(induction_variable.clone(), least_term);
+    
+                                            let inductive_step_antecedent = Formula::BinaryFormula {
+                                                connective: BinaryConnective::Conjunction,
+                                                lhs: rhs.clone(),
+                                                rhs: lhs.clone(),
+                                            };
 
-                                        let inductive_step_antecedent = Formula::BinaryFormula {
-                                            connective: BinaryConnective::Conjunction,
-                                            lhs: rhs.clone(),
-                                            rhs: lhs.clone(),
-                                        };
-                                    },
-                                    _ => todo!("wrong form"),
-                                }
+                                            let successor = GeneralTerm::IntegerTerm(IntegerTerm::BinaryOperation {
+                                                op: BinaryOperator::Add,
+                                                lhs: induction_term.clone().into(),
+                                                rhs: IntegerTerm::BasicIntegerTerm(BasicIntegerTerm::Numeral(1)).into(),
+                                            });
+
+                                            let inductive_step_consequent = rhs.substitute(induction_variable.clone(), successor);
+                                            let inductive_step = Formula::QuantifiedFormula {
+                                                quantification: Quantification {
+                                                    quantifier: Quantifier::Forall,
+                                                    variables: vec![induction_variable],
+                                                },
+                                                formula: Formula::BinaryFormula {
+                                                    connective: BinaryConnective::Implication,
+                                                    lhs: inductive_step_antecedent.into(),
+                                                    rhs: inductive_step_consequent.into(),
+                                                }.into(),
+                                            };
+    
+                                            let base_case_annotated = AnnotatedFormula {
+                                                name: FormulaName(Some(format!("{name}_base_case"))),
+                                                role: Role::Conjecture,
+                                                direction: direction.clone(),
+                                                formula: base_case,
+                                            };
+
+                                            let inductive_step_annotated = AnnotatedFormula {
+                                                name: FormulaName(Some(format!("{name}_inductive_step"))),
+                                                role: Role::Conjecture,
+                                                direction,
+                                                formula: inductive_step,
+                                            };
+
+                                            let cases = (base_case_annotated, inductive_step_annotated);
+                                            Some(cases)
+                                        },
+                                        _ => None,
+                                    }
+                                },
+                                _ => None,
                             }
-                            todo!()
                         },
-                        _ => todo!("wrong form"),
+                        _ => None,
                     }
-                    // let induction_variable = Variable { name: "N".to_string(), sort: Sort::Integer };
-                    // let induction_term = IntegerTerm::BasicIntegerTerm(BasicIntegerTerm::IntegerVariable("N".to_string()));
-
-                    // // TODO - check if rhs contains free variables other than N$
-
-                    // let least_term = GeneralTerm::IntegerTerm(IntegerTerm::BasicIntegerTerm(BasicIntegerTerm::Numeral(100000000000000)));
-
-                    // let base_case = rhs.clone().substitute(induction_variable, least_term);
-
-                    // let inductive_step_antecedent = Formula::BinaryFormula {
-                    //     connective: BinaryConnective::Conjunction,
-                    //     lhs: rhs.clone(),
-                    //     rhs: Formula::AtomicFormula(AtomicFormula::Comparison(Comparison {
-                    //         term: GeneralTerm::IntegerTerm(induction_term.clone()),
-                    //         guards: vec![
-                    //             Guard {
-                    //                 relation: Relation::GreaterEqual,
-                    //                 term: least_term,
-                    //             }
-                    //         ],
-                    //     })).into(),
-                    // };
-                    // let successor = GeneralTerm::IntegerTerm(IntegerTerm::BinaryOperation {
-                    //     op: BinaryOperator::Add,
-                    //     lhs: induction_term.into(),
-                    //     rhs: IntegerTerm::BasicIntegerTerm(BasicIntegerTerm::Numeral(1)).into(),
-                    // });
-                    // let inductive_step_consequent = rhs.substitute(induction_variable, successor);
-                    // let inductive_step = Formula::QuantifiedFormula {
-                    //     quantification: Quantification {
-                    //         quantifier: Quantifier::Forall,
-                    //         variables: vec![induction_variable],
-                    //     },
-                    //     formula: Formula::BinaryFormula {
-                    //         connective: BinaryConnective::Implication,
-                    //         lhs: inductive_step_antecedent.into(),
-                    //         rhs: inductive_step_consequent.into(),
-                    //     }.into(),
-                    // };
-
-                    // let annotated_base_case = AnnotatedFormula {
-                    //     role: Role::Lemma,
-                    //     direction: direction.clone(),
-                    //     formula: base_case,
-                    //     name: FormulaName(Some("base_case".to_string())),    // TODO - using variant of original lemmas name
-                    // };
-
-                    // let annotated_inductive_step = AnnotatedFormula {
-                    //     role: Role::Lemma,
-                    //     direction: direction.clone(),
-                    //     formula: inductive_step,
-                    //     name: FormulaName(Some("inductive_step".to_string())),    // TODO - using variant of original lemmas name
-                    // };
-
-                    // (annotated_base_case, annotated_inductive_step)
                 }
-                _ => todo!("inductive lemmas need a special form"),
+                _ => None,
             }
         }
-        _ => todo!("error"),
+        _ => None,
     }
 }
 
@@ -158,12 +141,23 @@ fn main() -> Result<()> {
                         .with_context(|| format!("could not parse file `{}`", input.display()))?;
 
                     let theory = tau_star(program);
-                    let thing: fol::AnnotatedFormula =
-                        "definition[comp_1]: forall X (composite(X) <-> q(X))."
-                            .parse()
-                            .unwrap();
-                    println!("{:?}", thing);
-                    print!("{theory}")
+                    // let thing: fol::AnnotatedFormula =
+                    //     "definition[comp_1]: forall X (composite(X) <-> q(X))."
+                    //         .parse()
+                    //         .unwrap();
+                    // println!("{:?}", thing);
+                    //print!("{theory}")
+
+                    let thing: fol::AnnotatedFormula = "inductive-lemma[p_int]: forall I$ (I$ >= 0 -> p(I$)).".parse().unwrap();
+                    let res = inductive_lemma_handle(thing.clone());
+                    match res {
+                        Some((thing1, thing2)) => {
+                            println!("{}", thing1.formula);
+                            println!("{}", thing2.formula);
+                        },
+                        None => println!("not a properly formatted inductive lemma"),
+                    }
+                    
                 }
             }
 
