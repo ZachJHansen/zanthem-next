@@ -1,12 +1,13 @@
 use {
-    crate::syntax_tree::fol::{Formula, FunctionConstant, Predicate, Sort},
+    crate::syntax_tree::fol::{Formula, FunctionConstant, Predicate, Sort, Theory},
     indexmap::IndexSet,
     itertools::Itertools,
     std::{fmt, iter::repeat},
 };
 
-#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+#[derive(Clone, Debug, Eq, PartialEq, Hash, Default)]
 pub enum Interpretation {
+    #[default]
     Standard,
 }
 
@@ -61,13 +62,34 @@ impl fmt::Display for AnnotatedFormula {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+#[derive(Clone, Debug, Eq, PartialEq, Hash, Default)]
 pub struct Problem {
     pub interpretation: Interpretation,
     pub formulas: Vec<AnnotatedFormula>,
 }
 
 impl Problem {
+    pub fn add_theory<F>(mut self, theory: Theory, mut annotate: F) -> Self
+    where
+        F: FnMut(usize, Formula) -> AnnotatedFormula,
+    {
+        self.add_formulas(theory.formulas, annotate)
+    }
+
+    pub fn add_formulas<F>(
+        mut self,
+        formulas: impl IntoIterator<Item = Formula>,
+        mut annotate: F,
+    ) -> Self
+    where
+        F: FnMut(usize, Formula) -> AnnotatedFormula,
+    {
+        for (i, formula) in formulas.into_iter().enumerate() {
+            self.formulas.push(annotate(i, formula))
+        }
+        self
+    }
+
     pub fn axioms(&self) -> Vec<AnnotatedFormula> {
         self.formulas
             .iter()

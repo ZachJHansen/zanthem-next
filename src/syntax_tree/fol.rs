@@ -740,6 +740,12 @@ impl UserGuide {
         result
     }
 
+    pub fn public_predicates(&self) -> IndexSet<Predicate> {
+        let mut result = self.input_predicates();
+        result.extend(self.output_predicates());
+        result
+    }
+
     pub fn placeholders(&self) -> IndexSet<FunctionConstant> {
         let mut result = IndexSet::new();
         for entry in &self.entries {

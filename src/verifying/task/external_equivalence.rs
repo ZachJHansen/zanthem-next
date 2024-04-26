@@ -4,7 +4,10 @@ use {
         convenience::apply::Apply,
         syntax_tree::{asp, fol},
         translating::{completion::completion, tau_star::tau_star},
-        verifying::{problem::Problem, task::Task},
+        verifying::{
+            problem::{AnnotatedFormula, Problem, Role},
+            task::Task,
+        },
     },
     either::Either,
     indexmap::{IndexMap, IndexSet},
@@ -131,12 +134,176 @@ impl Task for ExternalEquivalenceTask {
             .map(|p| (p.name.clone(), p))
             .collect();
 
+        let public_predicates = self.user_guide.public_predicates();
+
         // TODO: Apply simplifications
         // TODO: Apply equivalence breaking
+        // TODO: Rename private predicates
 
-        let program = completion(tau_star(self.program.clone()).replace_placeholders(&placeholder));
+        let head_predicate = |formula: fol::Formula| {
+            let head_formula = *match formula {
+                fol::Formula::BinaryFormula {
+                    connective: fol::BinaryConnective::Equivalence,
+                    lhs,
+                    ..
+                } => lhs,
+                fol::Formula::QuantifiedFormula { formula, .. } => match *formula {
+                    fol::Formula::BinaryFormula {
+                        connective: fol::BinaryConnective::Equivalence,
+                        lhs,
+                        ..
+                    } => lhs,
+                    _ => None?,
+                },
+                _ => None?,
+            };
 
-        todo!()
+            Some(
+                match head_formula {
+                    fol::Formula::AtomicFormula(fol::AtomicFormula::Atom(a)) => a,
+                    _ => None?,
+                }
+                .predicate(),
+            )
+        };
+
+        let group = |theory: fol::Theory| {
+            let mut stable = Vec::new();
+            let mut unstable = Vec::new();
+
+            for formula in theory.formulas {
+                // TODO: Remove clone
+                match head_predicate(formula.clone()) {
+                    Some(p) if !public_predicates.contains(&p) => stable.push(formula),
+                    _ => unstable.push(formula),
+                }
+            }
+
+            (stable, unstable)
+        };
+
+        let mut stable_premises: Vec<fol::Formula> = Vec::new();
+        let mut forward_premises: Vec<fol::Formula> = Vec::new();
+        let mut forward_conclusions: Vec<fol::Formula> = Vec::new();
+        let mut backward_premises: Vec<fol::Formula> = Vec::new();
+        let mut backward_conclusions: Vec<fol::Formula> = Vec::new();
+
+        for formula in self.user_guide.formulas() {
+            match formula.role {
+                fol::Role::Assumption => stable_premises.push(formula.formula),
+                fol::Role::Spec => todo!(),  // TODO Report user error,
+                fol::Role::Lemma => todo!(), // TODO Report user error
+            }
+        }
+
+        // TODO: Avoid cloning
+        match self.specification.clone() {
+            Either::Left(specification) => {
+                let specification =
+                    completion(tau_star(specification).replace_placeholders(&placeholder))
+                        .expect("tau_star did not create a completable theory");
+
+                let (mut stable, mut unstable) = group(specification);
+                stable_premises.append(&mut stable);
+                // TODO: Unstable premises
+            }
+
+            Either::Right(_specification) => todo!(),
+        }
+
+        let program = completion(tau_star(self.program.clone()).replace_placeholders(&placeholder))
+            .expect("tau_star did not create a completable theory");
+
+        let (mut stable, mut unstable) = group(program);
+        stable_premises.append(&mut stable);
+
+        // TODO Avoid clone
+        let mut lemmas = Vec::new();
+        for formula in self.proof_outline.formulas.clone() {
+            match formula.role {
+                fol::Role::Assumption => todo!(), // TODO Report user error
+                fol::Role::Spec => todo!(),       // TODO Report user error
+                fol::Role::Lemma => lemmas.push(formula.formula),
+            }
+        }
+
+        // forward direction
+        // S, F |= FL
+        // S, F, L |= B
+
+        // backward direction
+        // S, B |= BL
+        // S, B, L |= F
+
+        // S, F |= FL, B
+
+        // forward
+        //   - stable
+        //       - assumptions from the user guide
+        //       - assumptions from specification
+        //       - completed definitions of private predicates from the program
+        //   - forward
+        //       - specs from the specification
+        // |=
+        //    - forward lemmas
+
+        let mut problems = Vec::new();
+        if matches!(
+            self.direction,
+            fol::Direction::Universal | fol::Direction::Forward
+        ) {
+            problems.push(
+                Problem::default()
+                    .add_formulas(stable_premises, |i, formula| AnnotatedFormula {
+                        name: format!("stable_premise_{i}"),
+                        role: Role::Axiom,
+                        formula,
+                    })
+                    .add_formulas(forward_premises, |i, formula| AnnotatedFormula {
+                        name: format!("forward_premise_{i}"),
+                        role: Role::Axiom,
+                        formula,
+                    })
+                    .add_formulas(lemmas, |i, formula| AnnotatedFormula {
+                        name: format!("lemma_{i}"),
+                        role: Role::Conjecture,
+                        formula,
+                    }),
+            )
+        }
+
+        Ok(problems
+            .into_iter()
+            .map(|p: Problem| match self.decomposition {
+                Decomposition::Independent => p.decompose_independent(),
+                Decomposition::Sequential => p.decompose_sequential(),
+            })
+            .flatten()
+            .collect())
+
+        // TODO
+        // forward_premises.append(&mut unstable.clone());
+        // backward_conclusions.append(&mut unstable);
+
+        // specification (program)
+        // Is formular a forall X p(X) <-> F or p <-> F
+        //     If p is input or output? => backward_conclusions, forward_premises
+        //     Else? => stable_premises
+        // Else?
+        //     forward_conclusions, backwards_premises
+
+        // program
+        // Is formular a forall X p(X) <-> F or p <-> F
+        //     If p is input or output? => forward_conclusions, backward_premises
+        //     Else? => stable_premises
+        // Else?
+        //     forward_conclusions, backwards_premises
+
+        // stable premises
+        // forward premises
+        // forward conclusions
+        // backward premises
+        // backward conclusions
     }
 }
 

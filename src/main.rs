@@ -90,7 +90,7 @@ fn main() -> Result<()> {
 
             let proof_outline = match aux.get(1) {
                 Some(path) => match path.extension().map(OsStr::to_str) {
-                    Some(Some("spec")) => fol::Specification::from_file(aux.first().unwrap())?,
+                    Some(Some("spec")) => fol::Specification::from_file(&aux[1])?,
                     Some(Some(_x)) => todo!(),
                     Some(None) => todo!(),
                     None => todo!(),
@@ -109,9 +109,15 @@ fn main() -> Result<()> {
                 break_equivalences: !no_eq_break,
             };
 
-            let _problems = task.decompose()?;
+            let problems = task.decompose()?;
 
-            todo!()
+            // TODO
+            for (i, problem) in problems.into_iter().enumerate() {
+                println!("# problem {i}");
+                println!("{problem}");
+            }
+
+            Ok(())
         }
 
         Command::Verify {
