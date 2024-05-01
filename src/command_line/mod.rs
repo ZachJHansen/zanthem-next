@@ -49,7 +49,7 @@ pub enum Command {
         #[clap(long, short, action)]
         parallel: bool,
 
-        #[clap(long,  action)]
+        #[clap(long, action)]
         no_simplify: bool,
     },
     VerifyAlt {
