@@ -22,8 +22,6 @@ fn verify_examples() {
             .arg(problem_dir)
             .arg("--with")
             .arg("sequential")
-            .arg("-b")
-            .arg("-s")
             .assert();
 
         assert

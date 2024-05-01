@@ -42,9 +42,9 @@ fn verify(
     lemmas: Option<PathBuf>,
     direction: Direction,
     cores: u16,
-    break_equivalences: bool,
+    no_break: bool,
     parallelize: bool,
-    simplify: bool,
+    no_simplify: bool,
 ) -> Result<()> {
     let spec = match specification.extension() {
         Some(extension) => match extension.to_str() {
@@ -100,6 +100,9 @@ fn verify(
         None => None,
     };
 
+    let break_equivalences = !no_break;
+    let simplify = !no_simplify;
+
     match with {
         Verification::Default => {
             vampire::default_verification(
@@ -149,12 +152,6 @@ fn main() -> Result<()> {
     env_logger::init();
 
     let now = Instant::now();
-
-    //let f1: fol::Formula = "forall Y (exists Z (exists I$ J$ (Z = I$ + J$ and Y = I$ and J$ = 1) and q(Z)) -> r(Y))".parse().unwrap();
-    //let f2: fol::Formula = "forall Y (q(Y) -> exists Z (exists I$ J$ (Z = I$ - J$ and Y = I$ and J$ = 1) and r(Z)))".parse().unwrap();
-    //let f3: fol::Formula = "forall Y( exists Z (exists I$ J$ (Z = I$ - J$ and Y = I$ and J$ = 1) and q(Y) -> r(Z)))".parse().unwrap();
-
-    //println!("tff(con1, conjecture, {}).", Format(&f3));
 
     match Arguments::parse().command {
         Command::Translate {
@@ -275,9 +272,9 @@ fn main() -> Result<()> {
             lemmas,
             direction,
             cores,
-            break_equivalences,
+            no_break,
             parallel,
-            simplify,
+            no_simplify,
         } => {
             verify(
                 with,
@@ -287,9 +284,9 @@ fn main() -> Result<()> {
                 lemmas,
                 direction,
                 cores,
-                break_equivalences,
+                no_break,
                 parallel,
-                simplify,
+                no_simplify,
             )?;
             info!("System runtime: {} milliseconds", now.elapsed().as_millis());
             Ok(())
@@ -299,9 +296,9 @@ fn main() -> Result<()> {
             directory,
             direction,
             cores,
-            break_equivalences,
+            no_break,
             parallel,
-            simplify,
+            no_simplify,
         } => {
             let mut programs: Vec<&PathBuf> = vec![];
             let mut specs: Vec<&PathBuf> = vec![];
@@ -367,9 +364,9 @@ fn main() -> Result<()> {
                     Some(lemmas[0].to_path_buf()),
                     direction,
                     cores,
-                    break_equivalences,
+                    no_break,
                     parallel,
-                    simplify,
+                    no_simplify,
                 )?;
             } else {
                 verify(
@@ -380,9 +377,9 @@ fn main() -> Result<()> {
                     None,
                     direction,
                     cores,
-                    break_equivalences,
+                    no_break,
                     parallel,
-                    simplify,
+                    no_simplify,
                 )?;
             }
             info!("System runtime: {} milliseconds", now.elapsed().as_millis());

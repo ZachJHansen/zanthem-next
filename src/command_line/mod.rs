@@ -26,7 +26,7 @@ pub enum Command {
         simplify: bool,
     },
     Verify {
-        #[arg(long, value_enum)]
+        #[arg(long, value_enum, default_value_t = Verification::Sequential)]
         with: Verification,
 
         specification: PathBuf,
@@ -43,17 +43,17 @@ pub enum Command {
         #[arg(long, default_value_t = 4)]
         cores: u16,
 
-        #[clap(long, short, action)]
-        break_equivalences: bool,
+        #[clap(long, action)]
+        no_break: bool,
 
         #[clap(long, short, action)]
         parallel: bool,
 
-        #[clap(long, short, action)]
-        simplify: bool,
+        #[clap(long,  action)]
+        no_simplify: bool,
     },
     VerifyAlt {
-        #[arg(long, value_enum)]
+        #[arg(long, value_enum, default_value_t = Verification::Sequential)]
         with: Verification,
 
         directory: PathBuf,
@@ -64,14 +64,14 @@ pub enum Command {
         #[arg(long, default_value_t = 4)]
         cores: u16,
 
-        #[clap(long, short, action)]
-        break_equivalences: bool,
+        #[clap(long, action)]
+        no_break: bool,
 
         #[clap(long, short, action)]
         parallel: bool,
 
-        #[clap(long, short, action)]
-        simplify: bool,
+        #[clap(long, action)]
+        no_simplify: bool,
     },
 }
 
