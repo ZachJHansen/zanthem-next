@@ -10,59 +10,53 @@ WHITESPACE = _{ " " | NEWLINE }
 COMMENT = _{ "%" ~ (!NEWLINE ~ ANY)* ~ (NEWLINE | EOI) }
 
 keyword = _{ primitive | binary_connective | unary_connective | quantifier }
-
     primitive = _{ infimum | supremum }
         infimum  = { "#inf" }
         supremum = { "#sup" }
 
-    binary_connective = _{ equivalence | implication | reverse_implication | conjunction | disjunction }
-        equivalence         = { "<->" }
-        implication         = { "->"  }
-        reverse_implication = { "<-"  }
-        conjunction         = { "and" }
-        disjunction         = { "or"  }
+sort = { general_sort | integer_sort }
+    general_sort = { "g" }
+    integer_sort = { "i" }
 
-    unary_connective = _{ negation }
-        negation = { "not" }
-
-    quantifier = _{ forall | exists }
-        forall = { "forall" }
-        exists = { "exists" }
-
-    sort = { integer_sort | general_sort }
-        integer_sort = { "i" }
-        general_sort = { "g" }
-
-basic_integer_term = { numeral | integer_variable | infimum | supremum }
+basic_integer_term = { numeral | integer_variable }
+basic_integer_term_eoi = _{ basic_integer_term ~ EOI }
     numeral           = @{ ("0") | ("-"? ~ ASCII_NONZERO_DIGIT ~ ASCII_DIGIT*) }
     unsorted_variable = @{ "_"? ~ ASCII_ALPHA_UPPER ~ (ASCII_ALPHANUMERIC | "_")* }
     integer_variable  = ${ (unsorted_variable ~ "$" ~ integer_sort) | !(unsorted_variable ~ "$" ~ sort) ~ (unsorted_variable ~ "$") }
 
 unary_operator = _{ negative }
+unary_operator_eoi = _{ unary_operator ~ EOI }
     negative = { !numeral ~ "-" }
 
 binary_operator = _{ add | subtract | multiply }
+binary_operator_eoi = _{ binary_operator ~ EOI }
     add      = { "+" }
     subtract = { "-" }
     multiply = { "*" }
 
 integer_term = { unary_operator* ~ n_primary ~ (binary_operator ~ unary_operator* ~ n_primary)* }
+integer_term_eoi = _{ integer_term ~ EOI }
     n_primary = _{ basic_integer_term | "(" ~ integer_term ~ ")" }
 
-general_term = { integer_term | symbolic_constant | general_variable }
+general_term = { integer_term | symbolic_constant | general_variable | infimum | supremum }
+general_term_eoi = _{ general_term ~ EOI }
     symbolic_constant = @{ !keyword ~ "_"? ~ ASCII_ALPHA_LOWER ~ (ASCII_ALPHANUMERIC | "_")* }
     general_variable  = ${ unsorted_variable ~ ("$" ~ general_sort)? }
 
 variable = { integer_variable | general_variable }
+variable_eoi = _{ variable ~ EOI }
 
 predicate = { predicate_symbol ~ "/" ~ arity }
+predicate_eoi = _{ predicate ~ EOI }
     predicate_symbol  = _{ symbolic_constant }
     arity =  @{ ("0") | (ASCII_NONZERO_DIGIT ~ ASCII_DIGIT*) }
 
 atom = { predicate_symbol ~ term_tuple? }
+atom_eoi = _{ atom ~ EOI }
     term_tuple = _{ "(" ~ (general_term ~ ("," ~ general_term)*)? ~ ")" }
 
 relation = { greater_equal | less_equal | greater | less | not_equal | equal }
+relation_eoi = _{ relation ~ EOI }
     greater_equal = { ">=" }
     less_equal    = { "<=" }
     greater       = { ">"  }
@@ -71,36 +65,63 @@ relation = { greater_equal | less_equal | greater | less | not_equal | equal }
     equal         = { "="  }
 
 guard = { relation ~ general_term }
+guard_eoi = _{ guard ~ EOI }
+
+comparison = { general_term ~ guard+ }
+comparison_eoi = _{ comparison ~ EOI }
 
 atomic_formula = { truth | falsity | comparison | atom }
+atomic_formula_eoi = _{ atomic_formula ~ EOI }
     truth      = { "#true" }
     falsity    = { "#false" }
-    comparison = { general_term ~ guard+ }
+
+quantifier = _{ forall | exists }
+quantifier_eoi = _{ quantifier ~ EOI }
+    forall = { "forall" }
+    exists = { "exists" }
 
 quantification = { quantifier ~ variable+ }
+quantification_eoi = _{ quantification ~ EOI }
+
+unary_connective = _{ negation }
+unary_connective_eoi = _{ unary_connective ~ EOI }
+    negation = { "not" }
+
+binary_connective = _{ equivalence | implication | reverse_implication | conjunction | disjunction }
+binary_connective_eoi = _{ binary_connective ~ EOI }
+    equivalence         = { "<->" }
+    implication         = { "->"  }
+    reverse_implication = { "<-"  }
+    conjunction         = { "and" }
+    disjunction         = { "or"  }
 
 formula = { prefix* ~ primary ~ (infix ~ prefix* ~ primary)* }
+formula_eoi = _{ formula ~ EOI }
     prefix  = _{ quantification | unary_connective }
     infix   = _{ binary_connective }
     primary = _{ "(" ~ formula ~ ")" | atomic_formula }
 
-// TODO: Think about a proper way to handle the whitespace at the end of programs
-theory = { (formula ~ ".")* ~ WHITESPACE* }
+theory = { (formula ~ ".")* }
+theory_eoi = _{ theory ~ EOI }
 
 placeholder = { integer_placeholder | general_placeholder }
+placeholder_eoi = _{ placeholder ~ EOI }
     integer_placeholder = { symbolic_constant ~ "-> integer" }
     general_placeholder = { symbolic_constant ~ "-> general" }
 
 lemma = { forward_lemma | backward_lemma | universal_lemma }
+lemma_eoi = _{ lemma ~ EOI }
     forward_lemma   = { "lemma(forward):" ~ formula ~ "." }
     backward_lemma  = { "lemma(backward):" ~ formula ~ "." }
     universal_lemma = { "lemma:" ~ formula ~ "." }
 
 spec = { input | output | placeholder_declaration | assumption | conjecture | lemma }
+spec_eoi = _{ spec ~ EOI }
     input                   = { "input:" ~ predicate ~ ("," ~ predicate)* ~ "." }
     output                  = { "output:" ~ predicate ~ ("," ~ predicate)* ~ "." }
     placeholder_declaration = { "input:" ~ placeholder ~ ("," ~ placeholder)* ~ "." }
     assumption              = { "assume:" ~ formula ~ "." }
     conjecture              = { "spec:" ~ formula ~ "." }
 
-specification = { (spec ~ WHITESPACE*)* }
+specification = { spec* }
+specification_eoi = _{ specification ~ EOI }

@@ -34,7 +34,7 @@ impl PestParser for PrecomputedTermParser {
 
     type InternalParser = internal::Parser;
     type Rule = internal::Rule;
-    const RULE: internal::Rule = internal::Rule::precomputed_term;
+    const RULE: internal::Rule = internal::Rule::precomputed_term_eoi;
 
     fn translate_pair(pair: pest::iterators::Pair<'_, Self::Rule>) -> Self::Node {
         match pair.as_rule() {
@@ -55,7 +55,7 @@ impl PestParser for VariableParser {
 
     type InternalParser = internal::Parser;
     type Rule = internal::Rule;
-    const RULE: internal::Rule = internal::Rule::variable;
+    const RULE: internal::Rule = internal::Rule::variable_eoi;
 
     fn translate_pair(pair: pest::iterators::Pair<'_, Self::Rule>) -> Self::Node {
         if pair.as_rule() != internal::Rule::variable {
@@ -73,7 +73,7 @@ impl PestParser for UnaryOperatorParser {
 
     type InternalParser = internal::Parser;
     type Rule = internal::Rule;
-    const RULE: internal::Rule = internal::Rule::unary_operator;
+    const RULE: internal::Rule = internal::Rule::unary_operator_eoi;
 
     fn translate_pair(pair: pest::iterators::Pair<'_, Self::Rule>) -> Self::Node {
         match pair.as_rule() {
@@ -90,7 +90,7 @@ impl PestParser for BinaryOperatorParser {
 
     type InternalParser = internal::Parser;
     type Rule = internal::Rule;
-    const RULE: internal::Rule = internal::Rule::binary_operator;
+    const RULE: internal::Rule = internal::Rule::binary_operator_eoi;
 
     fn translate_pair(pair: pest::iterators::Pair<'_, Self::Rule>) -> Self::Node {
         match pair.as_rule() {
@@ -112,7 +112,7 @@ impl PestParser for TermParser {
 
     type InternalParser = internal::Parser;
     type Rule = internal::Rule;
-    const RULE: internal::Rule = internal::Rule::term;
+    const RULE: internal::Rule = internal::Rule::term_eoi;
 
     fn translate_pair(pair: pest::iterators::Pair<'_, Self::Rule>) -> Self::Node {
         internal::PRATT_PARSER
@@ -144,7 +144,7 @@ impl PestParser for PredicateParser {
 
     type InternalParser = internal::Parser;
     type Rule = internal::Rule;
-    const RULE: Self::Rule = internal::Rule::predicate;
+    const RULE: Self::Rule = internal::Rule::predicate_eoi;
 
     fn translate_pair(pair: pest::iterators::Pair<'_, Self::Rule>) -> Self::Node {
         if pair.as_rule() != internal::Rule::predicate {
@@ -174,7 +174,7 @@ impl PestParser for AtomParser {
 
     type InternalParser = internal::Parser;
     type Rule = internal::Rule;
-    const RULE: Self::Rule = internal::Rule::atom;
+    const RULE: Self::Rule = internal::Rule::atom_eoi;
 
     fn translate_pair(pair: pest::iterators::Pair<'_, Self::Rule>) -> Self::Node {
         if pair.as_rule() != internal::Rule::atom {
@@ -204,7 +204,7 @@ impl PestParser for SignParser {
 
     type InternalParser = internal::Parser;
     type Rule = internal::Rule;
-    const RULE: Self::Rule = internal::Rule::sign;
+    const RULE: Self::Rule = internal::Rule::sign_eoi;
 
     fn translate_pair(pair: pest::iterators::Pair<'_, Self::Rule>) -> Self::Node {
         if pair.as_rule() != internal::Rule::sign {
@@ -244,7 +244,7 @@ impl PestParser for LiteralParser {
 
     type InternalParser = internal::Parser;
     type Rule = internal::Rule;
-    const RULE: Self::Rule = internal::Rule::literal;
+    const RULE: Self::Rule = internal::Rule::literal_eoi;
 
     fn translate_pair(pair: pest::iterators::Pair<'_, Self::Rule>) -> Self::Node {
         if pair.as_rule() != internal::Rule::literal {
@@ -273,7 +273,7 @@ impl PestParser for RelationParser {
 
     type InternalParser = internal::Parser;
     type Rule = internal::Rule;
-    const RULE: internal::Rule = internal::Rule::relation;
+    const RULE: internal::Rule = internal::Rule::relation_eoi;
 
     fn translate_pair(pair: pest::iterators::Pair<'_, Self::Rule>) -> Self::Node {
         match pair.as_rule() {
@@ -295,7 +295,7 @@ impl PestParser for ComparisonParser {
 
     type InternalParser = internal::Parser;
     type Rule = internal::Rule;
-    const RULE: Self::Rule = internal::Rule::comparison;
+    const RULE: Self::Rule = internal::Rule::comparison_eoi;
 
     fn translate_pair(pair: pest::iterators::Pair<'_, Self::Rule>) -> Self::Node {
         if pair.as_rule() != internal::Rule::comparison {
@@ -327,7 +327,7 @@ impl PestParser for AtomicFormulaParser {
 
     type InternalParser = internal::Parser;
     type Rule = internal::Rule;
-    const RULE: internal::Rule = internal::Rule::atomic_formula;
+    const RULE: internal::Rule = internal::Rule::atomic_formula_eoi;
 
     fn translate_pair(pair: pest::iterators::Pair<'_, Self::Rule>) -> Self::Node {
         match pair.as_rule() {
@@ -350,7 +350,7 @@ impl PestParser for HeadParser {
 
     type InternalParser = internal::Parser;
     type Rule = internal::Rule;
-    const RULE: internal::Rule = internal::Rule::head;
+    const RULE: internal::Rule = internal::Rule::head_eoi;
 
     fn translate_pair(pair: pest::iterators::Pair<'_, Self::Rule>) -> Self::Node {
         match pair.as_rule() {
@@ -374,7 +374,7 @@ impl PestParser for BodyParser {
 
     type InternalParser = internal::Parser;
     type Rule = internal::Rule;
-    const RULE: Self::Rule = internal::Rule::body;
+    const RULE: Self::Rule = internal::Rule::body_eoi;
 
     fn translate_pair(pair: pest::iterators::Pair<'_, Self::Rule>) -> Self::Node {
         if pair.as_rule() != internal::Rule::body {
@@ -397,7 +397,7 @@ impl PestParser for RuleParser {
 
     type InternalParser = internal::Parser;
     type Rule = internal::Rule;
-    const RULE: Self::Rule = internal::Rule::rule;
+    const RULE: Self::Rule = internal::Rule::rule_eoi;
 
     fn translate_pair(pair: pest::iterators::Pair<'_, Self::Rule>) -> Self::Node {
         if pair.as_rule() != internal::Rule::rule {
@@ -430,7 +430,7 @@ impl PestParser for ProgramParser {
 
     type InternalParser = internal::Parser;
     type Rule = internal::Rule;
-    const RULE: Self::Rule = internal::Rule::program;
+    const RULE: Self::Rule = internal::Rule::program_eoi;
 
     fn translate_pair(pair: pest::iterators::Pair<'_, Self::Rule>) -> Self::Node {
         if pair.as_rule() != internal::Rule::program {

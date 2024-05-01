@@ -96,7 +96,6 @@ pub enum Direction {
     Both,
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::Arguments;

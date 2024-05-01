@@ -1,7 +1,7 @@
 use {
     crate::{
-        proof_search::problem::{FileType, ProblemHandler, ProblemStatus},
         command_line::Direction,
+        proof_search::problem::{FileType, ProblemHandler, ProblemStatus},
         syntax_tree::{asp, fol},
     },
     anyhow::anyhow,
@@ -70,7 +70,7 @@ pub fn sequential_verification(
         None => (),
     }
     h.sequential_decomposition(break_equivalences);
-    h.generate_problem_files();
+    //h.generate_problem_files();
     if parallelize {
         verify_with_vampire_parallel(h, cores);
     } else {

@@ -53,12 +53,8 @@ fn construct_equality_formula(term: asp::Term, z: fol::Variable) -> fol::Formula
 
     let rhs = match term {
         asp::Term::PrecomputedTerm(t) => match t {
-            asp::PrecomputedTerm::Infimum => fol::GeneralTerm::IntegerTerm(
-                fol::IntegerTerm::BasicIntegerTerm(fol::BasicIntegerTerm::Infimum),
-            ),
-            asp::PrecomputedTerm::Supremum => fol::GeneralTerm::IntegerTerm(
-                fol::IntegerTerm::BasicIntegerTerm(fol::BasicIntegerTerm::Supremum),
-            ),
+            asp::PrecomputedTerm::Infimum => fol::GeneralTerm::Infimum,
+            asp::PrecomputedTerm::Supremum => fol::GeneralTerm::Supremum,
             asp::PrecomputedTerm::Numeral(i) => fol::GeneralTerm::IntegerTerm(
                 fol::IntegerTerm::BasicIntegerTerm(fol::BasicIntegerTerm::Numeral(i)),
             ),

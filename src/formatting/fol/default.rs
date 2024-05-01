@@ -19,8 +19,6 @@ pub struct Format<'a, N: Node>(pub &'a N);
 impl Display for Format<'_, BasicIntegerTerm> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self.0 {
-            BasicIntegerTerm::Infimum => write!(f, "#inf"),
-            BasicIntegerTerm::Supremum => write!(f, "#sup"),
             BasicIntegerTerm::Numeral(n) => write!(f, "{n}"),
             BasicIntegerTerm::IntegerVariable(s) => write!(f, "{s}$i"),
         }
@@ -95,6 +93,8 @@ impl Display for Format<'_, IntegerTerm> {
 impl Display for Format<'_, GeneralTerm> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self.0 {
+            GeneralTerm::Infimum => write!(f, "#inf"),
+            GeneralTerm::Supremum => write!(f, "#sup"),
             GeneralTerm::Symbol(s) => write!(f, "{s}"),
             GeneralTerm::GeneralVariable(v) => write!(f, "{v}"),
             GeneralTerm::IntegerTerm(t) => Format(t).fmt(f),
@@ -419,7 +419,6 @@ mod tests {
 
     #[test]
     fn format_basic_integer_term() {
-        assert_eq!(Format(&BasicIntegerTerm::Infimum).to_string(), "#inf");
         assert_eq!(Format(&BasicIntegerTerm::Numeral(-1)).to_string(), "-1");
         assert_eq!(Format(&BasicIntegerTerm::Numeral(0)).to_string(), "0");
         assert_eq!(Format(&BasicIntegerTerm::Numeral(42)).to_string(), "42");
@@ -427,7 +426,6 @@ mod tests {
             Format(&BasicIntegerTerm::IntegerVariable("A".into())).to_string(),
             "A$i"
         );
-        assert_eq!(Format(&BasicIntegerTerm::Supremum).to_string(), "#sup");
     }
 
     #[test]

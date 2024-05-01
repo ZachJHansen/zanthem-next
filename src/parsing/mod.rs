@@ -41,25 +41,14 @@ impl<T: PestParser> Parser for T {
     type Error = pest::error::Error<<Self as PestParser>::Rule>;
 
     fn parse<S: AsRef<str>>(input: S) -> Result<<T as Parser>::Node, <T as Parser>::Error> {
-        use pest::{
-            error::{Error, ErrorVariant},
-            Parser as _, Position,
-        };
-
-        let pairs = <Self as PestParser>::InternalParser::parse(Self::RULE, input.as_ref())
-            .and_then(|pairs| {
-                if pairs.as_str() == input.as_ref() {
-                    Ok(pairs)
-                } else {
-                    Err(Error::new_from_pos(
-                        ErrorVariant::CustomError {
-                            message: String::from("expected EOI"),
-                        },
-                        Position::new(input.as_ref(), pairs.as_str().len()).unwrap(),
-                    ))
-                }
-            })?;
-
+        use pest::Parser as _;
+        let mut pairs = <Self as PestParser>::InternalParser::parse(Self::RULE, input.as_ref())?;
+        assert_eq!(
+            pairs.as_str(),
+            input.as_ref(),
+            "parts of the input where not parsed"
+        );
+        pairs.next_back(); // remove EOI
         Ok(Self::translate_pairs(pairs))
     }
 }

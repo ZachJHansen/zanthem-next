@@ -46,13 +46,11 @@ impl PestParser for BasicIntegerTermParser {
 
     type InternalParser = internal::Parser;
     type Rule = internal::Rule;
-    const RULE: internal::Rule = internal::Rule::basic_integer_term;
+    const RULE: internal::Rule = internal::Rule::basic_integer_term_eoi;
 
     fn translate_pair(pair: pest::iterators::Pair<'_, Self::Rule>) -> Self::Node {
         match pair.as_rule() {
             internal::Rule::basic_integer_term => Self::translate_pairs(pair.into_inner()),
-            internal::Rule::infimum => BasicIntegerTerm::Infimum,
-            internal::Rule::supremum => BasicIntegerTerm::Supremum,
             internal::Rule::numeral => BasicIntegerTerm::Numeral(pair.as_str().parse().unwrap()),
             internal::Rule::integer_variable => match pair.into_inner().next() {
                 Some(pair) if pair.as_rule() == internal::Rule::unsorted_variable => {
@@ -73,7 +71,7 @@ impl PestParser for UnaryOperatorParser {
 
     type InternalParser = internal::Parser;
     type Rule = internal::Rule;
-    const RULE: internal::Rule = internal::Rule::unary_operator;
+    const RULE: internal::Rule = internal::Rule::unary_operator_eoi;
 
     fn translate_pair(pair: pest::iterators::Pair<'_, Self::Rule>) -> Self::Node {
         match pair.as_rule() {
@@ -90,7 +88,7 @@ impl PestParser for BinaryOperatorParser {
 
     type InternalParser = internal::Parser;
     type Rule = internal::Rule;
-    const RULE: internal::Rule = internal::Rule::binary_operator;
+    const RULE: internal::Rule = internal::Rule::binary_operator_eoi;
 
     fn translate_pair(pair: pest::iterators::Pair<'_, Self::Rule>) -> Self::Node {
         match pair.as_rule() {
@@ -109,7 +107,7 @@ impl PestParser for IntegerTermParser {
 
     type InternalParser = internal::Parser;
     type Rule = internal::Rule;
-    const RULE: internal::Rule = internal::Rule::integer_term;
+    const RULE: internal::Rule = internal::Rule::integer_term_eoi;
 
     fn translate_pair(pair: pest::iterators::Pair<'_, Self::Rule>) -> Self::Node {
         internal::TERM_PRATT_PARSER
@@ -140,11 +138,13 @@ impl PestParser for GeneralTermParser {
 
     type InternalParser = internal::Parser;
     type Rule = internal::Rule;
-    const RULE: internal::Rule = internal::Rule::general_term;
+    const RULE: internal::Rule = internal::Rule::general_term_eoi;
 
     fn translate_pair(pair: pest::iterators::Pair<'_, Self::Rule>) -> Self::Node {
         match pair.as_rule() {
             internal::Rule::general_term => Self::translate_pairs(pair.into_inner()),
+            internal::Rule::infimum => GeneralTerm::Infimum,
+            internal::Rule::supremum => GeneralTerm::Supremum,
             internal::Rule::symbolic_constant => GeneralTerm::Symbol(pair.as_str().into()),
             internal::Rule::integer_term => {
                 GeneralTerm::IntegerTerm(IntegerTermParser::translate_pair(pair))
@@ -168,7 +168,7 @@ impl PestParser for PredicateParser {
 
     type InternalParser = internal::Parser;
     type Rule = internal::Rule;
-    const RULE: Self::Rule = internal::Rule::predicate;
+    const RULE: Self::Rule = internal::Rule::predicate_eoi;
 
     fn translate_pair(pair: pest::iterators::Pair<'_, Self::Rule>) -> Self::Node {
         if pair.as_rule() != internal::Rule::predicate {
@@ -198,7 +198,7 @@ impl PestParser for AtomParser {
 
     type InternalParser = internal::Parser;
     type Rule = internal::Rule;
-    const RULE: Self::Rule = internal::Rule::atom;
+    const RULE: Self::Rule = internal::Rule::atom_eoi;
 
     fn translate_pair(pair: pest::iterators::Pair<'_, Self::Rule>) -> Self::Node {
         if pair.as_rule() != internal::Rule::atom {
@@ -228,7 +228,7 @@ impl PestParser for RelationParser {
 
     type InternalParser = internal::Parser;
     type Rule = internal::Rule;
-    const RULE: internal::Rule = internal::Rule::relation;
+    const RULE: internal::Rule = internal::Rule::relation_eoi;
 
     fn translate_pair(pair: pest::iterators::Pair<'_, Self::Rule>) -> Self::Node {
         match pair.as_rule() {
@@ -251,7 +251,7 @@ impl PestParser for GuardParser {
 
     type InternalParser = internal::Parser;
     type Rule = internal::Rule;
-    const RULE: Self::Rule = internal::Rule::guard;
+    const RULE: Self::Rule = internal::Rule::guard_eoi;
 
     fn translate_pair(pair: pest::iterators::Pair<'_, Self::Rule>) -> Self::Node {
         if pair.as_rule() != internal::Rule::guard {
@@ -282,7 +282,7 @@ impl PestParser for ComparisonParser {
 
     type InternalParser = internal::Parser;
     type Rule = internal::Rule;
-    const RULE: Self::Rule = internal::Rule::comparison;
+    const RULE: Self::Rule = internal::Rule::comparison_eoi;
 
     fn translate_pair(pair: pest::iterators::Pair<'_, Self::Rule>) -> Self::Node {
         if pair.as_rule() != internal::Rule::comparison {
@@ -308,7 +308,7 @@ impl PestParser for AtomicFormulaParser {
 
     type InternalParser = internal::Parser;
     type Rule = internal::Rule;
-    const RULE: internal::Rule = internal::Rule::atomic_formula;
+    const RULE: internal::Rule = internal::Rule::atomic_formula_eoi;
 
     fn translate_pair(pair: pest::iterators::Pair<'_, Self::Rule>) -> Self::Node {
         match pair.as_rule() {
@@ -333,7 +333,7 @@ impl PestParser for QuantifierParser {
 
     type InternalParser = internal::Parser;
     type Rule = internal::Rule;
-    const RULE: internal::Rule = internal::Rule::quantifier;
+    const RULE: internal::Rule = internal::Rule::quantifier_eoi;
 
     fn translate_pair(pair: pest::iterators::Pair<'_, Self::Rule>) -> Self::Node {
         match pair.as_rule() {
@@ -352,7 +352,7 @@ impl PestParser for VariableParser {
 
     type InternalParser = internal::Parser;
     type Rule = internal::Rule;
-    const RULE: internal::Rule = internal::Rule::variable;
+    const RULE: internal::Rule = internal::Rule::variable_eoi;
 
     fn translate_pair(pair: pest::iterators::Pair<'_, Self::Rule>) -> Self::Node {
         match pair.as_rule() {
@@ -385,7 +385,7 @@ impl PestParser for QuantificationParser {
 
     type InternalParser = internal::Parser;
     type Rule = internal::Rule;
-    const RULE: internal::Rule = internal::Rule::quantification;
+    const RULE: internal::Rule = internal::Rule::quantification_eoi;
 
     fn translate_pair(pair: pest::iterators::Pair<'_, Self::Rule>) -> Self::Node {
         if pair.as_rule() != internal::Rule::quantification {
@@ -414,7 +414,7 @@ impl PestParser for UnaryConnectiveParser {
 
     type InternalParser = internal::Parser;
     type Rule = internal::Rule;
-    const RULE: internal::Rule = internal::Rule::unary_connective;
+    const RULE: internal::Rule = internal::Rule::unary_connective_eoi;
 
     fn translate_pair(pair: pest::iterators::Pair<'_, Self::Rule>) -> Self::Node {
         match pair.as_rule() {
@@ -431,7 +431,7 @@ impl PestParser for BinaryConnectiveParser {
 
     type InternalParser = internal::Parser;
     type Rule = internal::Rule;
-    const RULE: internal::Rule = internal::Rule::binary_connective;
+    const RULE: internal::Rule = internal::Rule::binary_connective_eoi;
 
     fn translate_pair(pair: pest::iterators::Pair<'_, Self::Rule>) -> Self::Node {
         match pair.as_rule() {
@@ -453,7 +453,7 @@ impl PestParser for FormulaParser {
 
     type InternalParser = internal::Parser;
     type Rule = internal::Rule;
-    const RULE: Self::Rule = internal::Rule::formula;
+    const RULE: Self::Rule = internal::Rule::formula_eoi;
 
     fn translate_pair(pair: pest::iterators::Pair<'_, Self::Rule>) -> Self::Node {
         internal::FORMULA_PRATT_PARSER
@@ -491,7 +491,7 @@ impl PestParser for TheoryParser {
 
     type InternalParser = internal::Parser;
     type Rule = internal::Rule;
-    const RULE: Self::Rule = internal::Rule::theory;
+    const RULE: Self::Rule = internal::Rule::theory_eoi;
 
     fn translate_pair(pair: pest::iterators::Pair<'_, Self::Rule>) -> Self::Node {
         if pair.as_rule() != internal::Rule::theory {
@@ -513,7 +513,7 @@ impl PestParser for PlaceholderParser {
 
     type InternalParser = internal::Parser;
     type Rule = internal::Rule;
-    const RULE: Self::Rule = internal::Rule::placeholder;
+    const RULE: Self::Rule = internal::Rule::placeholder_eoi;
 
     fn translate_pair(pair: pest::iterators::Pair<'_, Self::Rule>) -> Self::Node {
         match pair.as_rule() {
@@ -546,7 +546,7 @@ impl PestParser for LemmaParser {
 
     type InternalParser = internal::Parser;
     type Rule = internal::Rule;
-    const RULE: Self::Rule = internal::Rule::lemma;
+    const RULE: Self::Rule = internal::Rule::lemma_eoi;
 
     fn translate_pair(pair: pest::iterators::Pair<'_, Self::Rule>) -> Self::Node {
         match pair.as_rule() {
@@ -611,7 +611,7 @@ impl PestParser for SpecParser {
 
     type InternalParser = internal::Parser;
     type Rule = internal::Rule;
-    const RULE: Self::Rule = internal::Rule::spec;
+    const RULE: Self::Rule = internal::Rule::spec_eoi;
 
     fn translate_pair(pair: pest::iterators::Pair<'_, Self::Rule>) -> Self::Node {
         match pair.as_rule() {
@@ -704,7 +704,7 @@ impl PestParser for SpecificationParser {
 
     type InternalParser = internal::Parser;
     type Rule = internal::Rule;
-    const RULE: Self::Rule = internal::Rule::specification;
+    const RULE: Self::Rule = internal::Rule::specification_eoi;
 
     fn translate_pair(pair: pest::iterators::Pair<'_, Self::Rule>) -> Self::Node {
         if pair.as_rule() != internal::Rule::specification {
@@ -744,8 +744,6 @@ mod tests {
     fn parse_basic_integer_term() {
         BasicIntegerTermParser
             .should_parse_into([
-                ("#inf", BasicIntegerTerm::Infimum),
-                ("#sup", BasicIntegerTerm::Supremum),
                 ("0", BasicIntegerTerm::Numeral(0)),
                 ("1", BasicIntegerTerm::Numeral(1)),
                 ("-1", BasicIntegerTerm::Numeral(-1)),
@@ -754,7 +752,7 @@ mod tests {
                 ("A$i", BasicIntegerTerm::IntegerVariable("A".into())),
                 ("Avar$", BasicIntegerTerm::IntegerVariable("Avar".into())),
             ])
-            .should_reject(["00", "-0", "#", "#infi", "#supa", "_", "1_", "A"]);
+            .should_reject(["00", "-0", "#", "#inf", "#sup", "_", "1_", "A"]);
     }
 
     #[test]
@@ -775,14 +773,6 @@ mod tests {
     fn parse_integer_term() {
         IntegerTermParser
             .should_parse_into([
-                (
-                    "#inf",
-                    IntegerTerm::BasicIntegerTerm(BasicIntegerTerm::Infimum),
-                ),
-                (
-                    "#sup",
-                    IntegerTerm::BasicIntegerTerm(BasicIntegerTerm::Supremum),
-                ),
                 (
                     "0",
                     IntegerTerm::BasicIntegerTerm(BasicIntegerTerm::Numeral(0)),
@@ -834,18 +824,8 @@ mod tests {
     fn parse_general_term() {
         GeneralTermParser
             .should_parse_into([
-                (
-                    "#inf",
-                    GeneralTerm::IntegerTerm(IntegerTerm::BasicIntegerTerm(
-                        BasicIntegerTerm::Infimum,
-                    )),
-                ),
-                (
-                    "#sup",
-                    GeneralTerm::IntegerTerm(IntegerTerm::BasicIntegerTerm(
-                        BasicIntegerTerm::Supremum,
-                    )),
-                ),
+                ("#inf", GeneralTerm::Infimum),
+                ("#sup", GeneralTerm::Supremum),
                 (
                     "1",
                     GeneralTerm::IntegerTerm(IntegerTerm::BasicIntegerTerm(
@@ -1769,7 +1749,7 @@ mod tests {
         SpecificationParser
             .should_parse_into([
                 (
-                    "output: p/0. assume: #true.\ninput: n -> general.",
+                    "output: p/0. \nassume: #true.\ninput: n -> general.",
                     Specification {
                         specs: vec![
                             Spec::Output {

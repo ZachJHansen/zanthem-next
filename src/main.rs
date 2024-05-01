@@ -9,7 +9,7 @@ pub mod translating;
 
 use {
     crate::{
-        command_line::{Arguments, Command, Translation, Verification, Direction},
+        command_line::{Arguments, Command, Direction, Translation, Verification},
         proof_search::{problem, vampire},
         simplifying::fol::ht as ht_simplifications,
         syntax_tree::{asp, fol},

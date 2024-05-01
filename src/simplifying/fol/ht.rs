@@ -141,7 +141,9 @@ pub fn relation_simplify_outer(formula: Formula) -> Formula {
                                 f = Formula::AtomicFormula(AtomicFormula::Truth);
                             }
                         }
-                        GeneralTerm::GeneralVariable(_) => (),
+                        GeneralTerm::Infimum
+                        | GeneralTerm::Supremum
+                        | GeneralTerm::GeneralVariable(_) => (),
                         GeneralTerm::IntegerTerm(_) => (), // LHS could be an integer-valued placeholder, so no simplifications are possible
                     },
                     GeneralTerm::GeneralVariable(lhs) => match rhs {
@@ -154,7 +156,9 @@ pub fn relation_simplify_outer(formula: Formula) -> Formula {
                     },
                     GeneralTerm::IntegerTerm(lhs) => match rhs {
                         GeneralTerm::Symbol(_) => (), // RHS could be an integer-valued placeholder, so no simplifications are possible
-                        GeneralTerm::GeneralVariable(_) => (),
+                        GeneralTerm::Infimum
+                        | GeneralTerm::Supremum
+                        | GeneralTerm::GeneralVariable(_) => (),
                         GeneralTerm::IntegerTerm(i) => {
                             let equality = format!("({lhs}) == ({i})");
                             let eval_result = eval(&equality);
@@ -173,6 +177,7 @@ pub fn relation_simplify_outer(formula: Formula) -> Formula {
                             }
                         }
                     },
+                    GeneralTerm::Infimum | GeneralTerm::Supremum => todo!(),
                 }
             }
             f

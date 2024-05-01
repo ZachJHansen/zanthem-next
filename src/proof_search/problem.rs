@@ -1,16 +1,16 @@
 use {
     crate::{
-        convenience::{apply::Apply as _, unbox::fol::UnboxedFormula, unbox::Unbox},
         command_line::Direction,
+        convenience::{apply::Apply as _, unbox::fol::UnboxedFormula, unbox::Unbox},
         formatting::fol::tptp::Format,
         simplifying::fol::ht::simplify as ht_simplify,
         syntax_tree::{asp, fol},
         translating::{completion::completion, tau_star::tau_star},
     },
+    indexmap::IndexMap,
     log::info,
     regex::Regex,
-    indexmap::IndexMap,
-    std::{fs, collections::HashSet},
+    std::{collections::HashSet, fs},
 };
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -664,31 +664,19 @@ impl ProblemHandler {
 
         let mut goals: IndexMap<Claim, Vec<Problem>> = IndexMap::new();
 
-        // TODO - the current implementation does redundant work by assembling goals that 
+        // TODO - the current implementation does redundant work by assembling goals that
         // might not be inserted into the goal list (but it is more readable this way)
         match direction {
             Direction::Forward => {
-                goals.insert(
-                    forward.clone(),
-                    Vec::new(),
-                );
-            },
+                goals.insert(forward.clone(), Vec::new());
+            }
             Direction::Backward => {
-                goals.insert(
-                    backward.clone(),
-                    Vec::new(),
-                );
-            },
+                goals.insert(backward.clone(), Vec::new());
+            }
             Direction::Both => {
-                goals.insert(
-                    forward.clone(),
-                    Vec::new(),
-                );
-                goals.insert(
-                    backward.clone(),
-                    Vec::new(),
-                );
-            },
+                goals.insert(forward.clone(), Vec::new());
+                goals.insert(backward.clone(), Vec::new());
+            }
         }
 
         ProblemHandler {
@@ -1286,7 +1274,11 @@ pub fn rename_predicates(
     }
 }
 
-fn insert_replacement(formula: fol::Formula, symbol: &String, replacement: fol::GeneralTerm) -> fol::Formula {
+fn insert_replacement(
+    formula: fol::Formula,
+    symbol: &String,
+    replacement: fol::GeneralTerm,
+) -> fol::Formula {
     let original = fol::GeneralTerm::Symbol(symbol.clone());
 
     formula.apply(&mut |formula| match formula {
@@ -1321,7 +1313,11 @@ fn insert_replacement(formula: fol::Formula, symbol: &String, replacement: fol::
     })
 }
 
-pub fn replace_placeholders(formula: fol::Formula, symbol: &String, replacement: fol::GeneralTerm) -> fol::Formula {
+pub fn replace_placeholders(
+    formula: fol::Formula,
+    symbol: &String,
+    replacement: fol::GeneralTerm,
+) -> fol::Formula {
     //println!("Replacing {placeholder} within {formula}");
     match formula {
         x @ fol::Formula::AtomicFormula(_) => insert_replacement(x, symbol, replacement),
@@ -1364,9 +1360,11 @@ pub fn placeholder_replacements(
         let replacement_name = format!("%-{}-%", original_name.clone().to_uppercase().to_string());
         let term = match ph.sort {
             fol::Sort::General => fol::GeneralTerm::GeneralVariable(replacement_name.clone()),
-            fol::Sort::Integer => fol::GeneralTerm::IntegerTerm(fol::IntegerTerm::BasicIntegerTerm(
-                fol::BasicIntegerTerm::IntegerVariable(replacement_name.clone()),
-            )),
+            fol::Sort::Integer => {
+                fol::GeneralTerm::IntegerTerm(fol::IntegerTerm::BasicIntegerTerm(
+                    fol::BasicIntegerTerm::IntegerVariable(replacement_name.clone()),
+                ))
+            }
         };
         placeholder_replacements.insert((original_name, term));
     }
@@ -1378,7 +1376,6 @@ pub fn placeholder_replacements(
         }
     }
 }
-
 
 #[cfg(test)]
 mod tests {

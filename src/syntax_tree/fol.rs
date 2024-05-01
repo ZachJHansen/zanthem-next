@@ -16,8 +16,6 @@ use {
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub enum BasicIntegerTerm {
-    Infimum,
-    Supremum,
     Numeral(isize),
     IntegerVariable(String),
 }
@@ -106,6 +104,8 @@ impl IntegerTerm {
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub enum GeneralTerm {
+    Infimum,
+    Supremum,
     Symbol(String),
     GeneralVariable(String),
     IntegerTerm(IntegerTerm),
@@ -116,7 +116,7 @@ impl_node!(GeneralTerm, Format, GeneralTermParser);
 impl GeneralTerm {
     pub fn variables(&self) -> HashSet<Variable> {
         match &self {
-            GeneralTerm::Symbol(_) => HashSet::new(),
+            GeneralTerm::Infimum | GeneralTerm::Supremum | GeneralTerm::Symbol(_) => HashSet::new(),
             GeneralTerm::GeneralVariable(v) => HashSet::from([Variable {
                 name: v.to_string(),
                 sort: Sort::General,
@@ -128,7 +128,10 @@ impl GeneralTerm {
     pub fn function_constants(&self) -> HashSet<String> {
         match &self {
             GeneralTerm::Symbol(s) => HashSet::from([s.to_string()]),
-            GeneralTerm::GeneralVariable(_) | GeneralTerm::IntegerTerm(_) => HashSet::new(),
+            GeneralTerm::Infimum
+            | GeneralTerm::Supremum
+            | GeneralTerm::GeneralVariable(_)
+            | GeneralTerm::IntegerTerm(_) => HashSet::new(),
         }
     }
 

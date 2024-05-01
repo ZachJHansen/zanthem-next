@@ -1,2 +1,2 @@
-mod tau_star;
 mod completion;
+mod tau_star;

@@ -18,8 +18,6 @@ pub struct Format<'a, N: Node>(pub &'a N);
 impl Display for Format<'_, BasicIntegerTerm> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self.0 {
-            BasicIntegerTerm::Infimum => write!(f, "c__infimum__"),
-            BasicIntegerTerm::Supremum => write!(f, "c__supremum__"),
             BasicIntegerTerm::Numeral(n) => {
                 if *n < 0 {
                     let m = n.abs();
@@ -75,6 +73,8 @@ impl Display for Format<'_, IntegerTerm> {
 impl Display for Format<'_, GeneralTerm> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self.0 {
+            GeneralTerm::Infimum => write!(f, "c__infimum__"),
+            GeneralTerm::Supremum => write!(f, "c__supremum__"),
             GeneralTerm::Symbol(s) => write!(f, "{s}"),
             GeneralTerm::GeneralVariable(v) => write!(f, "{v}g"),
             GeneralTerm::IntegerTerm(t) => Format(t).fmt(f),
@@ -94,7 +94,7 @@ impl Display for Format<'_, Atom> {
             let mut iter = terms.iter();
             let t = iter.next().unwrap();
             match t {
-                GeneralTerm::Symbol(_) => {
+                GeneralTerm::Infimum | GeneralTerm::Supremum | GeneralTerm::Symbol(_) => {
                     write!(f, "{}", Format(t))?;
                 }
                 GeneralTerm::GeneralVariable(_) => {
@@ -106,6 +106,9 @@ impl Display for Format<'_, Atom> {
             }
             for t in iter {
                 match t {
+                    GeneralTerm::Infimum | GeneralTerm::Supremum => {
+                        write!(f, ", {}", Format(t))?;
+                    }
                     GeneralTerm::Symbol(_) => {
                         write!(f, ", {}", Format(t))?;
                     }
@@ -416,10 +419,6 @@ mod tests {
     #[test]
     fn format_basic_integer_term() {
         assert_eq!(
-            Format(&BasicIntegerTerm::Infimum).to_string(),
-            "c__infimum__"
-        );
-        assert_eq!(
             Format(&BasicIntegerTerm::Numeral(-1)).to_string(),
             "$uminus(1)"
         );
@@ -429,22 +428,10 @@ mod tests {
             Format(&BasicIntegerTerm::IntegerVariable("A".into())).to_string(),
             "Ai"
         );
-        assert_eq!(
-            Format(&BasicIntegerTerm::Supremum).to_string(),
-            "c__supremum__"
-        );
     }
 
     #[test]
     fn format_integer_term() {
-        assert_eq!(
-            Format(&IntegerTerm::BasicIntegerTerm(BasicIntegerTerm::Infimum)).to_string(),
-            "c__infimum__"
-        );
-        assert_eq!(
-            Format(&IntegerTerm::BasicIntegerTerm(BasicIntegerTerm::Supremum)).to_string(),
-            "c__supremum__"
-        );
         assert_eq!(
             Format(&IntegerTerm::BasicIntegerTerm(BasicIntegerTerm::Numeral(3))).to_string(),
             "3"
@@ -495,13 +482,7 @@ mod tests {
 
     #[test]
     fn format_general_term() {
-        assert_eq!(
-            Format(&GeneralTerm::IntegerTerm(IntegerTerm::BasicIntegerTerm(
-                BasicIntegerTerm::Infimum
-            )))
-            .to_string(),
-            "c__infimum__"
-        );
+        assert_eq!(Format(&GeneralTerm::Infimum).to_string(), "c__infimum__");
         assert_eq!(Format(&GeneralTerm::Symbol("p".into())).to_string(), "p");
         assert_eq!(
             Format(&GeneralTerm::GeneralVariable("N1".into())).to_string(),
