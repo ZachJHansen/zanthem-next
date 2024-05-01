@@ -606,6 +606,7 @@ impl PestParser for RoleParser {
             internal::Rule::assumption => Role::Assumption,
             internal::Rule::spec => Role::Spec,
             internal::Rule::lemma => Role::Lemma,
+            internal::Rule::definition => Role::Definition,
             _ => Self::report_unexpected_pair(pair),
         }
     }
@@ -763,14 +764,14 @@ mod tests {
             ComparisonParser, FormulaParser, GeneralTermParser, GuardParser, IntegerTermParser,
             PredicateParser, QuantificationParser, QuantifierParser, RelationParser,
             SymbolicTermParser, TheoryParser, UnaryConnectiveParser, UnaryOperatorParser,
-            VariableParser,
+            VariableParser, AnnotatedFormulaParser,
         },
         crate::{
             parsing::TestedParser,
             syntax_tree::fol::{
-                Atom, AtomicFormula, BinaryConnective, BinaryOperator, Comparison, Formula,
+                Atom, AtomicFormula, BinaryConnective, BinaryOperator, Comparison, Formula, AnnotatedFormula,
                 GeneralTerm, Guard, IntegerTerm, Predicate, Quantification, Quantifier, Relation,
-                Sort, SymbolicTerm, Theory, UnaryConnective, UnaryOperator, Variable,
+                Sort, SymbolicTerm, Theory, UnaryConnective, UnaryOperator, Variable, Role, Direction,
             },
         },
         std::vec,
@@ -1525,5 +1526,94 @@ mod tests {
                 },
             ),
         ]);
+    }
+
+    #[test]
+    fn parse_annotated_formula() {
+        AnnotatedFormulaParser
+            .should_parse_into([
+                (
+                    "lemma: 2 > 1.",
+                    AnnotatedFormula {
+                        role: Role::Lemma,
+                        direction: Direction::Universal,
+                        name: String::default(),
+                        formula: Formula::AtomicFormula(AtomicFormula::Comparison(Comparison {
+                            term: GeneralTerm::IntegerTerm(IntegerTerm::Numeral(2)),
+                            guards: vec![Guard {
+                                relation: Relation::Greater,
+                                term: GeneralTerm::IntegerTerm(IntegerTerm::Numeral(1)),
+                            }],
+                        })),
+                    },
+                ),
+                // (
+                //     "lemma(forward): a > 1.",
+                //     AnnotatedFormula {
+                //         role: Role::Lemma,
+                //         direction: Direction::Forward,
+                //         name: FormulaName(None),
+                //         formula: Formula::AtomicFormula(AtomicFormula::Comparison(Comparison {
+                //             term: GeneralTerm::Symbol("a".to_string()),
+                //             guards: vec![Guard {
+                //                 relation: Relation::Greater,
+                //                 term: GeneralTerm::IntegerTerm(IntegerTerm::BasicIntegerTerm(
+                //                     BasicIntegerTerm::Numeral(1),
+                //                 )),
+                //             }],
+                //         })),
+                //     },
+                // ),
+                // (
+                //     "lemma(backward)[false]: #false.",
+                //     AnnotatedFormula {
+                //         role: Role::Lemma,
+                //         name: FormulaName(Some("false".to_string())),
+                //         direction: Direction::Backward,
+                //         formula: Formula::AtomicFormula(AtomicFormula::Falsity),
+                //     },
+                // ),
+                // (
+                //     "inductive-lemma(universal)[false]: #false.",
+                //     AnnotatedFormula {
+                //         role: Role::InductiveLemma,
+                //         name: FormulaName(Some("false".to_string())),
+                //         direction: Direction::Universal,
+                //         formula: Formula::AtomicFormula(AtomicFormula::Falsity),
+                //     },
+                // ),
+                // (
+                //     "definition[comp_1]: forall X (composite(X) <-> q(X)).",
+                //     AnnotatedFormula {
+                //         role: Role::InductiveLemma,
+                //         name: FormulaName(Some("comp_1".to_string())),
+                //         direction: Direction::Universal,
+                //         formula: Formula::QuantifiedFormula {
+                //             quantification: Quantification {
+                //                 quantifier: Quantifier::Forall,
+                //                 variables: vec![Variable {
+                //                     name: "X".into(),
+                //                     sort: Sort::General,
+                //                 }],
+                //             },
+                //             formula: Formula::BinaryFormula {
+                //                 connective: BinaryConnective::Equivalence,
+                //                 lhs: Formula::AtomicFormula(AtomicFormula::Atom(Atom {
+                //                     predicate_symbol: "composite".into(),
+                //                     terms: vec![GeneralTerm::GeneralVariable("X".into())],
+                //                 }))
+                //                 .into(),
+                //                 rhs: Formula::AtomicFormula(AtomicFormula::Atom(Atom {
+                //                     predicate_symbol: "q".into(),
+                //                     terms: vec![GeneralTerm::GeneralVariable("X".into())],
+                //                 }))
+                //                 .into(),
+                //             }
+                //             .into(),
+                //         },
+                //     },
+                // ),
+            ])
+            .should_reject(["lemma: X", "lemma: a > 1"]);
     }
 }

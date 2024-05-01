@@ -193,6 +193,7 @@ impl Task for ExternalEquivalenceTask {
                 fol::Role::Assumption => stable_premises.push(formula.formula),
                 fol::Role::Spec => todo!(),  // TODO Report user error,
                 fol::Role::Lemma => todo!(), // TODO Report user error
+                fol::Role::Definition => todo!(), // TODO Report user error
             }
         }
 
@@ -219,11 +220,13 @@ impl Task for ExternalEquivalenceTask {
 
         // TODO Avoid clone
         let mut lemmas = Vec::new();
+        let mut definitions = Vec::new();
         for formula in self.proof_outline.formulas.clone() {
             match formula.role {
                 fol::Role::Assumption => todo!(), // TODO Report user error
                 fol::Role::Spec => todo!(),       // TODO Report user error
                 fol::Role::Lemma => lemmas.push(formula.formula),
+                fol::Role::Definition => definitions.push(formula.formula),
             }
         }
 

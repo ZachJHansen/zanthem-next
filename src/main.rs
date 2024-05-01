@@ -123,6 +123,10 @@ fn main() -> Result<()> {
         Command::Verify {
             equivalence: Equivalence::Strong,
             ..
-        } => todo!(),
+        } => {
+            let thing: fol::AnnotatedFormula = "lemma: 2 > 1".parse().unwrap();
+            println!("{thing}");
+            Ok(())
+        },
     }
 }

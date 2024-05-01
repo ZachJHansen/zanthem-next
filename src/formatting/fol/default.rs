@@ -356,6 +356,7 @@ impl Display for Format<'_, Role> {
             Role::Assumption => write!(f, "assumption"),
             Role::Spec => write!(f, "spec"),
             Role::Lemma => write!(f, "lemma"),
+            Role::Definition => write!(f, "definition"),
         }
     }
 }

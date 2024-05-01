@@ -106,11 +106,12 @@ formula_eoi = _{ formula ~ EOI }
 theory = { (formula ~ ".")* }
 theory_eoi = _{ theory ~ EOI }
 
-role = { assumption | spec | lemma }
+role = { assumption | spec | lemma | definition }
 role_eoi = _{ role ~ EOI }
     assumption  = { "assumption" }
     spec        = { "spec" }
     lemma       = { "lemma" }
+    definition  = { "definition" }
 
 direction = { universal | forward | backward }
 direction_eoi = _{ direction ~ EOI }
