@@ -373,7 +373,7 @@ impl Display for Format<'_, Direction> {
 
 impl Display for Format<'_, AnnotatedFormula> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        Format(&self.0.role).fmt(f)?;
+        write!(f, "{}: ", Format(&self.0.role))?;
 
         if !matches!(self.0.direction, Direction::Universal) {
             write!(f, "({})", Format(&self.0.direction))?

@@ -1525,6 +1525,20 @@ mod tests {
                     }))],
                 },
             ),
+            (
+                "2 > 1.",
+                Theory {
+                    formulas: vec![
+                        Formula::AtomicFormula(AtomicFormula::Comparison(Comparison {
+                            term: GeneralTerm::IntegerTerm(IntegerTerm::Numeral(2)),
+                            guards: vec![Guard {
+                                relation: Relation::Greater,
+                                term: GeneralTerm::IntegerTerm(IntegerTerm::Numeral(1)),
+                            }],
+                        })),
+                    ]
+                }
+            )
         ]);
     }
 
@@ -1533,7 +1547,7 @@ mod tests {
         AnnotatedFormulaParser
             .should_parse_into([
                 (
-                    "lemma: 2 > 1.",
+                    "lemma: 2 > 1",
                     AnnotatedFormula {
                         role: Role::Lemma,
                         direction: Direction::Universal,
@@ -1547,32 +1561,30 @@ mod tests {
                         })),
                     },
                 ),
-                // (
-                //     "lemma(forward): a > 1.",
-                //     AnnotatedFormula {
-                //         role: Role::Lemma,
-                //         direction: Direction::Forward,
-                //         name: FormulaName(None),
-                //         formula: Formula::AtomicFormula(AtomicFormula::Comparison(Comparison {
-                //             term: GeneralTerm::Symbol("a".to_string()),
-                //             guards: vec![Guard {
-                //                 relation: Relation::Greater,
-                //                 term: GeneralTerm::IntegerTerm(IntegerTerm::BasicIntegerTerm(
-                //                     BasicIntegerTerm::Numeral(1),
-                //                 )),
-                //             }],
-                //         })),
-                //     },
-                // ),
-                // (
-                //     "lemma(backward)[false]: #false.",
-                //     AnnotatedFormula {
-                //         role: Role::Lemma,
-                //         name: FormulaName(Some("false".to_string())),
-                //         direction: Direction::Backward,
-                //         formula: Formula::AtomicFormula(AtomicFormula::Falsity),
-                //     },
-                // ),
+                (
+                    "lemma(forward): a > 1",
+                    AnnotatedFormula {
+                        role: Role::Lemma,
+                        direction: Direction::Forward,
+                        name: String::default(),
+                        formula: Formula::AtomicFormula(AtomicFormula::Comparison(Comparison {
+                            term: GeneralTerm::SymbolicTerm(SymbolicTerm::Symbol("a".to_string())),
+                            guards: vec![Guard {
+                                relation: Relation::Greater,
+                                term: GeneralTerm::IntegerTerm(IntegerTerm::Numeral(1)),
+                            }],
+                        })),
+                    },
+                ),
+                (
+                    "lemma(backward)[false]: #false",
+                    AnnotatedFormula {
+                        role: Role::Lemma,
+                        name: "false".to_string(),
+                        direction: Direction::Backward,
+                        formula: Formula::AtomicFormula(AtomicFormula::Falsity),
+                    },
+                ),
                 // (
                 //     "inductive-lemma(universal)[false]: #false.",
                 //     AnnotatedFormula {
@@ -1582,38 +1594,38 @@ mod tests {
                 //         formula: Formula::AtomicFormula(AtomicFormula::Falsity),
                 //     },
                 // ),
-                // (
-                //     "definition[comp_1]: forall X (composite(X) <-> q(X)).",
-                //     AnnotatedFormula {
-                //         role: Role::InductiveLemma,
-                //         name: FormulaName(Some("comp_1".to_string())),
-                //         direction: Direction::Universal,
-                //         formula: Formula::QuantifiedFormula {
-                //             quantification: Quantification {
-                //                 quantifier: Quantifier::Forall,
-                //                 variables: vec![Variable {
-                //                     name: "X".into(),
-                //                     sort: Sort::General,
-                //                 }],
-                //             },
-                //             formula: Formula::BinaryFormula {
-                //                 connective: BinaryConnective::Equivalence,
-                //                 lhs: Formula::AtomicFormula(AtomicFormula::Atom(Atom {
-                //                     predicate_symbol: "composite".into(),
-                //                     terms: vec![GeneralTerm::GeneralVariable("X".into())],
-                //                 }))
-                //                 .into(),
-                //                 rhs: Formula::AtomicFormula(AtomicFormula::Atom(Atom {
-                //                     predicate_symbol: "q".into(),
-                //                     terms: vec![GeneralTerm::GeneralVariable("X".into())],
-                //                 }))
-                //                 .into(),
-                //             }
-                //             .into(),
-                //         },
-                //     },
-                // ),
+                (
+                    "definition[comp_1]: forall X (composite(X) <-> q(X))",
+                    AnnotatedFormula {
+                        role: Role::Definition,
+                        name: "comp_1".to_string(),
+                        direction: Direction::Universal,
+                        formula: Formula::QuantifiedFormula {
+                            quantification: Quantification {
+                                quantifier: Quantifier::Forall,
+                                variables: vec![Variable {
+                                    name: "X".into(),
+                                    sort: Sort::General,
+                                }],
+                            },
+                            formula: Formula::BinaryFormula {
+                                connective: BinaryConnective::Equivalence,
+                                lhs: Formula::AtomicFormula(AtomicFormula::Atom(Atom {
+                                    predicate_symbol: "composite".into(),
+                                    terms: vec![GeneralTerm::Variable("X".into())],
+                                }))
+                                .into(),
+                                rhs: Formula::AtomicFormula(AtomicFormula::Atom(Atom {
+                                    predicate_symbol: "q".into(),
+                                    terms: vec![GeneralTerm::Variable("X".into())],
+                                }))
+                                .into(),
+                            }
+                            .into(),
+                        },
+                    },
+                ),
             ])
-            .should_reject(["lemma: X", "lemma: a > 1"]);
+            .should_reject(["lemma: X"]);
     }
 }

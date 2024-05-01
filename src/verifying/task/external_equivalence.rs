@@ -1,7 +1,7 @@
 use {
     crate::{
         command_line::Decomposition,
-        convenience::apply::Apply,
+        convenience::{apply::Apply, unbox::{fol::UnboxedFormula, Unbox as _}},
         syntax_tree::{asp, fol},
         translating::{completion::completion, tau_star::tau_star},
         verifying::{
@@ -11,7 +11,7 @@ use {
     },
     either::Either,
     indexmap::{IndexMap, IndexSet},
-    std::fmt::Display,
+    std::{fmt::Display},
     thiserror::Error,
 };
 
@@ -32,6 +32,103 @@ pub enum ExternalEquivalenceTaskError {
     InputOutputPredicatesOverlap(Vec<fol::Predicate>),
     InputPredicateInRuleHead(Vec<fol::Predicate>),
 }
+
+#[derive(Error, Debug)]
+pub enum ProofOutlineError {
+    Basic(fol::Formula),
+}
+
+
+#[derive(Debug)]
+pub struct ProofOutline {
+    pub forward_definitions: Vec<fol::AnnotatedFormula>,
+    pub forward_basic_lemmas: Vec<fol::AnnotatedFormula>,
+    //pub forward_inductive_lemmas: <fol::AnnotatedFormula>,
+    pub backward_definitions: Vec<fol::AnnotatedFormula>,
+    pub backward_basic_lemmas: Vec<fol::AnnotatedFormula>,
+    //pub backward_inductive_lemmas: Vec<fol::AnnotatedFormula>,
+}
+
+impl ProofOutline {
+    fn from(spec: fol::Specification, mut taken_predicates: Vec<fol::Predicate>) -> Self {
+        
+        todo!()
+        // process a specification, line by line, adding each definitions predicate to the 
+        // list of taken predicates before the next iteration
+    }
+}
+
+trait CheckDefinition {
+    // Returns the predicate defined in the LHS of the formula if it is a valid definition, else returns an error
+    fn definition(self, taken_predicates: IndexSet<fol::Predicate>) -> Result<fol::Predicate, ProofOutlineError>;
+}
+
+impl CheckDefinition for fol::Formula {
+
+    fn definition(self, taken_predicates: IndexSet<fol::Predicate>) -> Result<fol::Predicate, ProofOutlineError> {
+        let original = self.clone();
+        match self.unbox() {
+            UnboxedFormula::QuantifiedFormula {
+                quantification: fol::Quantification {
+                    quantifier: fol::Quantifier::Forall,
+                    variables,
+                },
+                formula: fol::Formula::BinaryFormula {
+                    connective: fol::BinaryConnective::Equivalence,
+                    lhs,
+                    rhs,
+                }
+            } => {
+                match lhs.unbox() {
+                    UnboxedFormula::AtomicFormula(fol::AtomicFormula::Atom(a)) => {
+                        // check variables has no duplicates
+                        let uniques: IndexSet<fol::Variable> = IndexSet::from_iter(variables.clone());
+                        if uniques.len() < variables.len() {
+                            return Err(ProofOutlineError::Basic(original));
+                        }
+
+                        // check predicate is totally fresh
+                        let predicate = a.predicate();
+                        if taken_predicates.contains(&predicate) {
+                            return Err(ProofOutlineError::Basic(original));
+                        }
+
+                        // check RHS has no free variables other than those in uniques
+                        if rhs.free_variables().difference(&uniques).count() > 0 {
+                            return Err(ProofOutlineError::Basic(original));
+                        }
+                        if uniques.difference(&rhs.free_variables()).count() > 0 {
+                            println!("Warning: The universally quantified list of vars contains members which do not occur in RHS.");
+                        }
+
+                        // check RHS has no predicates other than taken predicates
+                        if rhs.predicates().difference(&taken_predicates).count() > 0 {
+                            return Err(ProofOutlineError::Basic(original));
+                        }
+
+                        return Ok(predicate);
+                    },
+                    _ => Err(ProofOutlineError::Basic(original)),
+                }
+            },
+            _ => Err(ProofOutlineError::Basic(original)),
+        }
+    }
+}
+
+impl Display for ProofOutlineError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ProofOutlineError::Basic(formula) => {
+                write!(f, "oh no: {formula} ")?;
+
+                writeln!(f)
+            }
+        }
+    }
+}
+
+
 
 impl Display for ExternalEquivalenceTaskError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

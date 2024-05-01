@@ -125,7 +125,7 @@ fn main() -> Result<()> {
             ..
         } => {
             let thing: fol::AnnotatedFormula = "lemma: 2 > 1".parse().unwrap();
-            println!("{thing}");
+            println!("{:?}", thing);
             Ok(())
         },
     }
