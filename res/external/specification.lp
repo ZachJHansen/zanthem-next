@@ -1,2 +1,3 @@
-composite(I*J) :- I = 2..n, J = 2..n.
-prime(I) :- I = 2..n, not composite(I).
+t(X) :- not q(X).
+t(X) :- q(X).
+p(X) :- t(X).

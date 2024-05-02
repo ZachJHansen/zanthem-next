@@ -760,18 +760,19 @@ impl PestParser for UserGuideParser {
 mod tests {
     use {
         super::{
-            AtomParser, AtomicFormulaParser, BinaryConnectiveParser, BinaryOperatorParser,
-            ComparisonParser, FormulaParser, GeneralTermParser, GuardParser, IntegerTermParser,
-            PredicateParser, QuantificationParser, QuantifierParser, RelationParser,
-            SymbolicTermParser, TheoryParser, UnaryConnectiveParser, UnaryOperatorParser,
-            VariableParser, AnnotatedFormulaParser,
+            AnnotatedFormulaParser, AtomParser, AtomicFormulaParser, BinaryConnectiveParser,
+            BinaryOperatorParser, ComparisonParser, FormulaParser, GeneralTermParser, GuardParser,
+            IntegerTermParser, PredicateParser, QuantificationParser, QuantifierParser,
+            RelationParser, SymbolicTermParser, TheoryParser, UnaryConnectiveParser,
+            UnaryOperatorParser, VariableParser,
         },
         crate::{
             parsing::TestedParser,
             syntax_tree::fol::{
-                Atom, AtomicFormula, BinaryConnective, BinaryOperator, Comparison, Formula, AnnotatedFormula,
-                GeneralTerm, Guard, IntegerTerm, Predicate, Quantification, Quantifier, Relation,
-                Sort, SymbolicTerm, Theory, UnaryConnective, UnaryOperator, Variable, Role, Direction,
+                AnnotatedFormula, Atom, AtomicFormula, BinaryConnective, BinaryOperator,
+                Comparison, Direction, Formula, GeneralTerm, Guard, IntegerTerm, Predicate,
+                Quantification, Quantifier, Relation, Role, Sort, SymbolicTerm, Theory,
+                UnaryConnective, UnaryOperator, Variable,
             },
         },
         std::vec,
@@ -1528,17 +1529,17 @@ mod tests {
             (
                 "2 > 1.",
                 Theory {
-                    formulas: vec![
-                        Formula::AtomicFormula(AtomicFormula::Comparison(Comparison {
+                    formulas: vec![Formula::AtomicFormula(AtomicFormula::Comparison(
+                        Comparison {
                             term: GeneralTerm::IntegerTerm(IntegerTerm::Numeral(2)),
                             guards: vec![Guard {
                                 relation: Relation::Greater,
                                 term: GeneralTerm::IntegerTerm(IntegerTerm::Numeral(1)),
                             }],
-                        })),
-                    ]
-                }
-            )
+                        },
+                    ))],
+                },
+            ),
         ]);
     }
 

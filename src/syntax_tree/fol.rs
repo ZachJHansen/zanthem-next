@@ -701,6 +701,14 @@ impl Specification {
     pub fn empty() -> Self {
         Specification { formulas: vec![] }
     }
+
+    pub fn predicates(&self) -> IndexSet<Predicate> {
+        let mut predicates = IndexSet::new();
+        for formula in self.formulas.iter() {
+            predicates.extend(formula.formula.predicates());
+        }
+        predicates
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
@@ -763,6 +771,14 @@ impl UserGuide {
             if let UserGuideEntry::AnnotatedFormula(p) = entry {
                 result.push(p.clone());
             }
+        }
+        result
+    }
+
+    pub fn predicates(&self) -> IndexSet<Predicate> {
+        let mut result = self.public_predicates();
+        for annotated_formula in self.formulas().iter() {
+            result.extend(annotated_formula.formula.predicates());
         }
         result
     }

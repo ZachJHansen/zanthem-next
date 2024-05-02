@@ -323,6 +323,14 @@ impl Body {
         }
         functions
     }
+
+    pub fn predicates(&self) -> IndexSet<Predicate> {
+        let mut predicates = IndexSet::new();
+        for formula in self.formulas.iter() {
+            predicates.extend(formula.predicates())
+        }
+        predicates
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
@@ -345,6 +353,18 @@ impl Rule {
         functions.extend(self.body.function_constants());
         functions
     }
+
+    pub fn predicates(&self) -> IndexSet<Predicate> {
+        let mut predicates = IndexSet::new();
+        match self.head.predicate() {
+            Some(p) => {
+                predicates.insert(p);
+            }
+            None => (),
+        }
+        predicates.extend(self.body.predicates());
+        predicates
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
@@ -361,6 +381,14 @@ impl Program {
             if let Some(predicate) = rule.head.predicate() {
                 result.insert(predicate.clone());
             }
+        }
+        result
+    }
+
+    pub fn predicates(&self) -> IndexSet<Predicate> {
+        let mut result = IndexSet::new();
+        for rule in &self.rules {
+            result.extend(rule.predicates());
         }
         result
     }

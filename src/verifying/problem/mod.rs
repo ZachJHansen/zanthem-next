@@ -1,4 +1,5 @@
 use {
+    crate::syntax_tree::fol,
     crate::syntax_tree::fol::{Formula, FunctionConstant, Predicate, Sort, Theory},
     indexmap::IndexSet,
     itertools::Itertools,
@@ -39,6 +40,30 @@ pub struct AnnotatedFormula {
     pub formula: Formula,
 }
 
+impl From<(fol::AnnotatedFormula, Role)> for AnnotatedFormula {
+    fn from(pair: (fol::AnnotatedFormula, Role)) -> Self {
+        let name = match pair.0.role {
+            fol::Role::Spec => "spec".to_string(),
+            fol::Role::Assumption => "assumption".to_string(),
+            fol::Role::Definition => "definition".to_string(),
+            fol::Role::Lemma => "lemma".to_string(),
+        };
+        if pair.0.name == String::default() {
+            return AnnotatedFormula {
+                name,
+                role: pair.1,
+                formula: pair.0.formula,
+            };
+        } else {
+            return AnnotatedFormula {
+                name: pair.0.name.clone(),
+                role: pair.1,
+                formula: pair.0.formula,
+            };
+        }
+    }
+}
+
 impl AnnotatedFormula {
     pub fn predicates(&self) -> IndexSet<Predicate> {
         self.formula.predicates()
@@ -69,6 +94,57 @@ pub struct Problem {
 }
 
 impl Problem {
+    pub fn summarize(&self) {
+        println!("\n#### Premises ####");
+        for f in self.axioms() {
+            println!("\t{}", f.formula);
+        }
+        println!("\n#### Conclusions ####");
+        for f in self.conjectures() {
+            println!("\t{}", f.formula);
+        }
+    }
+
+    pub fn from_components(
+        stable: Vec<AnnotatedFormula>,
+        premises: Vec<AnnotatedFormula>,
+        conclusions: Vec<AnnotatedFormula>,
+        definitions: Vec<fol::AnnotatedFormula>,
+        lemmas: Vec<fol::AnnotatedFormula>,
+    ) -> Vec<Self> {
+        let mut initial_problem = Problem::default();
+
+        for axiom in stable.iter() {
+            initial_problem.formulas.push(axiom.clone());
+        }
+        for axiom in premises.iter() {
+            initial_problem.formulas.push(axiom.clone());
+        }
+        for axiom in definitions.iter() {
+            initial_problem
+                .formulas
+                .push(AnnotatedFormula::from((axiom.clone(), Role::Axiom)));
+        }
+
+        let mut final_problem = initial_problem.clone();
+
+        for formula in lemmas.iter() {
+            initial_problem
+                .formulas
+                .push(AnnotatedFormula::from((formula.clone(), Role::Conjecture)));
+            final_problem
+                .formulas
+                .push(AnnotatedFormula::from((formula.clone(), Role::Axiom)));
+        }
+        for conjecture in conclusions.iter() {
+            final_problem.formulas.push(conjecture.clone());
+        }
+
+        let mut problem_sequence = initial_problem.decompose_sequential();
+        problem_sequence.push(final_problem);
+        problem_sequence
+    }
+
     pub fn add_theory<F>(mut self, theory: Theory, mut annotate: F) -> Self
     where
         F: FnMut(usize, Formula) -> AnnotatedFormula,

@@ -113,8 +113,8 @@ fn main() -> Result<()> {
 
             // TODO
             for (i, problem) in problems.into_iter().enumerate() {
-                println!("# problem {i}");
-                println!("{problem}");
+                println!("\n############## problem {i} ##############");
+                problem.summarize();
             }
 
             Ok(())
@@ -123,10 +123,6 @@ fn main() -> Result<()> {
         Command::Verify {
             equivalence: Equivalence::Strong,
             ..
-        } => {
-            let thing: fol::AnnotatedFormula = "lemma: 2 > 1".parse().unwrap();
-            println!("{:?}", thing);
-            Ok(())
-        },
+        } => todo!(),
     }
 }

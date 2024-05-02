@@ -1,7 +1,10 @@
 use {
     crate::{
         command_line::Decomposition,
-        convenience::{apply::Apply, unbox::{fol::UnboxedFormula, Unbox as _}},
+        convenience::{
+            apply::Apply,
+            unbox::{fol::UnboxedFormula, Unbox as _},
+        },
         syntax_tree::{asp, fol},
         translating::{completion::completion, tau_star::tau_star},
         verifying::{
@@ -11,9 +14,17 @@ use {
     },
     either::Either,
     indexmap::{IndexMap, IndexSet},
-    std::{fmt::Display},
+    std::fmt::Display,
     thiserror::Error,
 };
+
+fn convert_predicate_list(predicates: IndexSet<asp::Predicate>) -> IndexSet<fol::Predicate> {
+    let mut result = IndexSet::new();
+    for predicate in predicates.iter() {
+        result.insert(fol::Predicate::from(predicate.clone()));
+    }
+    result
+}
 
 #[derive(Debug)]
 pub struct ExternalEquivalenceTask {
@@ -31,13 +42,13 @@ pub struct ExternalEquivalenceTask {
 pub enum ExternalEquivalenceTaskError {
     InputOutputPredicatesOverlap(Vec<fol::Predicate>),
     InputPredicateInRuleHead(Vec<fol::Predicate>),
+    Other,
 }
 
 #[derive(Error, Debug)]
 pub enum ProofOutlineError {
     Basic(fol::Formula),
 }
-
 
 #[derive(Debug)]
 pub struct ProofOutline {
@@ -50,39 +61,97 @@ pub struct ProofOutline {
 }
 
 impl ProofOutline {
-    fn from(spec: fol::Specification, mut taken_predicates: Vec<fol::Predicate>) -> Self {
-        
-        todo!()
-        // process a specification, line by line, adding each definitions predicate to the 
+    fn construct(
+        spec: fol::Specification,
+        mut taken_predicates: IndexSet<fol::Predicate>,
+    ) -> Result<Self, ProofOutlineError> {
+        let mut forward_definitions: Vec<fol::AnnotatedFormula> = Vec::new();
+        let mut backward_definitions: Vec<fol::AnnotatedFormula> = Vec::new();
+        let mut forward_basic_lemmas: Vec<fol::AnnotatedFormula> = Vec::new();
+        let mut backward_basic_lemmas: Vec<fol::AnnotatedFormula> = Vec::new();
+        // process a specification, line by line, adding each definitions predicate to the
         // list of taken predicates before the next iteration
+        for anf in spec.formulas.iter() {
+            match anf.role {
+                fol::Role::Definition => {
+                    let predicate = anf.formula.clone().definition(&taken_predicates)?;
+                    taken_predicates.insert(predicate);
+                    match anf.direction {
+                        fol::Direction::Forward => {
+                            forward_definitions.push(anf.clone());
+                            //forward_definitions.push(AnnotatedFormula::from((anf.clone(), Role::Axiom)));
+                        }
+                        fol::Direction::Backward => {
+                            backward_definitions.push(anf.clone());
+                        }
+                        fol::Direction::Universal => {
+                            let f = anf.clone();
+                            forward_definitions.push(f.clone());
+                            backward_definitions.push(f);
+                        }
+                    }
+                }
+                fol::Role::Lemma => match anf.direction {
+                    fol::Direction::Forward => {
+                        forward_basic_lemmas.push(anf.clone());
+                        //forward_definitions.push(AnnotatedFormula::from((anf.clone(), Role::Axiom)));
+                    }
+                    fol::Direction::Backward => {
+                        backward_basic_lemmas.push(anf.clone());
+                    }
+                    fol::Direction::Universal => {
+                        let f = anf.clone();
+                        forward_basic_lemmas.push(f.clone());
+                        backward_basic_lemmas.push(f);
+                    }
+                },
+                fol::Role::Assumption | fol::Role::Spec => {
+                    return Err(ProofOutlineError::Basic(anf.formula.clone()));
+                }
+            }
+        }
+        Ok(ProofOutline {
+            forward_definitions,
+            forward_basic_lemmas,
+            backward_definitions,
+            backward_basic_lemmas,
+        })
     }
 }
 
 trait CheckDefinition {
     // Returns the predicate defined in the LHS of the formula if it is a valid definition, else returns an error
-    fn definition(self, taken_predicates: IndexSet<fol::Predicate>) -> Result<fol::Predicate, ProofOutlineError>;
+    fn definition(
+        self,
+        taken_predicates: &IndexSet<fol::Predicate>,
+    ) -> Result<fol::Predicate, ProofOutlineError>;
 }
 
 impl CheckDefinition for fol::Formula {
-
-    fn definition(self, taken_predicates: IndexSet<fol::Predicate>) -> Result<fol::Predicate, ProofOutlineError> {
+    fn definition(
+        self,
+        taken_predicates: &IndexSet<fol::Predicate>,
+    ) -> Result<fol::Predicate, ProofOutlineError> {
         let original = self.clone();
         match self.unbox() {
             UnboxedFormula::QuantifiedFormula {
-                quantification: fol::Quantification {
-                    quantifier: fol::Quantifier::Forall,
-                    variables,
-                },
-                formula: fol::Formula::BinaryFormula {
-                    connective: fol::BinaryConnective::Equivalence,
-                    lhs,
-                    rhs,
-                }
+                quantification:
+                    fol::Quantification {
+                        quantifier: fol::Quantifier::Forall,
+                        variables,
+                    },
+                formula:
+                    fol::Formula::BinaryFormula {
+                        connective: fol::BinaryConnective::Equivalence,
+                        lhs,
+                        rhs,
+                    },
             } => {
                 match lhs.unbox() {
                     UnboxedFormula::AtomicFormula(fol::AtomicFormula::Atom(a)) => {
                         // check variables has no duplicates
-                        let uniques: IndexSet<fol::Variable> = IndexSet::from_iter(variables.clone());
+                        let uniques: IndexSet<fol::Variable> =
+                            IndexSet::from_iter(variables.clone());
                         if uniques.len() < variables.len() {
                             return Err(ProofOutlineError::Basic(original));
                         }
@@ -107,10 +176,10 @@ impl CheckDefinition for fol::Formula {
                         }
 
                         return Ok(predicate);
-                    },
+                    }
                     _ => Err(ProofOutlineError::Basic(original)),
                 }
-            },
+            }
             _ => Err(ProofOutlineError::Basic(original)),
         }
     }
@@ -127,8 +196,6 @@ impl Display for ProofOutlineError {
         }
     }
 }
-
-
 
 impl Display for ExternalEquivalenceTaskError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -163,6 +230,10 @@ impl Display for ExternalEquivalenceTaskError {
                     }
                 }
 
+                writeln!(f)
+            }
+            ExternalEquivalenceTaskError::Other => {
+                write!(f, "temporary error")?;
                 writeln!(f)
             }
         }
@@ -214,6 +285,20 @@ impl ExternalEquivalenceTask {
             ))
         }
     }
+
+    fn task_predicates(&self) -> IndexSet<fol::Predicate> {
+        let mut predicates = self.user_guide.predicates();
+        predicates.extend(convert_predicate_list(self.program.predicates()));
+        match &self.specification {
+            Either::Left(prog) => {
+                predicates.extend(convert_predicate_list(prog.predicates()));
+            }
+            Either::Right(spec) => {
+                predicates.extend(spec.predicates());
+            }
+        }
+        predicates
+    }
 }
 
 impl Task for ExternalEquivalenceTask {
@@ -233,9 +318,9 @@ impl Task for ExternalEquivalenceTask {
 
         let public_predicates = self.user_guide.public_predicates();
 
-        // TODO: Apply simplifications
-        // TODO: Apply equivalence breaking
-        // TODO: Rename private predicates
+        // // TODO: Apply simplifications
+        // // TODO: Apply equivalence breaking
+        // // TODO: Rename private predicates
 
         let head_predicate = |formula: fol::Formula| {
             let head_formula = *match formula {
@@ -271,30 +356,50 @@ impl Task for ExternalEquivalenceTask {
             for formula in theory.formulas {
                 // TODO: Remove clone
                 match head_predicate(formula.clone()) {
-                    Some(p) if !public_predicates.contains(&p) => stable.push(formula),
-                    _ => unstable.push(formula),
+                    Some(p) => {
+                        let anf = AnnotatedFormula {
+                            name: format!("completed_definition_of_{p}"),
+                            role: Role::Axiom, // maybe we need an Undetermined role
+                            formula: formula.clone(),
+                        };
+                        if !public_predicates.contains(&p) {
+                            stable.push(anf);
+                        } else {
+                            unstable.push(anf); // this isnt strictly accurate since unstable premises are sometimes axioms and sometimes conjectures depending on later context
+                        }
+                    }
+                    _ => {
+                        let anf = AnnotatedFormula {
+                            name: format!("constraint"),
+                            role: Role::Axiom, // maybe we need an Undetermined role
+                            formula: formula.clone(),
+                        };
+                        unstable.push(anf);
+                    }
                 }
             }
 
             (stable, unstable)
         };
 
-        let mut stable_premises: Vec<fol::Formula> = Vec::new();
-        let mut forward_premises: Vec<fol::Formula> = Vec::new();
-        let mut forward_conclusions: Vec<fol::Formula> = Vec::new();
-        let mut backward_premises: Vec<fol::Formula> = Vec::new();
-        let mut backward_conclusions: Vec<fol::Formula> = Vec::new();
+        let mut stable_premises: Vec<AnnotatedFormula> = Vec::new();
+        let mut forward_premises: Vec<AnnotatedFormula> = Vec::new();
+        let mut forward_conclusions: Vec<AnnotatedFormula> = Vec::new();
+        let mut backward_premises: Vec<AnnotatedFormula> = Vec::new();
+        let mut backward_conclusions: Vec<AnnotatedFormula> = Vec::new();
 
         for formula in self.user_guide.formulas() {
             match formula.role {
-                fol::Role::Assumption => stable_premises.push(formula.formula),
+                fol::Role::Assumption => {
+                    stable_premises.push(AnnotatedFormula::from((formula, Role::Axiom)))
+                }
                 fol::Role::Spec => todo!(),  // TODO Report user error,
                 fol::Role::Lemma => todo!(), // TODO Report user error
                 fol::Role::Definition => todo!(), // TODO Report user error
             }
         }
 
-        // TODO: Avoid cloning
+        // // TODO: Avoid cloning
         match self.specification.clone() {
             Either::Left(specification) => {
                 let specification =
@@ -302,30 +407,84 @@ impl Task for ExternalEquivalenceTask {
                         .expect("tau_star did not create a completable theory");
 
                 let (mut stable, mut unstable) = group(specification);
+
+                // S, F |= B
                 stable_premises.append(&mut stable);
-                // TODO: Unstable premises
+                forward_premises.append(&mut unstable.clone());
+                for annotated_formula in unstable.iter() {
+                    backward_conclusions.push(
+                        AnnotatedFormula {
+                            name: annotated_formula.name.clone(),
+                            role: Role::Conjecture,
+                            formula: annotated_formula.formula.clone(),
+                        }
+                    );
+                }
             }
 
-            Either::Right(_specification) => todo!(),
+            Either::Right(specification) => {
+                for formula in specification.formulas {
+                    match formula {
+                        fol::AnnotatedFormula {
+                            role: fol::Role::Assumption,
+                            direction,
+                            formula: ref f,
+                            ..
+                        } => match direction {
+                            fol::Direction::Universal => stable_premises.push(AnnotatedFormula::from((formula, Role::Axiom))),
+                            fol::Direction::Forward => forward_premises.push(AnnotatedFormula::from((formula, Role::Axiom))),
+                            fol::Direction::Backward => println!("A backward assumption has no effect in this context. Ignoring formula {}", f),
+                        },
+
+                        fol::AnnotatedFormula {
+                            role: fol::Role::Spec,
+                            direction,
+                            ..
+                        } => match direction {
+                            fol::Direction::Universal => {
+                                forward_premises.push(AnnotatedFormula::from((formula.clone(), Role::Axiom)));
+                                backward_conclusions.push(AnnotatedFormula::from((formula, Role::Conjecture)));
+                            },
+                            fol::Direction::Forward => {
+                                forward_premises.push(AnnotatedFormula::from((formula, Role::Axiom)));
+                            },
+                            fol::Direction::Backward => {
+                                backward_conclusions.push(AnnotatedFormula::from((formula, Role::Conjecture)));
+                            },
+                        },
+                        
+                        _ => {
+                            return Err(ExternalEquivalenceTaskError::Other);
+                        },
+                    }
+                }
+            },
         }
 
         let program = completion(tau_star(self.program.clone()).replace_placeholders(&placeholder))
             .expect("tau_star did not create a completable theory");
 
         let (mut stable, mut unstable) = group(program);
-        stable_premises.append(&mut stable);
 
-        // TODO Avoid clone
-        let mut lemmas = Vec::new();
-        let mut definitions = Vec::new();
-        for formula in self.proof_outline.formulas.clone() {
-            match formula.role {
-                fol::Role::Assumption => todo!(), // TODO Report user error
-                fol::Role::Spec => todo!(),       // TODO Report user error
-                fol::Role::Lemma => lemmas.push(formula.formula),
-                fol::Role::Definition => definitions.push(formula.formula),
-            }
+        // S, B |= F
+        stable_premises.append(&mut stable);
+        backward_premises.append(&mut unstable.clone());
+        for annotated_formula in unstable.iter() {
+            forward_conclusions.push(
+                AnnotatedFormula {
+                    name: annotated_formula.name.clone(),
+                    role: Role::Conjecture,
+                    formula: annotated_formula.formula.clone(),
+                }
+            );
         }
+
+        // // TODO Avoid clone
+        let proof_outline =
+            match ProofOutline::construct(self.proof_outline.clone(), self.task_predicates()) {
+                Ok(outline) => Ok(outline),
+                Err(_) => Err(ExternalEquivalenceTaskError::Other),
+            }?;
 
         // forward direction
         // S, F |= FL
@@ -352,34 +511,41 @@ impl Task for ExternalEquivalenceTask {
             self.direction,
             fol::Direction::Universal | fol::Direction::Forward
         ) {
-            problems.push(
-                Problem::default()
-                    .add_formulas(stable_premises, |i, formula| AnnotatedFormula {
-                        name: format!("stable_premise_{i}"),
-                        role: Role::Axiom,
-                        formula,
-                    })
-                    .add_formulas(forward_premises, |i, formula| AnnotatedFormula {
-                        name: format!("forward_premise_{i}"),
-                        role: Role::Axiom,
-                        formula,
-                    })
-                    .add_formulas(lemmas, |i, formula| AnnotatedFormula {
-                        name: format!("lemma_{i}"),
-                        role: Role::Conjecture,
-                        formula,
-                    }),
-            )
+            let mut forward_sequence = Problem::from_components(
+                stable_premises.clone(),
+                forward_premises,
+                forward_conclusions,
+                proof_outline.forward_definitions,
+                proof_outline.forward_basic_lemmas,
+            );
+            problems.append(&mut forward_sequence);
+        }
+        if matches!(
+            self.direction,
+            fol::Direction::Universal | fol::Direction::Backward
+        ) {
+            let mut backward_sequence = Problem::from_components(
+                stable_premises,
+                backward_premises,
+                backward_conclusions,
+                proof_outline.backward_definitions,
+                proof_outline.backward_basic_lemmas,
+            );
+            problems.append(&mut backward_sequence);
         }
 
-        Ok(problems
-            .into_iter()
-            .map(|p: Problem| match self.decomposition {
-                Decomposition::Independent => p.decompose_independent(),
-                Decomposition::Sequential => p.decompose_sequential(),
-            })
-            .flatten()
-            .collect())
+        let result: Vec<Problem> = problems
+        .into_iter()
+        .map(|p: Problem| match self.decomposition {
+            Decomposition::Independent => p.decompose_independent(),
+            Decomposition::Sequential => p.decompose_sequential(),
+        })
+        .flatten()
+        .collect();
+
+        //println!("{} problems now", result.len());
+
+        Ok(result)
 
         // TODO
         // forward_premises.append(&mut unstable.clone());
