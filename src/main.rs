@@ -60,10 +60,6 @@ fn main() -> Result<()> {
             aux,
             ..
         } => {
-
-            let thing: fol::UserGuide = "assumption: 2 > 1.".parse().unwrap();
-            println!("{thing}");
-
             let specification: Either<asp::Program, fol::Specification> =
                 match left.extension().map(OsStr::to_str) {
                     Some(Some("lp")) => Either::Left(asp::Program::from_file(left)?),
