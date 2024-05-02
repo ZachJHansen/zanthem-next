@@ -715,6 +715,7 @@ impl PestParser for UserGuideEntryParser {
     const RULE: internal::Rule = internal::Rule::user_guide_entry_eoi;
 
     fn translate_pair(pair: pest::iterators::Pair<'_, Self::Rule>) -> Self::Node {
+        
         match pair.as_rule() {
             internal::Rule::user_guide_entry => Self::translate_pairs(pair.into_inner()),
             internal::Rule::input_predicate => {
@@ -727,7 +728,7 @@ impl PestParser for UserGuideEntryParser {
                 FunctionConstantParser::translate_pairs(pair.into_inner()),
             ),
             internal::Rule::annotated_formula => UserGuideEntry::AnnotatedFormula(
-                AnnotatedFormulaParser::translate_pairs(pair.into_inner()),
+                AnnotatedFormulaParser::translate_pair(pair),
             ),
             _ => Self::report_unexpected_pair(pair),
         }
@@ -764,7 +765,7 @@ mod tests {
             BinaryOperatorParser, ComparisonParser, FormulaParser, GeneralTermParser, GuardParser,
             IntegerTermParser, PredicateParser, QuantificationParser, QuantifierParser,
             RelationParser, SymbolicTermParser, TheoryParser, UnaryConnectiveParser,
-            UnaryOperatorParser, VariableParser,
+            UnaryOperatorParser, VariableParser, UserGuideParser, UserGuideEntryParser,
         },
         crate::{
             parsing::TestedParser,
@@ -772,7 +773,7 @@ mod tests {
                 AnnotatedFormula, Atom, AtomicFormula, BinaryConnective, BinaryOperator,
                 Comparison, Direction, Formula, GeneralTerm, Guard, IntegerTerm, Predicate,
                 Quantification, Quantifier, Relation, Role, Sort, SymbolicTerm, Theory,
-                UnaryConnective, UnaryOperator, Variable,
+                UnaryConnective, UnaryOperator, Variable, UserGuide, UserGuideEntry, FunctionConstant,
             },
         },
         std::vec,
@@ -1563,6 +1564,18 @@ mod tests {
                     },
                 ),
                 (
+                    "assumption: p(5)",
+                    AnnotatedFormula {
+                        role: Role::Assumption,
+                        direction: Direction::Universal,
+                        name: String::default(),
+                        formula: Formula::AtomicFormula(AtomicFormula::Atom(Atom {
+                            predicate_symbol: "p".into(),
+                            terms: vec![GeneralTerm::IntegerTerm(IntegerTerm::Numeral(5))],
+                        })),
+                    },
+                ),
+                (
                     "lemma(forward): a > 1",
                     AnnotatedFormula {
                         role: Role::Lemma,
@@ -1629,4 +1642,39 @@ mod tests {
             ])
             .should_reject(["lemma: X"]);
     }
+
+    #[test]
+    fn parse_user_guide() {
+        UserGuideParser
+            .should_parse_into([
+                (
+                    "",
+                    UserGuide {
+                        entries: vec![],
+                    }
+                ),
+                (
+                    "input: n$i.\nassumption: p(5).",
+                    UserGuide {
+                        entries: vec![
+                            UserGuideEntry::PlaceholderDeclaration(FunctionConstant {
+                                name: "n".to_string(),
+                                sort: Sort::Integer,
+                            }),
+                            UserGuideEntry::AnnotatedFormula(AnnotatedFormula {
+                                role: Role::Assumption,
+                                direction: Direction::Universal,
+                                name: String::default(),
+                                formula: Formula::AtomicFormula(AtomicFormula::Atom(Atom {
+                                    predicate_symbol: "p".into(),
+                                    terms: vec![GeneralTerm::IntegerTerm(IntegerTerm::Numeral(5))],
+                                })),
+                            }),
+                        ],
+                    }
+                ),
+            ])
+            .should_reject(["conjecture: p(5)."]);
+            }
 }
+
