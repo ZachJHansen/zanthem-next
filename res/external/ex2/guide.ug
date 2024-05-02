@@ -1,0 +1,6 @@
+output: q/0.
+output: p/1.
+input: n$i.
+input: r/0.
+assumption: p(5). 
+
