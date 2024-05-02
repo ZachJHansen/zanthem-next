@@ -81,27 +81,9 @@ lemma(universal): forall X M$i N$i ( M$i > 1 and N$i > 1 and X = M$i * N$i -> M$
 lemma: forall X M$i N$i ( M$i > 1 and N$i > 1 and X = M$i * N$i -> M$i <= X and N$i <= X ).
 ```
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+## Extra Information
+Prefacing a command with `RUST_LOG=INFO` will provide additional information like system runtimes. For example, running
+```sh
+$ RUST_LOG=INFO ./anthem verify-alt examples/primes
+```
+will display summaries (premises and conjectures) of the claims being proven (forward, backward) and the time in milliseconds required to prove each conjecture.
