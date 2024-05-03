@@ -661,7 +661,7 @@ impl PestParser for AnnotatedFormulaParser {
         }
 
         let name;
-        if matches!(next.as_rule(), internal::Rule::symbolic_constant) {
+        if matches!(next.as_rule(), internal::Rule::symbolic_constant) {    // TODO: This rejects a name like not_p_0 since not is a keyword
             name = next.as_str().into();
             next = pairs.next().unwrap_or_else(|| Self::report_missing_pair());
         } else {
@@ -715,7 +715,7 @@ impl PestParser for UserGuideEntryParser {
     const RULE: internal::Rule = internal::Rule::user_guide_entry_eoi;
 
     fn translate_pair(pair: pest::iterators::Pair<'_, Self::Rule>) -> Self::Node {
-        
+
         match pair.as_rule() {
             internal::Rule::user_guide_entry => Self::translate_pairs(pair.into_inner()),
             internal::Rule::input_predicate => {
@@ -761,19 +761,12 @@ impl PestParser for UserGuideParser {
 mod tests {
     use {
         super::{
-            AnnotatedFormulaParser, AtomParser, AtomicFormulaParser, BinaryConnectiveParser,
-            BinaryOperatorParser, ComparisonParser, FormulaParser, GeneralTermParser, GuardParser,
-            IntegerTermParser, PredicateParser, QuantificationParser, QuantifierParser,
-            RelationParser, SymbolicTermParser, TheoryParser, UnaryConnectiveParser,
-            UnaryOperatorParser, VariableParser, UserGuideParser, UserGuideEntryParser,
+            AnnotatedFormulaParser, AtomParser, AtomicFormulaParser, BinaryConnectiveParser, BinaryOperatorParser, ComparisonParser, FormulaParser, GeneralTermParser, GuardParser, IntegerTermParser, PredicateParser, QuantificationParser, QuantifierParser, RelationParser, SpecificationParser, SymbolicTermParser, TheoryParser, UnaryConnectiveParser, UnaryOperatorParser, UserGuideParser, VariableParser
         },
         crate::{
             parsing::TestedParser,
             syntax_tree::fol::{
-                AnnotatedFormula, Atom, AtomicFormula, BinaryConnective, BinaryOperator,
-                Comparison, Direction, Formula, GeneralTerm, Guard, IntegerTerm, Predicate,
-                Quantification, Quantifier, Relation, Role, Sort, SymbolicTerm, Theory,
-                UnaryConnective, UnaryOperator, Variable, UserGuide, UserGuideEntry, FunctionConstant,
+                AnnotatedFormula, Atom, AtomicFormula, BinaryConnective, BinaryOperator, Comparison, Direction, Formula, FunctionConstant, GeneralTerm, Guard, IntegerTerm, Predicate, Quantification, Quantifier, Relation, Role, Sort, Specification, SymbolicTerm, Theory, UnaryConnective, UnaryOperator, UserGuide, UserGuideEntry, Variable
             },
         },
         std::vec,
@@ -1564,6 +1557,21 @@ mod tests {
                     },
                 ),
                 (
+                    "spec(forward)[about_p_0]: not p(0)",
+                    AnnotatedFormula {
+                        role: Role::Spec,
+                        direction: Direction::Forward,
+                        name: "about_p_0".to_string(),
+                        formula: Formula::UnaryFormula {
+                            connective: UnaryConnective::Negation,
+                            formula: Formula::AtomicFormula(AtomicFormula::Atom(Atom {
+                                predicate_symbol: "p".into(),
+                                terms: vec![GeneralTerm::IntegerTerm(IntegerTerm::Numeral(0))],
+                            })).into(),
+                        },
+                    },
+                ),
+                (
                     "assumption: p(5)",
                     AnnotatedFormula {
                         role: Role::Assumption,
@@ -1675,6 +1683,47 @@ mod tests {
                 ),
             ])
             .should_reject(["conjecture: p(5)."]);
+        }
+
+        #[test]
+        fn parse_specification() {
+            SpecificationParser
+                .should_parse_into([
+                    (
+                        "",
+                        Specification {
+                            formulas: vec![],
+                        }
+                    ),
+                    (
+                        "spec(forward)[about_p_0]: not p(0).\nassumption: p(5).",
+                        Specification {
+                            formulas: vec![
+                                AnnotatedFormula {
+                                    role: Role::Spec,
+                                    direction: Direction::Forward,
+                                    name: "about_p_0".to_string(),
+                                    formula: Formula::UnaryFormula {
+                                        connective: UnaryConnective::Negation,
+                                        formula: Formula::AtomicFormula(AtomicFormula::Atom(Atom {
+                                            predicate_symbol: "p".into(),
+                                            terms: vec![GeneralTerm::IntegerTerm(IntegerTerm::Numeral(0))],
+                                        })).into(),
+                                    },
+                                },
+                                AnnotatedFormula {
+                                    role: Role::Assumption,
+                                    direction: Direction::Universal,
+                                    name: String::default(),
+                                    formula: Formula::AtomicFormula(AtomicFormula::Atom(Atom {
+                                        predicate_symbol: "p".into(),
+                                        terms: vec![GeneralTerm::IntegerTerm(IntegerTerm::Numeral(5))],
+                                    })),
+                                },
+                            ],
+                        }
+                    ),
+                ])
+                .should_reject(["spec(forward)[not_p_0]: not p(0)."]);
             }
 }
-
