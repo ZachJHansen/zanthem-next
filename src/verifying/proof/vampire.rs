@@ -2,9 +2,9 @@ use {
     crate::verifying::problem::Problem,
     anyhow::anyhow,
     lazy_static::lazy_static,
+    log::info,
     regex::Regex,
     std::{process, time::Instant},
-    log::info,
 };
 
 lazy_static! {

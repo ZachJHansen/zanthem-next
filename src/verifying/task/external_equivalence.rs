@@ -174,7 +174,7 @@ pub enum ExternalEquivalenceTaskError {
     #[error("the placeholder names `{0:?}` are not unique")]
     DuplicatePlaceholderNames(Vec<String>),
     #[error("assumptions should not contain output predicates - `{}`", intersection[0])]
-    OutputPredicateInAssumption {intersection: Vec<fol::Predicate>},
+    OutputPredicateInAssumption { intersection: Vec<fol::Predicate> },
 }
 
 #[derive(Debug)]
@@ -188,7 +188,6 @@ pub struct ExternalEquivalenceTask {
     pub simplify: bool,
     pub break_equivalences: bool,
 }
-
 
 impl ExternalEquivalenceTask {
     fn ensure_input_and_output_predicates_are_disjoint(
@@ -205,9 +204,7 @@ impl ExternalEquivalenceTask {
         if intersection.is_empty() {
             Ok(())
         } else {
-            Err(ExternalEquivalenceTaskError::InputOutputPredicatesOverlap {
-                intersection,
-            })
+            Err(ExternalEquivalenceTaskError::InputOutputPredicatesOverlap { intersection })
         }
     }
 
@@ -230,15 +227,11 @@ impl ExternalEquivalenceTask {
         if intersection.is_empty() {
             Ok(())
         } else {
-            Err(ExternalEquivalenceTaskError::InputPredicateInRuleHead {
-                intersection,
-            })
+            Err(ExternalEquivalenceTaskError::InputPredicateInRuleHead { intersection })
         }
     }
 
-    fn ensure_placeholder_name_uniqueness(
-        &self,
-    ) -> Result<(), ExternalEquivalenceTaskError> {
+    fn ensure_placeholder_name_uniqueness(&self) -> Result<(), ExternalEquivalenceTaskError> {
         let placeholder_names: Vec<String> = self
             .user_guide
             .placeholders()
@@ -261,7 +254,9 @@ impl ExternalEquivalenceTask {
         if duplicates.is_empty() {
             Ok(())
         } else {
-            Err(ExternalEquivalenceTaskError::DuplicatePlaceholderNames(duplicates))
+            Err(ExternalEquivalenceTaskError::DuplicatePlaceholderNames(
+                duplicates,
+            ))
         }
     }
 }
@@ -409,21 +404,22 @@ impl Task for ExternalEquivalenceTask {
                     ),
                 }
             }
-            Either::Right(specification) => match self.simplify {
-                true => {
-                    let mut simplified = Vec::new();
-                    for anf in specification.formulas {
-                        simplified.push(fol::AnnotatedFormula {
-                            role: anf.role,
-                            direction: anf.direction,
-                            name: anf.name,
-                            formula: simplify(anf.formula, true),
-                        });
-                    }
-                    simplified
+            Either::Right(specification) => {
+                let mut modified_formulas = Vec::new();
+                for anf in specification.formulas {
+                    modified_formulas.push(fol::AnnotatedFormula {
+                        role: anf.role,
+                        direction: anf.direction,
+                        name: anf.name,
+                        formula: if self.simplify {
+                            simplify(anf.formula.replace_placeholders(&placeholder), true)
+                        } else {
+                            anf.formula.replace_placeholders(&placeholder)
+                        },
+                    });
                 }
-                false => specification.formulas,
-            },
+                modified_formulas
+            }
         };
 
         let mut taken_predicates = self.user_guide.input_predicates();
@@ -440,21 +436,29 @@ impl Task for ExternalEquivalenceTask {
         }?;
 
         let mut user_guide_assumptions = vec![];
-        for formula in self.user_guide.formulas() {
+        for mut formula in self.user_guide.formulas() {
             match formula.role {
                 fol::Role::Assumption => {
-                    let intersection: Vec<_> = formula.formula.predicates()
-                    .intersection(&self.user_guide.output_predicates())
-                    .cloned()
-                    .collect();
+                    let intersection: Vec<_> = formula
+                        .formula
+                        .predicates()
+                        .intersection(&self.user_guide.output_predicates())
+                        .cloned()
+                        .collect();
 
                     if intersection.is_empty() {
+                        let inner_formula = formula.formula.replace_placeholders(&placeholder);
+                        formula.formula = inner_formula;
                         user_guide_assumptions.push(formula);
                     } else {
-                        return Err(ExternalEquivalenceTaskError::OutputPredicateInAssumption { intersection });
+                        return Err(ExternalEquivalenceTaskError::OutputPredicateInAssumption {
+                            intersection,
+                        });
                     }
-                },
-                _ => println!("A user guide should only contain assumptions. Ignoring formula {formula}"),
+                }
+                _ => println!(
+                    "A user guide should only contain assumptions. Ignoring formula {formula}"
+                ),
             }
         }
 

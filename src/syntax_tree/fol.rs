@@ -946,7 +946,7 @@ mod tests {
     }
 
     #[test]
-    #[should_panic]     // TODO - this test will succeed if any fail, which isn't quite right
+    #[should_panic] // TODO - this test will succeed if any fail, which isn't quite right
     fn test_formula_substitute_symbol_failure() {
         for (src, var, term) in [
             ("exists J$i (X$s = J$i -> q(X$s))", "X$s", "3"),

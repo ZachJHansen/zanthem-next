@@ -1,6 +1,6 @@
+pub mod derivation;
 pub mod external_equivalence;
 pub mod strong_equivalence;
-pub mod derivation;
 
 use {
     crate::{

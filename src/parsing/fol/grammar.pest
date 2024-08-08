@@ -126,11 +126,15 @@ annotated_formula_eoi = _{ annotated_formula ~ EOI }
 specification = { (annotated_formula ~ ".")* }
 specification_eoi = _{ specification ~ EOI }
 
-user_guide_entry = { input_predicate | output_predicate | placeholder_declaration | annotated_formula }
+user_guide_entry = { input_predicate | output_predicate | function_placeholder_declaration | integer_placeholder_declaration | symbol_placeholder_declaration | general_placeholder_declaration | annotated_formula }
 user_guide_entry_eoi = _{ user_guide_entry ~ EOI }
     input_predicate         = { "input" ~ ":" ~ predicate}
     output_predicate        = { "output" ~ ":" ~ predicate}
-    placeholder_declaration = { "input" ~ ":" ~ function_constant}
+    function_placeholder_declaration = { "input" ~ ":" ~ function_constant }
+    integer_placeholder_declaration  = { "input" ~ ":" ~ symbolic_constant ~ "-> integer" }
+    symbol_placeholder_declaration   = { "input" ~ ":" ~ symbolic_constant ~ "-> symbol" }
+    general_placeholder_declaration  = { "input" ~ ":" ~ symbolic_constant ~ "-> general"? }
+
 
 user_guide = { (user_guide_entry ~ ".")* }
 user_guide_eoi = _{ user_guide ~ EOI }

@@ -9,7 +9,6 @@ use {
     thiserror::Error,
 };
 
-
 #[derive(Error, Debug)]
 pub enum DerivationTaskError {
     #[error("couldn't process lemma due to error `{0}`")]
@@ -34,18 +33,19 @@ impl Task for DerivationTask {
                 fol::Role::Assumption => {
                     let assumption = AnnotatedFormula::from((anf, Role::Axiom));
                     assumptions.push(assumption)
-                },
-                fol::Role::Lemma | fol::Role::InductiveLemma => {
-                    match anf.general_lemma() {
-                        Ok(lemma) => lemmas.push(lemma),
-                        Err(err) => return Err(DerivationTaskError::GeneralLemmaError(err.to_string())),
+                }
+                fol::Role::Lemma | fol::Role::InductiveLemma => match anf.general_lemma() {
+                    Ok(lemma) => lemmas.push(lemma),
+                    Err(err) => {
+                        return Err(DerivationTaskError::GeneralLemmaError(err.to_string()))
                     }
                 },
                 _ => println!("Ignoring formula \n{anf}\n due to unexpected role"),
             }
         }
 
-        let problems = Problem::from_derivation_components("derivation".to_string(), assumptions, lemmas);
+        let problems =
+            Problem::from_derivation_components("derivation".to_string(), assumptions, lemmas);
 
         Ok(problems)
     }
