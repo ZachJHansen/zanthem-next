@@ -84,7 +84,7 @@ where
     I: IntoIterator<Item = S>,
     S: AsRef<std::ffi::OsStr>,
 {
-    let mut vampire = process::Command::new("vampire");
+    let mut vampire = process::Command::new("./vampire");
 
     let vampire = match arguments {
         Some(arguments) => vampire.args(arguments),

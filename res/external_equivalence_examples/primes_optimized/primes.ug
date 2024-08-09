@@ -1,6 +1,7 @@
-input: a$i, b$i.
-output: prime/1.
-input: squareLEb/1.
+input: a -> integer.
+input: b -> integer.
 
-assume: a$i > 1.
-assume: b$i >= a$i.
+output: prime/1.
+
+assumption: a > 1.
+assumption: b >= a.

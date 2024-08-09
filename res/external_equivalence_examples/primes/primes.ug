@@ -1,2 +1,2 @@
-input: n$i.
+input: n -> integer.
 output: prime/1.
