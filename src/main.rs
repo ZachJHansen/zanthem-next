@@ -16,8 +16,7 @@ use {
         verifying::{
             proof::vampire::verify,
             task::{
-                derivation::DerivationTask,
-                external_equivalence::ExternalEquivalenceTask,
+                derivation::DerivationTask, external_equivalence::ExternalEquivalenceTask,
                 strong_equivalence::StrongEquivalenceTask, Task,
             },
         },
@@ -98,14 +97,22 @@ fn main() -> Result<()> {
             Ok(())
         }
 
-        Command::Derive { input, no_simplify, no_eq_break, time_limit, no_proof_search, out_dir } => {
+        Command::Derive {
+            input,
+            no_simplify,
+            no_eq_break,
+            time_limit,
+            no_proof_search,
+            out_dir,
+        } => {
             let specification = fol::Specification::from_file(input)?;
 
             let problems = DerivationTask {
                 specification,
                 simplify: !no_simplify,
                 break_equivalences: !no_eq_break,
-            }.decompose()?;
+            }
+            .decompose()?;
 
             if let Some(out_dir) = out_dir {
                 for problem in problems.clone().into_iter() {

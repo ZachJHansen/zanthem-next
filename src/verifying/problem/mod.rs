@@ -1,8 +1,8 @@
 use {
-    super::task::GeneralLemma,
+    super::task::{external_equivalence::ReplacePlaceholders, GeneralLemma},
     crate::syntax_tree::fol::{self, Formula, FunctionConstant, Predicate, Sort, Theory},
     anyhow::{Context as _, Result},
-    indexmap::IndexSet,
+    indexmap::{IndexMap, IndexSet},
     itertools::Itertools,
     std::{fmt, fs::File, io::Write as _, iter::repeat, path::Path},
 };
@@ -162,6 +162,7 @@ impl Problem {
         conclusions: Vec<AnnotatedFormula>,
         lemmas: Vec<GeneralLemma>,
         definitions: Vec<fol::AnnotatedFormula>,
+        placeholder: IndexMap<String, FunctionConstant>,
     ) -> Vec<Self> {
         let mut initial_problem = Problem::with_name(name);
 
@@ -169,22 +170,27 @@ impl Problem {
         initial_problem.formulas.extend(stable);
         initial_problem.formulas.extend(premises);
         for definition in definitions {
-            initial_problem
-                .formulas
-                .push(AnnotatedFormula::from((definition, Role::Axiom)));
+            initial_problem.formulas.push(AnnotatedFormula::from((
+                definition.replace_placeholders(&placeholder),
+                Role::Axiom,
+            )));
         }
 
         let mut final_problem = initial_problem.clone();
         initial_problem.name = format!("{}_outline", initial_problem.name).to_string();
 
         // Create a problem sequence from the proof outline
+        let mut i = 0;
         let mut problem_sequence: Vec<Problem> = vec![];
         for general_lemma in lemmas {
+            let general_lemma = general_lemma.replace_placeholders(&placeholder);
             let mut lemma_sequence: Vec<Problem> = vec![];
             for conjecture in general_lemma.conjectures {
                 let mut extended_problem = initial_problem.clone();
+                extended_problem.name = format!("{}_{}", extended_problem.name, i);
                 extended_problem.formulas.push(conjecture);
                 lemma_sequence.push(extended_problem);
+                i = i + 1;
             }
             initial_problem
                 .formulas
