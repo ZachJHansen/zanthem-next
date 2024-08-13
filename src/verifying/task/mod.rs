@@ -122,7 +122,13 @@ impl ProofOutline {
                     }
                 }
                 fol::Role::Lemma | fol::Role::InductiveLemma => {
-                    let general_lemma = anf.clone().general_lemma()?;
+                    let lemma = fol::AnnotatedFormula {
+                        role: anf.role.clone(),
+                        direction: anf.direction,
+                        name: anf.name.clone(),
+                        formula: anf.formula.clone().universal_closure(),
+                    };
+                    let general_lemma = lemma.general_lemma()?;
                     match anf.direction {
                         fol::Direction::Forward => {
                             forward_lemmas.push(general_lemma);

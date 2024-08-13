@@ -703,6 +703,11 @@ impl Formula {
         }
     }
 
+    pub fn universal_closure(self) -> Formula {
+        let variables = self.free_variables().into_iter().collect();
+        self.quantify(Quantifier::Forall, variables)
+    }
+
     // Replacing var with term within self is unsafe if self contains a subformula
     // of the form QxF, where var is free in F and a variable in term occurs in x
     pub fn unsafe_substitution(self, var: &Variable, term: &GeneralTerm) -> bool {
