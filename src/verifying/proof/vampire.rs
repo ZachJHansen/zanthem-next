@@ -30,7 +30,7 @@ pub enum ProblemStatus {
 // in the memory of proven results, if it has then return the result otherwise ask vampire to prove it
 // The interactivity could be handled similarly to a web session - instead of forcing the user to remain
 // in an interaction e.g. via a while loop, each verification call is like a web request, and intermediate results are stored like cookies
-pub fn verify(problems: Vec<Problem>, time_limit: u16) {
+pub fn verify(problems: Vec<Problem>, time_limit: u16, no_timing: bool) {
     let cores = 4; // TODO: as argument
     let mut claim_status = ProblemStatus::Theorem;
     for problem in problems {
@@ -54,11 +54,17 @@ pub fn verify(problems: Vec<Problem>, time_limit: u16) {
                 ProblemStatus::Theorem => {
                     println!("\t| Status: Proven");
                     info!("Proven in {} milliseconds", now.elapsed().as_millis());
+                    if !no_timing {
+                        println!("Proven in {} milliseconds", now.elapsed().as_millis());
+                    }
                 }
                 _ => {
                     claim_status = ProblemStatus::Timeout; // TODO - Differentiate between different vampire errors/non-theorem results
                     println!("\t| Status: Not Proven");
                     info!("Not proven in {} milliseconds", now.elapsed().as_millis());
+                    if !no_timing {
+                        println!("Proven in {} milliseconds", now.elapsed().as_millis());
+                    }
                     break;
                 }
             },

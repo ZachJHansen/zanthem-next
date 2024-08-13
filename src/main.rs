@@ -104,6 +104,7 @@ fn main() -> Result<()> {
             time_limit,
             no_proof_search,
             out_dir,
+            no_timing,
         } => {
             let specification = fol::Specification::from_file(input)?;
 
@@ -124,10 +125,14 @@ fn main() -> Result<()> {
             }
 
             if !no_proof_search {
-                verify(problems, time_limit);
+                verify(problems, time_limit, no_timing);
             }
 
             info!("System runtime: {} milliseconds", now.elapsed().as_millis());
+
+            if !no_timing {
+                println!("System runtime: {} milliseconds", now.elapsed().as_millis());
+            }
 
             Ok(())
         }
@@ -144,6 +149,7 @@ fn main() -> Result<()> {
             right,
             aux,
             time_limit,
+            no_timing,
         } => {
             let problems = match equivalence {
                 Equivalence::Strong => StrongEquivalenceTask {
@@ -222,10 +228,14 @@ fn main() -> Result<()> {
             }
 
             if !no_proof_search {
-                verify(problems, time_limit);
+                verify(problems, time_limit, no_timing);
             }
 
             info!("System runtime: {} milliseconds", now.elapsed().as_millis());
+
+            if !no_timing {
+                println!("System runtime: {} milliseconds", now.elapsed().as_millis());
+            }
 
             Ok(())
         }
@@ -240,6 +250,7 @@ fn main() -> Result<()> {
             out_dir,
             problem_dir,
             time_limit,
+            no_timing,
         } => {
             let mut programs: Vec<&PathBuf> = vec![];
             let mut specs: Vec<&PathBuf> = vec![];
@@ -367,10 +378,14 @@ fn main() -> Result<()> {
 
             // TODO: Run proof search
             if !no_proof_search {
-                verify(problems, time_limit);
+                verify(problems, time_limit, no_timing);
             }
 
             info!("System runtime: {} milliseconds", now.elapsed().as_millis());
+
+            if !no_timing {
+                println!("System runtime: {} milliseconds", now.elapsed().as_millis());
+            }
 
             Ok(())
         }

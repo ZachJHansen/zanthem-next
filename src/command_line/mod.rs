@@ -52,6 +52,10 @@ pub enum Command {
         #[arg(long, action)]
         no_proof_search: bool,
 
+        /// Omit timing information
+        #[arg(long, action)]
+        no_timing: bool,
+
         /// The destination directory for the problem files
         #[arg(long)]
         out_dir: Option<PathBuf>,
@@ -82,6 +86,10 @@ pub enum Command {
         /// Omit proof search and just create problem files
         #[arg(long, action)]
         no_proof_search: bool,
+
+        /// Omit timing information
+        #[arg(long, action)]
+        no_timing: bool,
 
         /// The time limit in seconds to prove each conjecture passed to Vampire
         #[arg(long, short, default_value_t = 30)]
@@ -126,6 +134,10 @@ pub enum Command {
         /// Omit proof search and just create problem files
         #[arg(long, action)]
         no_proof_search: bool,
+
+        /// Omit timing information
+        #[arg(long, action)]
+        no_timing: bool,
 
         /// The time limit in seconds to prove each conjecture passed to Vampire
         #[arg(long, short, default_value_t = 30)]
