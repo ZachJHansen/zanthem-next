@@ -91,8 +91,8 @@ impl PestParser for IntegerTermParser {
                 internal::Rule::numeral => IntegerTerm::Numeral(primary.as_str().parse().unwrap()),
                 internal::Rule::integer_function_constant => match primary.into_inner().next() {
                     Some(pair) if pair.as_rule() == internal::Rule::symbolic_constant => {
-                        let mut name = pair.as_str().to_string();
-                        name.push_str("i");
+                        let name = pair.as_str().to_string();
+                        //name.push_str("i");
                         IntegerTerm::FunctionConstant(name.into())
                     }
                     Some(pair) => Self::report_unexpected_pair(pair),
@@ -135,8 +135,8 @@ impl PestParser for SymbolicTermParser {
             internal::Rule::symbolic_constant => SymbolicTerm::Symbol(pair.as_str().into()),
             internal::Rule::symbolic_function_constant => match pair.into_inner().next() {
                 Some(pair) if pair.as_rule() == internal::Rule::symbolic_constant => {
-                    let mut name = pair.as_str().to_string();
-                    name.push_str("s");
+                    let name = pair.as_str().to_string();
+                    //name.push_str("s");
                     SymbolicTerm::FunctionConstant(name.into())
                 }
                 Some(pair) => Self::report_unexpected_pair(pair),
@@ -170,8 +170,8 @@ impl PestParser for GeneralTermParser {
             internal::Rule::supremum => GeneralTerm::Supremum,
             internal::Rule::general_function_constant => match pair.into_inner().next() {
                 Some(pair) if pair.as_rule() == internal::Rule::symbolic_constant => {
-                    let mut name = pair.as_str().to_string();
-                    name.push_str("g");
+                    let name = pair.as_str().to_string();
+                    //name.push_str("g");
                     GeneralTerm::FunctionConstant(name.into())
                 }
                 Some(pair) => Self::report_unexpected_pair(pair),
@@ -389,15 +389,14 @@ impl PestParser for FunctionConstantParser {
     const RULE: internal::Rule = internal::Rule::function_constant_eoi;
 
     fn translate_pair(pair: pest::iterators::Pair<'_, Self::Rule>) -> Self::Node {
-        println!("look");
         match pair.as_rule() {
             internal::Rule::function_constant => {
                 FunctionConstantParser::translate_pairs(pair.into_inner())
             }
             internal::Rule::integer_function_constant => match pair.into_inner().next() {
                 Some(pair) if pair.as_rule() == internal::Rule::symbolic_constant => {
-                    let mut name = pair.as_str().to_string();
-                    name.push_str("i");
+                    let name = pair.as_str().to_string();
+                    //name.push_str("i");
                     FunctionConstant {
                         name: name.into(),
                         sort: Sort::Integer,
@@ -408,8 +407,8 @@ impl PestParser for FunctionConstantParser {
             },
             internal::Rule::symbolic_function_constant => match pair.into_inner().next() {
                 Some(pair) if pair.as_rule() == internal::Rule::symbolic_constant => {
-                    let mut name = pair.as_str().to_string();
-                    name.push_str("s");
+                    let name = pair.as_str().to_string();
+                    //name.push_str("s");
                     FunctionConstant {
                         name: name.into(),
                         sort: Sort::Symbol,
@@ -420,8 +419,8 @@ impl PestParser for FunctionConstantParser {
             },
             internal::Rule::general_function_constant => match pair.into_inner().next() {
                 Some(pair) if pair.as_rule() == internal::Rule::symbolic_constant => {
-                    let mut name = pair.as_str().to_string();
-                    name.push_str("g");
+                    let name = pair.as_str().to_string();
+                    //name.push_str("g");
                     FunctionConstant {
                         name: name.into(),
                         sort: Sort::General,
@@ -848,7 +847,7 @@ mod tests {
                 ("-1", IntegerTerm::Numeral(-1)),
                 ("-48", IntegerTerm::Numeral(-48)),
                 ("(-48)", IntegerTerm::Numeral(-48)),
-                ("a$i", IntegerTerm::FunctionConstant("ai".into())),
+                ("a$i", IntegerTerm::FunctionConstant("a".into())),
                 ("X$i", IntegerTerm::Variable("X".into())),
                 ("Xvar$", IntegerTerm::Variable("Xvar".into())),
                 (
@@ -884,7 +883,7 @@ mod tests {
         SymbolicTermParser
             .should_parse_into([
                 ("a", SymbolicTerm::Symbol("a".into())),
-                ("a$s", SymbolicTerm::FunctionConstant("as".into())),
+                ("a$s", SymbolicTerm::FunctionConstant("a".into())),
                 ("X$s", SymbolicTerm::Variable("X".into())),
             ])
             .should_reject(["0", "a$i", "a$g", "X$i", "X$g"]);
@@ -896,7 +895,7 @@ mod tests {
             .should_parse_into([
                 ("#inf", GeneralTerm::Infimum),
                 ("#sup", GeneralTerm::Supremum),
-                ("a$g", GeneralTerm::FunctionConstant("ag".into())),
+                ("a$g", GeneralTerm::FunctionConstant("a".into())),
                 ("1", GeneralTerm::IntegerTerm(IntegerTerm::Numeral(1))),
                 ("(1)", GeneralTerm::IntegerTerm(IntegerTerm::Numeral(1))),
                 ("-1", GeneralTerm::IntegerTerm(IntegerTerm::Numeral(-1))),
@@ -1723,7 +1722,7 @@ mod tests {
                     UserGuide {
                         entries: vec![
                             UserGuideEntry::PlaceholderDeclaration(FunctionConstant {
-                                name: "ni".to_string(),
+                                name: "n".to_string(),
                                 sort: Sort::Integer,
                             }),
                             UserGuideEntry::AnnotatedFormula(AnnotatedFormula {
