@@ -31,6 +31,15 @@ pub enum Command {
         input: PathBuf,
     },
 
+    Valuate {
+        /// The user guide defining placeholders
+        #[arg(long)]
+        using: PathBuf,
+
+        /// The file to translate
+        input: PathBuf,
+    },
+
     /// Sequentially derive a series of lemmas from a set of assumptions
     Derive {
         /// The file (at least one lemma and optional assumptions)

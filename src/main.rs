@@ -10,7 +10,6 @@ pub mod verifying;
 use {
     crate::{
         command_line::{Arguments, Command, Equivalence, Simplification, Translation},
-        simplifying::fol::ht::simplify_nested_quantifiers,
         syntax_tree::{asp, fol, Node as _},
         translating::{completion::completion, gamma::gamma, tau_star::tau_star},
         verifying::{
@@ -20,14 +19,7 @@ use {
                 strong_equivalence::StrongEquivalenceTask, Task,
             },
         },
-    },
-    anyhow::{Context, Result},
-    clap::Parser as _,
-    either::Either,
-    lazy_static::lazy_static,
-    log::info,
-    regex::Regex,
-    std::{ffi::OsStr, fs::read_dir, io, path::PathBuf, time::Instant},
+    }, anyhow::{Context, Result}, clap::Parser as _, either::Either, lazy_static::lazy_static, log::info, regex::Regex, simplifying::fol::classic::simplify, std::{ffi::OsStr, fs::read_dir, io, path::PathBuf, time::Instant}, verifying::task::external_equivalence::ReplacePlaceholders
 };
 
 lazy_static! {
@@ -84,11 +76,7 @@ fn main() -> Result<()> {
             match with {
                 Simplification::CompleteHT => {
                     let theory = fol::Theory::from_file(input)?;
-                    let mut formulas: Vec<fol::Formula> = Vec::new();
-                    for form in theory.formulas {
-                        formulas.push(simplify_nested_quantifiers(form));
-                    }
-                    let simplified_theory = fol::Theory { formulas };
+                    let simplified_theory = simplify(theory, true);
                     println!("{simplified_theory}");
                 }
             }
@@ -386,6 +374,20 @@ fn main() -> Result<()> {
             if !no_timing {
                 println!("System runtime: {} milliseconds", now.elapsed().as_millis());
             }
+
+            Ok(())
+        }
+
+        Command::Valuate { using, input } => {
+            let theory = fol::Theory::from_file(input)?;
+            let user_guide = fol::UserGuide::from_file(using)?;
+            let placeholder = user_guide
+                .placeholders()
+                .into_iter()
+                .map(|p| (p.name.clone(), p))
+                .collect();
+            let valuation = theory.replace_placeholders(&placeholder);
+            println!("{valuation}");
 
             Ok(())
         }
