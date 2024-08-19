@@ -22,6 +22,12 @@ pub enum Command {
         input: PathBuf,
     },
 
+    /// Tighten a logic program
+    Tighten {
+        /// The program to tighten
+        input: PathBuf,
+    },
+
     Simplify {
         /// The translation to use
         #[arg(long, value_enum)]

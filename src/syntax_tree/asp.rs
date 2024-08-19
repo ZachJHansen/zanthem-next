@@ -1,5 +1,6 @@
 use {
     crate::{
+        convenience::choose_fresh_variable_names,
         formatting::asp::default::Format,
         parsing::asp::pest::{
             AtomParser, AtomicFormulaParser, BinaryOperatorParser, BodyParser, ComparisonParser,
@@ -331,6 +332,31 @@ impl Body {
         }
         functions
     }
+
+    fn tighten(self, variable: Variable) -> Body {
+        let mut formulas = Vec::new();
+        for formula in self.formulas {
+            match formula {
+                AtomicFormula::Literal(Literal {
+                    sign: Sign::NoSign,
+                    atom,
+                }) => {
+                    let mut terms = atom.terms;
+                    terms.push(Term::Variable(variable.clone()));
+                    let atom = Atom {
+                        predicate_symbol: atom.predicate_symbol,
+                        terms,
+                    };
+                    formulas.push(AtomicFormula::Literal(Literal {
+                        sign: Sign::NoSign,
+                        atom,
+                    }));
+                }
+                x => formulas.push(x),
+            }
+        }
+        Body { formulas }
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
@@ -361,6 +387,28 @@ impl Rule {
         let mut functions = self.head.function_constants();
         functions.extend(self.body.function_constants());
         functions
+    }
+
+    pub fn tighten(self, variable: Variable) -> Self {
+        match self.head {
+            Head::Basic(a) => {
+                let mut terms = a.terms;
+                let successor = Term::BinaryOperation {
+                    op: BinaryOperator::Add,
+                    lhs: Term::Variable(variable.clone()).into(),
+                    rhs: Term::PrecomputedTerm(PrecomputedTerm::Numeral(1)).into(),
+                };
+                terms.push(successor);
+                let head = Head::Basic(Atom {
+                    predicate_symbol: a.predicate_symbol,
+                    terms,
+                });
+                let body = self.body.tighten(variable);
+                Rule { head, body }
+            }
+            Head::Choice(_) => todo!(), // special consideration for {p(X)} :- not q(X).?
+            Head::Falsity => self,
+        }
     }
 }
 
@@ -405,6 +453,36 @@ impl Program {
         }
         functions
     }
+
+    pub fn tighten(self) -> Self {
+        let fresh_var = self.choose_fresh_variable("N");
+        Program {
+            rules: self
+                .rules
+                .into_iter()
+                .map(|r| r.tighten(fresh_var.clone()))
+                .collect(),
+        }
+    }
+
+    /// Choose a fresh variable by incrementing `variant`, disjoint from `variables`
+    pub fn choose_fresh_variable(&self, variant: &str) -> Variable {
+        let mut taken_vars = Vec::<String>::new();
+        for var in self.variables() {
+            taken_vars.push(var.0.to_string());
+        }
+
+        let mut counter = 0;
+        let mut candidate: String = variant.to_owned();
+        candidate.push_str(&counter.to_string());
+        while taken_vars.contains(&candidate) {
+            variant.clone_into(&mut candidate);
+            counter += 1;
+            candidate.push_str(&counter.to_string());
+        }
+
+        Variable(candidate)
+    }
 }
 
 #[cfg(test)]
@@ -412,7 +490,7 @@ mod tests {
     use {
         super::{
             Atom, AtomicFormula, Body, Comparison, Head, PrecomputedTerm, Program, Relation, Rule,
-            Term,
+            Term, Variable,
         },
         indexmap::IndexSet,
     };
@@ -439,5 +517,12 @@ mod tests {
             program.function_constants(),
             IndexSet::from(["a".into(), "b".into()])
         )
+    }
+
+    #[test]
+    fn test_choose_fresh_variable() {
+        let p: Program = "p(X) :- q(X,N0+1). t :- N < Z.".parse().unwrap();
+        let v = Variable("N1".to_string());
+        assert_eq!(v, p.choose_fresh_variable("N"))
     }
 }

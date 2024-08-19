@@ -19,7 +19,16 @@ use {
                 strong_equivalence::StrongEquivalenceTask, Task,
             },
         },
-    }, anyhow::{Context, Result}, clap::Parser as _, either::Either, lazy_static::lazy_static, log::info, regex::Regex, simplifying::fol::classic::simplify, std::{ffi::OsStr, fs::read_dir, io, path::PathBuf, time::Instant}, verifying::task::external_equivalence::ReplacePlaceholders
+    },
+    anyhow::{Context, Result},
+    clap::Parser as _,
+    either::Either,
+    lazy_static::lazy_static,
+    log::info,
+    regex::Regex,
+    simplifying::fol::classic::simplify,
+    std::{ffi::OsStr, fs::read_dir, io, path::PathBuf, time::Instant},
+    verifying::task::external_equivalence::ReplacePlaceholders,
 };
 
 lazy_static! {
@@ -388,6 +397,14 @@ fn main() -> Result<()> {
                 .collect();
             let valuation = theory.replace_placeholders(&placeholder);
             println!("{valuation}");
+
+            Ok(())
+        }
+
+        Command::Tighten { input } => {
+            let program = asp::Program::from_file(input)?;
+            let tightened = program.tighten();
+            println!("{tightened}");
 
             Ok(())
         }
