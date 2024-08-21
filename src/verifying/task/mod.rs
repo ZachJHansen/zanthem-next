@@ -78,6 +78,12 @@ pub enum ProofOutlineError {
     },
     #[error("the inductive lemma `{0}` is malformed")]
     MalformedInductiveLemma(fol::Formula),
+    #[error("the antecedent of inductive lemma `{0}` is malformed")]
+    MalformedInductiveAntecedent(fol::Formula),
+    #[error("the universally quantified variables in inductive lemma `{0}` do not match the RHS free variables")]
+    MalformedInductiveVariables(fol::Formula),
+    #[error("the inductive term in `{0}` is not an integer variable")]
+    MalformedInductiveTerm(fol::Formula),
     #[error("there was an issue with formula `{0}` in the proof outline")]
     Basic(fol::Formula),
 }
@@ -249,75 +255,67 @@ impl CheckInternal for fol::Formula {
                 UnboxedFormula::AtomicFormula(fol::AtomicFormula::Comparison(
                     fol::Comparison { term, guards },
                 )) => {
-                    if guards.len() != 1 || variables.len() != 1 {
-                        return Err(ProofOutlineError::MalformedInductiveLemma(original));
+                    if guards.len() != 1 {
+                        return Err(ProofOutlineError::MalformedInductiveAntecedent(original));
                     }
 
                     let varset: IndexSet<fol::Variable> = IndexSet::from_iter(variables.clone());
                     if varset != rhs.free_variables() {
-                        return Err(ProofOutlineError::MalformedInductiveLemma(original));
+                        return Err(ProofOutlineError::MalformedInductiveVariables(original));
                     }
 
-                    let induction_variable = variables[0].clone();
-                    if induction_variable.sort != fol::Sort::Integer {
-                        return Err(ProofOutlineError::MalformedInductiveLemma(original));
-                    }
-
-                    let guard = guards[0].clone();
-                    let intended_induction_term =
-                        fol::IntegerTerm::Variable(induction_variable.name.clone());
-                    match term {
-                        fol::GeneralTerm::IntegerTerm(induction_term) => {
-                            if induction_term != intended_induction_term {
-                                return Err(ProofOutlineError::MalformedInductiveLemma(original));
-                            }
-
-                            match guard {
-                                fol::Guard {
-                                    relation: fol::Relation::GreaterEqual,
-                                    term:
-                                        fol::GeneralTerm::IntegerTerm(fol::IntegerTerm::Numeral(n)),
-                                } => {
-                                    let least_term =
-                                        fol::GeneralTerm::IntegerTerm(fol::IntegerTerm::Numeral(n));
-                                    let base_case = rhs
-                                        .clone()
-                                        .substitute(induction_variable.clone(), least_term);
-
-                                    let inductive_step_antecedent = fol::Formula::BinaryFormula {
-                                        connective: fol::BinaryConnective::Conjunction,
-                                        lhs: lhs.clone(),
-                                        rhs: rhs.clone(),
-                                    };
-
-                                    let successor = fol::GeneralTerm::IntegerTerm(
-                                        fol::IntegerTerm::BinaryOperation {
-                                            op: fol::BinaryOperator::Add,
-                                            lhs: induction_term.clone().into(),
-                                            rhs: fol::IntegerTerm::Numeral(1).into(),
-                                        },
-                                    );
-
-                                    let inductive_step_consequent =
-                                        rhs.substitute(induction_variable.clone(), successor);
-                                    let inductive_step = fol::Formula::QuantifiedFormula {
-                                        quantification: fol::Quantification {
-                                            quantifier: fol::Quantifier::Forall,
-                                            variables: vec![induction_variable],
-                                        },
-                                        formula: fol::Formula::BinaryFormula {
-                                            connective: fol::BinaryConnective::Implication,
-                                            lhs: inductive_step_antecedent.into(),
-                                            rhs: inductive_step_consequent.into(),
-                                        }
-                                        .into(),
-                                    };
-
-                                    Ok((base_case, inductive_step))
-                                }
-                                _ => Err(ProofOutlineError::MalformedInductiveLemma(original)),
+                    let induction_variable = match term {
+                        fol::GeneralTerm::IntegerTerm(fol::IntegerTerm::Variable(ref v)) => {
+                            fol::Variable {
+                                name: v.to_string(),
+                                sort: fol::Sort::Integer,
                             }
                         }
+                        _ => return Err(ProofOutlineError::MalformedInductiveTerm(original)),
+                    };
+
+                    let guard = guards[0].clone();
+
+                    match term {
+                        fol::GeneralTerm::IntegerTerm(induction_term) => match guard {
+                            fol::Guard {
+                                relation: fol::Relation::GreaterEqual,
+                                term: fol::GeneralTerm::IntegerTerm(fol::IntegerTerm::Numeral(n)),
+                            } => {
+                                let least_term =
+                                    fol::GeneralTerm::IntegerTerm(fol::IntegerTerm::Numeral(n));
+                                let base_case = rhs
+                                    .clone()
+                                    .substitute(induction_variable.clone(), least_term)
+                                    .universal_closure();
+
+                                let inductive_step_antecedent = fol::Formula::BinaryFormula {
+                                    connective: fol::BinaryConnective::Conjunction,
+                                    lhs: lhs.clone(),
+                                    rhs: rhs.clone(),
+                                };
+
+                                let successor = fol::GeneralTerm::IntegerTerm(
+                                    fol::IntegerTerm::BinaryOperation {
+                                        op: fol::BinaryOperator::Add,
+                                        lhs: induction_term.clone().into(),
+                                        rhs: fol::IntegerTerm::Numeral(1).into(),
+                                    },
+                                );
+
+                                let inductive_step_consequent =
+                                    rhs.substitute(induction_variable.clone(), successor);
+                                let inductive_step = fol::Formula::BinaryFormula {
+                                    connective: fol::BinaryConnective::Implication,
+                                    lhs: inductive_step_antecedent.into(),
+                                    rhs: inductive_step_consequent.into(),
+                                }
+                                .universal_closure();
+
+                                Ok((base_case, inductive_step))
+                            }
+                            _ => Err(ProofOutlineError::MalformedInductiveLemma(original)),
+                        },
                         _ => Err(ProofOutlineError::MalformedInductiveLemma(original)),
                     }
                 }
@@ -430,11 +428,26 @@ mod tests {
                 "p(5) and not q(5,5)",
                 "forall I$ ( ( I$ >= 5 and (p(I$) and not q(I$,5)) ) -> ( p(I$+1) and not q(I$+1,5) ) )",
             ),
+            (
+                "forall N$i X ( N$i >= 0 -> (p(N$i,X) -> X = N$i) )",
+                "forall X ( p(0,X) -> X = 0 )",
+                "forall N$i X ( N$i >= 0 and (p(N$i,X) -> X = N$i) -> (p(N$i+1,X) -> X = N$i+1) )",
+            ),
+            (
+                "forall M$i N$i ( N$i >= 0 -> N$i + M$i >= M$i )",
+                "forall M$i ( 0 + M$i >= M$i )",
+                "forall N$i M$i ( N$i >= 0 and N$i + M$i >= M$i -> (N$i+1 + M$i >= M$i) )",
+            ),
         ] {
             let formula: fol::Formula = src.parse().unwrap();
             let (base_result, step_result) = formula.inductive_lemma().unwrap();
-            let (base_target, step_target): (fol::Formula, fol::Formula) = (base.parse().unwrap(), step.parse().unwrap());
-            assert_eq!((base_result.clone(), step_result.clone()), (base_target.clone(), step_target.clone()), "\n({base_result},{step_result})\n != ({base_target},{step_target})")
+            let (base_target, step_target): (fol::Formula, fol::Formula) =
+                (base.parse().unwrap(), step.parse().unwrap());
+            assert_eq!(
+                (base_result.clone(), step_result.clone()),
+                (base_target.clone(), step_target.clone()),
+                "\n({base_result},{step_result})\n != \n({base_target},{step_target})"
+            )
         }
     }
 
@@ -443,7 +456,7 @@ mod tests {
         for (src, target) in [
             (
                 "forall X ( X >= 0 -> p(X) )",
-                ProofOutlineError::MalformedInductiveLemma(
+                ProofOutlineError::MalformedInductiveTerm(
                     "forall X ( X >= 0 -> p(X) )".parse().unwrap(),
                 ),
             ),
@@ -454,11 +467,9 @@ mod tests {
                 ),
             ),
             (
-                "forall X$i Y$i ( X$i >= 0 -> p(X$i, Y$i) )",
-                ProofOutlineError::MalformedInductiveLemma(
-                    "forall X$i Y$i ( X$i >= 0 -> p(X$i, Y$i) )"
-                        .parse()
-                        .unwrap(),
+                "forall X$i ( X$i >= 0 -> p(X$i, Y$i) )",
+                ProofOutlineError::MalformedInductiveVariables(
+                    "forall X$i ( X$i >= 0 -> p(X$i, Y$i) )".parse().unwrap(),
                 ),
             ),
         ] {
