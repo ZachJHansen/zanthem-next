@@ -217,6 +217,10 @@ fn main() -> Result<()> {
 
             if !no_proof_search {
                 verify(problems, time_limit, no_timing);
+            } else {
+                for problem in problems {
+                    problem.summarize()
+                }
             }
 
             info!("System runtime: {} milliseconds", now.elapsed().as_millis());
