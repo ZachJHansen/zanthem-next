@@ -417,8 +417,8 @@ impl Rule {
     }
 
     pub fn tighten(self, variable: Variable) -> Self {
-        match self.head {
-            Head::Basic(a) => {
+        match self.head.clone() {
+            Head::Basic(a) | Head::Choice(a) => {
                 let mut terms = a.terms;
                 let successor = Term::BinaryOperation {
                     op: BinaryOperator::Add,
@@ -426,14 +426,22 @@ impl Rule {
                     rhs: Term::PrecomputedTerm(PrecomputedTerm::Numeral(1)).into(),
                 };
                 terms.push(successor);
-                let head = Head::Basic(Atom {
-                    predicate_symbol: a.predicate_symbol,
-                    terms,
-                });
+
                 let body = self.body.tighten(variable);
+
+                let head = match self.head {
+                    Head::Basic(_) => Head::Basic(Atom {
+                        predicate_symbol: a.predicate_symbol,
+                        terms,
+                    }),
+                    Head::Choice(_) => Head::Choice(Atom {
+                        predicate_symbol: a.predicate_symbol,
+                        terms,
+                    }),
+                    Head::Falsity => unreachable!(),
+                };
                 Rule { head, body }
             }
-            Head::Choice(_) => todo!(), // special consideration for {p(X)} :- not q(X).?
             Head::Falsity => self,
         }
     }
