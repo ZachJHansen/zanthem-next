@@ -166,6 +166,16 @@ impl Problem {
     ) -> Vec<Self> {
         let mut initial_problem = Problem::with_name(name);
 
+        println!("stable: ");
+        for s in stable.iter() {
+            println!("{s}");
+        }
+
+        println!("premises: ");
+        for s in premises.iter() {
+            println!("{s}");
+        }
+
         // Add axioms
         initial_problem.formulas.extend(stable);
         initial_problem.formulas.extend(premises);

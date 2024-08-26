@@ -109,6 +109,33 @@ pub struct Predicate {
     pub arity: usize,
 }
 
+impl Predicate {
+    fn forget_successors(&self) -> Rule {
+        let variables = choose_fresh_variable_names(&IndexSet::new(), "X", self.arity - 1);
+        let mut terms: Vec<Term> = variables
+            .into_iter()
+            .map(|v| Term::Variable(Variable(v)))
+            .collect();
+        let head = Head::Basic(Atom {
+            predicate_symbol: self.symbol.clone(),
+            terms: terms.clone(),
+        });
+
+        terms.push(Term::Variable(Variable("N".to_string())));
+        let body = Body {
+            formulas: vec![AtomicFormula::Literal(Literal {
+                sign: Sign::NoSign,
+                atom: Atom {
+                    predicate_symbol: self.symbol.clone(),
+                    terms,
+                },
+            })],
+        };
+
+        Rule { head, body }
+    }
+}
+
 impl_node!(Predicate, Format, PredicateParser);
 
 impl From<crate::syntax_tree::fol::Predicate> for Predicate {
@@ -455,14 +482,17 @@ impl Program {
     }
 
     pub fn tighten(self) -> Self {
+        let predicates = self.predicates();
         let fresh_var = self.choose_fresh_variable("N");
-        Program {
-            rules: self
-                .rules
-                .into_iter()
-                .map(|r| r.tighten(fresh_var.clone()))
-                .collect(),
-        }
+        let mut rules: Vec<Rule> = self
+            .rules
+            .into_iter()
+            .map(|r| r.tighten(fresh_var.clone()))
+            .collect();
+        let forgetting = predicates.into_iter().map(|p| p.forget_successors());
+        rules.extend(forgetting);
+
+        Program { rules }
     }
 
     /// Choose a fresh variable by incrementing `variant`, disjoint from `variables`

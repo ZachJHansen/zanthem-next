@@ -9,6 +9,7 @@ use {
             SpecificationParser, SymbolicTermParser, TheoryParser, UnaryConnectiveParser,
             UnaryOperatorParser, UserGuideEntryParser, UserGuideParser, VariableParser,
         },
+        simplifying::fol::ht::simplify_nested_quantifiers_outer,
         syntax_tree::{impl_node, Node},
     },
     clap::ValueEnum,
@@ -705,7 +706,7 @@ impl Formula {
 
     pub fn universal_closure(self) -> Formula {
         let variables = self.free_variables().into_iter().collect();
-        self.quantify(Quantifier::Forall, variables)
+        simplify_nested_quantifiers_outer(self.quantify(Quantifier::Forall, variables))
     }
 
     // Replacing var with term within self is unsafe if self contains a subformula
