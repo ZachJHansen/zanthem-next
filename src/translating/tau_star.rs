@@ -170,8 +170,8 @@ fn construct_total_function_formula(
 }
 
 // Integer division. Not Abstract Gringo compliant in negative divisor edge cases.
-// Division: exists I J Q R (I = J * Q + R & val_t1(I) & val_t2(J) & J != 0 & R >= 0 & R < Q & Z = Q)
-// Modulo:   exists I J Q R (I = J * Q + R & val_t1(I) & val_t2(J) & J != 0 & R >= 0 & R < Q & Z = R)
+// Division: exists I J Q R (I = J * Q + R & val_t1(I) & val_t2(J) & J != 0 & R >= 0 & R < J & Z = Q)
+// Modulo:   exists I J Q R (I = J * Q + R & val_t1(I) & val_t2(J) & J != 0 & R >= 0 & R < J & Z = R)
 fn construct_partial_function_formula(
     valti: fol::Formula,
     valtj: fol::Formula,
@@ -254,7 +254,7 @@ fn construct_partial_function_formula(
             term: fol::GeneralTerm::IntegerTerm(fol::IntegerTerm::Variable(rvar.clone())),
             guards: vec![fol::Guard {
                 relation: fol::Relation::Less,
-                term: fol::GeneralTerm::IntegerTerm(fol::IntegerTerm::Variable(qvar.clone())),
+                term: fol::GeneralTerm::IntegerTerm(fol::IntegerTerm::Variable(j.clone())),
             }],
         }))
         .into(),
@@ -909,8 +909,8 @@ mod tests {
         for (term, var, target) in [
             ("X + 1", "Z1", "exists I$i J$i (Z1$g = I$i + J$i and I$i = X and J$i = 1)"),
             ("3 - 5", "Z1", "exists I$i J$i (Z1$g = I$i - J$i and I$i = 3 and J$i = 5)"),
-            ("Xanadu/Yak", "Z1", "exists I$i J$i Q$i R$i (I$i = J$i * Q$i + R$i and (I$i = Xanadu and J$i = Yak) and (J$i != 0 and R$i >= 0 and R$i < Q$i) and Z1$g = Q$i)"),
-            ("X \\ 3", "Z1", "exists I$i J$i Q$i R$i (I$i = J$i * Q$i + R$i and (I$i = X and J$i = 3) and (J$i != 0 and R$i >= 0 and R$i < Q$i) and Z1$g = R$i)"),
+            ("Xanadu/Yak", "Z1", "exists I$i J$i Q$i R$i (I$i = J$i * Q$i + R$i and (I$i = Xanadu and J$i = Yak) and (J$i != 0 and R$i >= 0 and R$i < J$i) and Z1$g = Q$i)"),
+            ("X \\ 3", "Z1", "exists I$i J$i Q$i R$i (I$i = J$i * Q$i + R$i and (I$i = X and J$i = 3) and (J$i != 0 and R$i >= 0 and R$i < J$i) and Z1$g = R$i)"),
             ("X..Y", "Z", "exists I$i J$i K$i (I$i = X and J$i = Y and Z$g = K$i and I$i <= K$i <= J$i)"),
             ("X+1..Y", "Z1", "exists I$i J$i K$i ((exists I1$i J$i (I$i = I1$i + J$i and I1$i = X and J$i = 1)) and J$i = Y and Z1 = K$i and I$i <= K$i <= J$i)"),
         ] {
@@ -963,7 +963,8 @@ mod tests {
             ("{p}.", "#true and not not p -> p."),
             ("{p(5)}.", "forall V1 (V1 = 5 and #true and not not p(V1) -> p(V1))."),
             ("p. q.", "#true -> p. #true -> q."),
-            ("{ra(X,a)} :- ta(X). ra(5,a).", "forall V1 V2 X (V1 = X and V2 = a and exists Z (Z = X and ta(Z)) and not not ra(V1, V2) -> ra(V1, V2)). forall V1 V2 (V1 = 5 and V2 = a and #true -> ra(V1, V2)).")
+            ("{ra(X,a)} :- ta(X). ra(5,a).", "forall V1 V2 X (V1 = X and V2 = a and exists Z (Z = X and ta(Z)) and not not ra(V1, V2) -> ra(V1, V2)). forall V1 V2 (V1 = 5 and V2 = a and #true -> ra(V1, V2))."),
+            ("p(X/2) :- X=4.", "forall V1 X (exists I$i J$i Q$i R$i (I$i = J$i * Q$i + R$i and (I$i = X and J$i = 2) and (J$i != 0 and R$i >= 0 and R$i < J$i) and V1 = Q$i) and exists Z Z1 (Z = X and Z1 = 4 and Z = Z1) -> p(V1))."),
         ] {
             let left = tau_star(src.parse().unwrap());
             let right = target.parse().unwrap();
