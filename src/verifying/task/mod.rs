@@ -232,6 +232,38 @@ impl CheckInternal for fol::Formula {
                     _ => Err(ProofOutlineError::Basic(original)),
                 }
             }
+
+            UnboxedFormula::BinaryFormula {
+                connective: fol::BinaryConnective::Equivalence,
+                lhs: fol::Formula::AtomicFormula(fol::AtomicFormula::Atom(a)),
+                rhs,
+            } => {
+                // check predicate is totally fresh
+                let predicate = a.predicate();
+                if taken_predicates.contains(&predicate) {
+                    return Err(ProofOutlineError::TakenPredicate(predicate));
+                }
+
+                if !a.terms.is_empty() {
+                    return Err(ProofOutlineError::Basic(original));
+                }
+
+                if !rhs.free_variables().is_empty() {
+                    return Err(ProofOutlineError::FreeRhsVariables(original));
+                }
+
+                // check RHS has no predicates other than taken predicates
+                // this should ensure no recursion through definition sequence
+                if let Some(predicate) = rhs.predicates().difference(taken_predicates).next() {
+                    return Err(ProofOutlineError::UndefinedRhsPredicate {
+                        definition: original,
+                        predicate: predicate.clone(),
+                    });
+                }
+
+                Ok(predicate)
+            }
+
             _ => Err(ProofOutlineError::Basic(original)),
         }
     }
