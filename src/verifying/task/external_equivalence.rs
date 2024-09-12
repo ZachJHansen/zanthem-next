@@ -7,6 +7,7 @@ use {
             apply::Apply as _,
             with_warnings::{Result, WithWarnings},
         },
+        simplifying::fol::ht::simplify,
         syntax_tree::{asp, fol},
         translating::{completion::completion, tau_star::tau_star},
         verifying::{
@@ -488,17 +489,29 @@ impl Task for ExternalEquivalenceTask {
         };
 
         let left = match self.specification {
-            Either::Left(program) => control_translate(
-                completion(tau_star(program).replace_placeholders(&placeholders))
-                    .expect("tau_star did not create a completable theory"),
-            ),
+            Either::Left(program) => {
+                let formula_representation =
+                    completion(tau_star(program).replace_placeholders(&placeholders))
+                        .expect("tau_star did not create a completable theory");
+                if self.simplify {
+                    control_translate(simplify(formula_representation))
+                } else {
+                    control_translate(formula_representation)
+                }
+            }
             Either::Right(specification) => specification.replace_placeholders(&placeholders),
         };
 
-        let right = control_translate(
-            completion(tau_star(self.program).replace_placeholders(&placeholders))
-                .expect("tau_star did not create a completable theory"),
-        );
+        let right = {
+            let formula_representation =
+                completion(tau_star(self.program).replace_placeholders(&placeholders))
+                    .expect("tau_star did not create a completable theory");
+            if self.simplify {
+                control_translate(simplify(formula_representation))
+            } else {
+                control_translate(formula_representation)
+            }
+        };
 
         // TODO: Warn when a conflict between private predicates is encountered
         // TODO: Check if renaming creates new conflicts
