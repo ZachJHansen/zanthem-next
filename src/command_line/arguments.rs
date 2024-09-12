@@ -22,6 +22,7 @@ pub enum Command {
         input: Option<PathBuf>,
     },
 
+    /// Simplify a first-order theory
     Simplify {
         /// The translation to use
         #[arg(long, value_enum, default_value_t)]
