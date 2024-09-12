@@ -2,9 +2,10 @@ use {
     crate::{
         analyzing::tightness::Tightness,
         command_line::{
-            arguments::{Arguments, Command, Equivalence, Property, Translation},
+            arguments::{Arguments, Command, Equivalence, Property, Simplification, Translation},
             files::Files,
         },
+        simplifying::fol::ht::{simplify, simplify_shallow},
         syntax_tree::{asp, fol, Node as _},
         translating::{completion::completion, gamma::gamma, tau_star::tau_star},
         verifying::{
@@ -29,6 +30,22 @@ pub fn main() -> Result<()> {
                         input.map_or_else(asp::Program::from_stdin, asp::Program::from_file)?;
                     let is_tight = program.is_tight();
                     println!("{is_tight}");
+                }
+            }
+
+            Ok(())
+        }
+
+        Command::Simplify { with, input } => {
+            let theory = input.map_or_else(fol::Theory::from_stdin, fol::Theory::from_file)?;
+            match with {
+                Simplification::CompleteHT => {
+                    let simplified_theory = simplify(theory);
+                    println!("{simplified_theory}");
+                }
+                Simplification::ShallowHT => {
+                    let simplified_theory = simplify_shallow(theory);
+                    println!("{simplified_theory}");
                 }
             }
 

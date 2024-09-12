@@ -22,6 +22,15 @@ pub enum Command {
         input: Option<PathBuf>,
     },
 
+    Simplify {
+        /// The translation to use
+        #[arg(long, value_enum, default_value_t)]
+        with: Simplification,
+
+        /// The file to translate
+        input: Option<PathBuf>,
+    },
+
     /// Translate a given answer set program or first-order theory
     Translate {
         /// The translation to use
@@ -91,6 +100,13 @@ pub enum Command {
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
 pub enum Property {
     Tightness,
+}
+
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
+pub enum Simplification {
+    #[default]
+    CompleteHT,
+    ShallowHT,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
