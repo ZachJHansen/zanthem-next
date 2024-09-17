@@ -19,6 +19,7 @@ use {
     anyhow::{anyhow, Context, Result},
     clap::Parser as _,
     either::Either,
+    std::time::Instant,
 };
 
 pub fn main() -> Result<()> {
@@ -88,12 +89,19 @@ pub fn main() -> Result<()> {
             no_simplify,
             no_eq_break,
             no_proof_search,
+            no_timing,
             time_limit,
             prover_instances,
             prover_cores,
             save_problems: out_dir,
             files,
         } => {
+            let start_time = if !no_timing {
+                Some(Instant::now())
+            } else {
+                None
+            };
+
             let files =
                 Files::sort(files).context("unable to sort the given files by their function")?;
 
@@ -159,6 +167,7 @@ pub fn main() -> Result<()> {
             if !no_proof_search {
                 let prover = Vampire {
                     time_limit,
+                    time_execution: !no_timing,
                     instances: prover_instances,
                     cores: prover_cores,
                 };
@@ -186,16 +195,32 @@ pub fn main() -> Result<()> {
                                     "> Proving {} ended with a SZS status",
                                     report.problem.name
                                 );
-                                println!("Status: {status}");
+
+                                match report.start_time {
+                                    Some(start) => println!(
+                                        "Status: {status} ({} ms)",
+                                        start.elapsed().as_millis()
+                                    ),
+                                    None => println!("Status: {status}"),
+                                }
+
                                 if !matches!(status, Status::Success(Success::Theorem)) {
                                     success = false;
                                 }
                             }
                             Err(error) => {
-                                println!(
-                                    "> Proving {} ended without a SZS status",
-                                    report.problem.name
-                                );
+                                match report.start_time {
+                                    Some(start) => println!(
+                                        "> Proving {} ended without a SZS status ({} ms)",
+                                        report.problem.name,
+                                        start.elapsed().as_millis()
+                                    ),
+                                    None => println!(
+                                        "> Proving {} ended without a SZS status",
+                                        report.problem.name
+                                    ),
+                                }
+
                                 println!("Output/stdout:");
                                 println!("{}", report.output.stdout);
                                 println!("Output/stderr:");
@@ -214,9 +239,14 @@ pub fn main() -> Result<()> {
                 }
 
                 if success {
-                    println!("> Success! Anthem found a proof of equivalence.")
+                    print!("> Success! Anthem found a proof of equivalence.")
                 } else {
-                    println!("> Failure! Anthem was unable to find a proof of equivalence.")
+                    print!("> Failure! Anthem was unable to find a proof of equivalence.")
+                }
+
+                match start_time {
+                    Some(start) => println!(" ({} ms)", start.elapsed().as_millis()),
+                    None => println!(),
                 }
             }
 

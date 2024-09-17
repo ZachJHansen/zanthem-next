@@ -7,6 +7,7 @@ use {
         fmt::{self, Display},
         io::Write as _,
         process::{Command, Output, Stdio},
+        time::Instant,
     },
     thiserror::Error,
 };
@@ -45,6 +46,7 @@ impl TryFrom<Output> for VampireOutput {
 pub struct VampireReport {
     pub problem: Problem,
     pub output: VampireOutput,
+    pub start_time: Option<Instant>,
 }
 
 impl Report for VampireReport {
@@ -55,7 +57,7 @@ impl Report for VampireReport {
 
 impl Display for VampireReport {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        writeln!(f, "--- {} ---", self.problem.name)?;
+        writeln!(f, "???--- {} ---", self.problem.name)?;
         writeln!(f)?;
 
         writeln!(f, "axioms:")?;
@@ -70,9 +72,15 @@ impl Display for VampireReport {
         }
         writeln!(f)?;
 
-        match self.status() {
-            Ok(status) => writeln!(f, "status: {status}"),
-            Err(error) => writeln!(f, "error: {error}"),
+        match (self.status(), self.start_time) {
+            (Ok(status), None) => writeln!(f, "status: {status}"),
+            (Ok(status), Some(start)) => {
+                writeln!(f, "status: {status} ({} ms)", start.elapsed().as_millis())
+            }
+            (Err(error), None) => writeln!(f, "error: {error}"),
+            (Err(error), Some(start)) => {
+                writeln!(f, "error: {error} ({} ms)", start.elapsed().as_millis())
+            }
         }
     }
 }
@@ -80,6 +88,7 @@ impl Display for VampireReport {
 #[derive(Debug, Clone)]
 pub struct Vampire {
     pub time_limit: usize,
+    pub time_execution: bool,
     pub instances: usize,
     pub cores: usize,
 }
@@ -105,6 +114,12 @@ impl Prover for Vampire {
     }
 
     fn prove(&self, problem: Problem) -> Result<Self::Report, Self::Error> {
+        let start_time = if self.time_execution {
+            Some(Instant::now())
+        } else {
+            None
+        };
+
         let mut child = Command::new("vampire")
             .args([
                 "--mode",
@@ -129,6 +144,10 @@ impl Prover for Vampire {
             .map_err(VampireError::UnableToWait)?
             .try_into()?;
 
-        Ok(VampireReport { problem, output })
+        Ok(VampireReport {
+            problem,
+            output,
+            start_time,
+        })
     }
 }
