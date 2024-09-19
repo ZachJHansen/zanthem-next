@@ -50,7 +50,7 @@ pub enum Command {
 
         /// The decomposition strategy to use
         #[arg(long, value_enum, default_value_t)]
-        decomposition: Decomposition,
+        decomposition: TaskDecomposition,
 
         /// The direction of the proof
         #[arg(long, value_enum, default_value_t)]
@@ -128,9 +128,9 @@ pub enum Equivalence {
 }
 
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
-pub enum Decomposition {
-    Independent,
+pub enum TaskDecomposition {
     #[default]
+    Independent,
     Sequential,
 }
 

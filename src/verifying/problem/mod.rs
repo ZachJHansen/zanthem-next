@@ -1,6 +1,6 @@
 use {
     crate::{
-        command_line::arguments::Decomposition,
+        command_line::arguments::TaskDecomposition,
         syntax_tree::fol::{Formula, FunctionConstant, Predicate, Sort, Theory},
     },
     anyhow::{Context as _, Result},
@@ -176,10 +176,10 @@ impl Problem {
         result
     }
 
-    pub fn decompose(&self, strategy: Decomposition) -> Vec<Self> {
+    pub fn decompose(&self, strategy: TaskDecomposition) -> Vec<Self> {
         match strategy {
-            Decomposition::Independent => self.decompose_independent(),
-            Decomposition::Sequential => self.decompose_sequential(),
+            TaskDecomposition::Independent => self.decompose_independent(),
+            TaskDecomposition::Sequential => self.decompose_sequential(),
         }
     }
 

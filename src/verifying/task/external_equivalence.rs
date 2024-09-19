@@ -2,7 +2,7 @@ use {
     crate::{
         analyzing::{private_recursion::PrivateRecursion, tightness::Tightness},
         breaking::fol::ht::break_equivalences_annotated_formula,
-        command_line::arguments::Decomposition,
+        command_line::arguments::TaskDecomposition,
         convenience::{
             apply::Apply as _,
             with_warnings::{Result, WithWarnings},
@@ -216,7 +216,7 @@ pub struct ExternalEquivalenceTask {
     pub program: asp::Program,
     pub user_guide: fol::UserGuide,
     pub proof_outline: fol::Specification,
-    pub decomposition: Decomposition,
+    pub decomposition: TaskDecomposition,
     pub direction: fol::Direction,
     pub bypass_tightness: bool,
     pub simplify: bool,
@@ -583,7 +583,7 @@ struct ValidatedExternalEquivalenceTask {
     pub right: Vec<fol::AnnotatedFormula>,
     pub user_guide_assumptions: Vec<fol::AnnotatedFormula>,
     pub proof_outline: ProofOutline,
-    pub decomposition: Decomposition,
+    pub decomposition: TaskDecomposition,
     pub direction: fol::Direction,
     pub break_equivalences: bool,
 }
@@ -687,7 +687,7 @@ struct AssembledExternalEquivalenceTask {
     pub backward_premises: Vec<problem::AnnotatedFormula>,
     pub backward_conclusions: Vec<problem::AnnotatedFormula>,
     pub proof_outline: ProofOutline,
-    pub decomposition: Decomposition,
+    pub decomposition: TaskDecomposition,
     pub direction: fol::Direction,
 }
 

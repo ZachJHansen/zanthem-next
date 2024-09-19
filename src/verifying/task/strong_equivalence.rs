@@ -1,6 +1,6 @@
 use {
     crate::{
-        command_line::arguments::Decomposition,
+        command_line::arguments::TaskDecomposition,
         convenience::with_warnings::{Result, WithWarnings},
         syntax_tree::{asp, fol},
         translating::{
@@ -22,7 +22,7 @@ pub enum StrongEquivalenceTaskError {}
 pub struct StrongEquivalenceTask {
     pub left: asp::Program,
     pub right: asp::Program,
-    pub decomposition: Decomposition,
+    pub decomposition: TaskDecomposition,
     pub direction: fol::Direction,
     pub simplify: bool,
     pub break_equivalences: bool,
@@ -137,8 +137,8 @@ impl Task for StrongEquivalenceTask {
             problems
                 .into_iter()
                 .flat_map(|p: Problem| match self.decomposition {
-                    Decomposition::Independent => p.decompose_independent(),
-                    Decomposition::Sequential => p.decompose_sequential(),
+                    TaskDecomposition::Independent => p.decompose_independent(),
+                    TaskDecomposition::Sequential => p.decompose_sequential(),
                 })
                 .collect(),
         ))
