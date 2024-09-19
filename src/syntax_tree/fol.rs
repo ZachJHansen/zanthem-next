@@ -972,7 +972,7 @@ impl AnnotatedFormula {
         problem::AnnotatedFormula {
             name: if self.name.is_empty() {
                 // TODO: Revisit default naming scheme!
-                self.role.to_string()
+                self.role.to_string().replace("-", "_")
             } else {
                 self.name
             },
