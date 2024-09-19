@@ -22,7 +22,7 @@ pub enum StrongEquivalenceTaskError {}
 pub struct StrongEquivalenceTask {
     pub left: asp::Program,
     pub right: asp::Program,
-    pub decomposition: TaskDecomposition,
+    pub task_decomposition: TaskDecomposition,
     pub direction: fol::Direction,
     pub simplify: bool,
     pub break_equivalences: bool,
@@ -136,7 +136,7 @@ impl Task for StrongEquivalenceTask {
         Ok(WithWarnings::flawless(
             problems
                 .into_iter()
-                .flat_map(|p: Problem| match self.decomposition {
+                .flat_map(|p: Problem| match self.task_decomposition {
                     TaskDecomposition::Independent => p.decompose_independent(),
                     TaskDecomposition::Sequential => p.decompose_sequential(),
                 })

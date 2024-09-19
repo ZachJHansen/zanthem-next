@@ -50,7 +50,7 @@ pub enum Command {
 
         /// The decomposition strategy to use
         #[arg(long, value_enum, default_value_t)]
-        decomposition: TaskDecomposition,
+        task_decomposition: TaskDecomposition,
 
         /// The direction of the proof
         #[arg(long, value_enum, default_value_t)]

@@ -216,7 +216,7 @@ pub struct ExternalEquivalenceTask {
     pub program: asp::Program,
     pub user_guide: fol::UserGuide,
     pub proof_outline: fol::Specification,
-    pub decomposition: TaskDecomposition,
+    pub task_decomposition: TaskDecomposition,
     pub direction: fol::Direction,
     pub bypass_tightness: bool,
     pub simplify: bool,
@@ -569,7 +569,7 @@ impl Task for ExternalEquivalenceTask {
             right: right.formulas,
             user_guide_assumptions,
             proof_outline: proof_outline_construction.data,
-            decomposition: self.decomposition,
+            decomposition: self.task_decomposition,
             direction: self.direction,
             break_equivalences: self.break_equivalences,
         }

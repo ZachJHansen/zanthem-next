@@ -83,7 +83,7 @@ pub fn main() -> Result<()> {
 
         Command::Verify {
             equivalence,
-            decomposition,
+            task_decomposition,
             direction,
             bypass_tightness,
             no_simplify,
@@ -117,7 +117,7 @@ pub fn main() -> Result<()> {
                             .right()
                             .ok_or(anyhow!("no right program was provided"))?,
                     )?,
-                    decomposition,
+                    task_decomposition,
                     direction,
                     simplify: !no_simplify,
                     break_equivalences: !no_eq_break,
@@ -146,7 +146,7 @@ pub fn main() -> Result<()> {
                         .proof_outline()
                         .map(fol::Specification::from_file)
                         .unwrap_or_else(|| Ok(fol::Specification::empty()))?,
-                    decomposition,
+                    task_decomposition,
                     direction,
                     bypass_tightness,
                     simplify: !no_simplify,
