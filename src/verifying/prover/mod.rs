@@ -15,7 +15,7 @@ pub mod vampire;
 
 lazy_static! {
     static ref STATUS: Regex =
-        Regex::new(r"(?m)^% SZS status (?<status>[[:word:]]+) for (?<problem>[[:word:]]*)$")
+        Regex::new(r"(?m)SZS status (?<status>[[:word:]]+) for (?<problem>[[:word:]]*)")
             .unwrap();
 }
 
