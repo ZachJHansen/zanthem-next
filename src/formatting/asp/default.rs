@@ -198,7 +198,6 @@ impl Display for Format<'_, AtomicFormula> {
     }
 }
 
-
 impl Display for Format<'_, ConditionalHead> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self.0 {
