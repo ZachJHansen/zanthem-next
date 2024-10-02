@@ -487,6 +487,14 @@ impl Rule {
         vars
     }
 
+    pub fn global_variables(&self) -> IndexSet<Variable> {
+        let mut vars = self.head.variables();
+        for formula in self.body.formulas.iter() {
+            vars.extend(formula.global_variables());
+        }
+        vars
+    }
+
     pub fn function_constants(&self) -> IndexSet<String> {
         let mut functions = self.head.function_constants();
         functions.extend(self.body.function_constants());

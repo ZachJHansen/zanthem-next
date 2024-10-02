@@ -77,7 +77,7 @@ pub fn simplify_formula_shallow(formula: Formula) -> Formula {
     ])
 }
 
-// Formula F is a special case of 
+// Formula F is a special case of
 // conditional literal (#true -> F), and should be simplified as such
 pub fn simplify_conditionals_formula_outer(formula: Formula) -> Formula {
     match formula.unbox() {
@@ -105,7 +105,11 @@ pub fn simplify_conditionals_formula(formula: Formula) -> Formula {
 
 pub fn simplify_conditionals(theory: Theory) -> Theory {
     Theory {
-        formulas: theory.formulas.into_iter().map(simplify_conditionals_formula).collect(),
+        formulas: theory
+            .formulas
+            .into_iter()
+            .map(simplify_conditionals_formula)
+            .collect(),
     }
 }
 

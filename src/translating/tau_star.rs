@@ -1,5 +1,11 @@
 use {
-    crate::syntax_tree::{asp, fol},
+    crate::{
+        simplifying::fol::ht::simplify_conditionals,
+        syntax_tree::{
+            asp::{self, ConditionalHead},
+            fol,
+        },
+    },
     indexmap::IndexSet,
     lazy_static::lazy_static,
     regex::Regex,
@@ -691,11 +697,57 @@ fn tau_b(f: asp::AtomicFormula) -> fol::Formula {
     }
 }
 
+// Translate a conditional literal l with global variables z
+fn tau_b_cl(l: asp::ConditionalLiteral, z: &IndexSet<asp::Variable>) -> fol::Formula {
+    let head = l.head;
+    let conditions = l.conditions.formulas;
+
+    let mut local_vars = head.variables();
+    local_vars.retain(|v| !z.contains(v));
+
+    let consequent = match head {
+        ConditionalHead::AtomicFormula(a) => tau_b(a.clone()),
+        ConditionalHead::Falsity => fol::Formula::AtomicFormula(fol::AtomicFormula::Falsity),
+    };
+
+    let mut formulas = vec![];
+    for c in conditions.iter() {
+        formulas.push(tau_b(c.clone()));
+    }
+    let antecedent = fol::Formula::conjoin(formulas);
+
+    let inner_formula = fol::Formula::BinaryFormula {
+        connective: fol::BinaryConnective::Implication,
+        lhs: antecedent.into(),
+        rhs: consequent.into(),
+    };
+
+    if local_vars.is_empty() {
+        return inner_formula;
+    } else {
+        let mut variables = vec![];
+        for v in local_vars.iter() {
+            variables.push(fol::Variable {
+                name: v.0.clone(),
+                sort: fol::Sort::General,
+            });
+        }
+        let formula = fol::Formula::QuantifiedFormula {
+            quantification: fol::Quantification {
+                quantifier: fol::Quantifier::Forall,
+                variables,
+            },
+            formula: inner_formula.into(),
+        };
+        return formula;
+    }
+}
+
 // Translate a rule body
-fn tau_body(b: asp::Body) -> fol::Formula {
+fn tau_body(b: asp::Body, z: IndexSet<asp::Variable>) -> fol::Formula {
     let mut formulas = Vec::<fol::Formula>::new();
     for f in b.formulas.iter() {
-        formulas.push(tau_b(f.clone()));
+        formulas.push(tau_b_cl(f.clone(), &z));
     }
     fol::Formula::conjoin(formulas)
 }
@@ -737,7 +789,7 @@ fn tau_star_fo_head_rule(r: &asp::Rule, globals: &[String]) -> fol::Formula {
     let core_lhs = fol::Formula::BinaryFormula {
         connective: fol::BinaryConnective::Conjunction,
         lhs: valtz.into(),
-        rhs: tau_body(r.body.clone()).into(),
+        rhs: tau_body(r.body.clone(), r.global_variables()).into(),
     };
 
     let new_body = match r.head {
@@ -797,7 +849,7 @@ fn tau_star_prop_head_rule(r: &asp::Rule) -> fol::Formula {
         predicate_symbol: fol_head_predicate.symbol,
         terms: vec![],
     }));
-    let core_lhs = tau_body(r.body.clone());
+    let core_lhs = tau_body(r.body.clone(), r.global_variables());
     let new_body = match &r.head {
         asp::Head::Basic(_) => {
             // tau^B(Body)
@@ -856,7 +908,7 @@ fn tau_star_constraint_rule(r: &asp::Rule) -> fol::Formula {
     }
     let imp = fol::Formula::BinaryFormula {
         connective: fol::BinaryConnective::Implication,
-        lhs: tau_body(r.body.clone()).into(),
+        lhs: tau_body(r.body.clone(), r.global_variables()).into(),
         rhs: fol::Formula::AtomicFormula(fol::AtomicFormula::Falsity).into(),
     }; // tau^B(Body) -> \bot
     gvars.sort(); // TODO
@@ -898,11 +950,19 @@ pub fn tau_star(p: asp::Program) -> fol::Theory {
     for r in p.rules.iter() {
         formulas.push(tau_star_rule(r, &globals));
     }
-    fol::Theory { formulas }
+    simplify_conditionals(fol::Theory { formulas })
 }
 
 #[cfg(test)]
 mod tests {
+    use indexmap::IndexSet;
+
+    use crate::{
+        simplifying::fol::ht::simplify_conditionals_formula,
+        syntax_tree::{asp, fol},
+        translating::tau_star::{tau_b_cl, tau_star_rule},
+    };
+
     use super::{tau_b, tau_star, val};
 
     #[test]
@@ -949,11 +1009,52 @@ mod tests {
     }
 
     #[test]
+    fn test_tau_b_cl() {
+        for (src, target) in [
+            (("not asg(V,I) : color(I)", IndexSet::from_iter(vec![asp::Variable("V".to_string())])), "forall I (exists Z (Z = I and color(Z)) -> exists Z Z1 (Z = V and Z1 = I and not asg(Z, Z1)))"),
+            (("#false : p(X,Y), q(Y)", IndexSet::from_iter(vec![asp::Variable("X".to_string()), asp::Variable("Y".to_string()),])), "(exists Z Z1 (Z = X and Z1 = Y and p(Z,Z1)) and exists Z (Z = Y and q(Z))) -> #false"),
+        ] {
+            let src = tau_b_cl(src.0.parse().unwrap(), &src.1);
+            let target = target.parse().unwrap();
+            assert_eq!(
+                src,
+                target,
+                "{src} != {target}"
+            )
+        }
+    }
+
+    #[test]
+    fn test_tau_star_rule() {
+        for (src, target) in [
+            (("p(X) :- q(X,Y) : t(Y).", vec!["V".to_string()]), "forall V X Y (V = X and forall Y (exists Z (Z = Y and t(Z)) -> exists Z Z1 (Z = X and Z1 = Y and q(Z, Z1))) -> p(V))"),
+            (("p(X) :- q(X,Y) : t(Y), 1 < X; t(X).", vec!["V".to_string()]), "forall V X Y (V = X and (forall Y (exists Z (Z = Y and t(Z)) and exists Z Z1 (Z = 1 and Z1 = X and Z < Z1) -> exists Z Z1 (Z = X and Z1 = Y and q(Z, Z1))) and exists Z (Z = X and t(Z))) -> p(V))"),
+            (("p(X) :- q(X,Y) : t(Y), 1 < X, t(X).",vec!["V".to_string()]), "forall V X Y (V = X and (forall Y (exists Z (Z = Y and t(Z)) and exists Z Z1 (Z = 1 and Z1 = X and Z < Z1) and exists Z (Z = X and t(Z)) -> exists Z Z1 (Z = X and Z1 = Y and q(Z, Z1)))) -> p(V))"),
+            (("p(X) :- q(X), t(X).",vec!["V".to_string()]), "forall V X (V = X and (exists Z (Z = X and q(Z)) and exists Z (Z = X and t(Z))) -> p(V))"),
+            (("p(X) :- q(X); t(X).",vec!["V".to_string()]), "forall V X (V = X and (exists Z (Z = X and q(Z)) and exists Z (Z = X and t(Z))) -> p(V))"),      
+            (("p :- q : t; r.", vec![]), "((t -> q) and r) -> p"),  
+            (("p :- q : t, r.", vec![]), "(t and r -> q) -> p"),  
+            (("p :- s, q : t, r.", vec![]), "(s and (t and r -> q)) -> p"),
+            (("p :- s; q : t, r.", vec![]), "(s and (t and r -> q)) -> p"),
+            (("p :- s; not not q : t, not r.", vec![]), "(s and (t and not r -> not not q)) -> p"),
+        ] {
+            let rule: asp::Rule = src.0.parse().unwrap();
+            let src = fol::Theory { formulas: vec![simplify_conditionals_formula(tau_star_rule(&rule, &src.1))] };
+            let target = fol::Theory { formulas: vec![target.parse().unwrap()] };
+            assert_eq!(
+                src,
+                target,
+                "{src} != {target}"
+            )
+        }
+    }
+
+    #[test]
     fn test_tau_star() {
         for (src, target) in [
             ("a:- b. a :- c.", "b -> a. c -> a."),
             ("p(a). p(b). q(X, Y) :- p(X), p(Y).", "forall V1 (V1 = a and #true -> p(V1)). forall V1 (V1 = b and #true -> p(V1)). forall V1 V2 X Y (V1 = X and V2 = Y and (exists Z (Z = X and p(Z)) and exists Z (Z = Y and p(Z))) -> q(V1,V2))."),
-            ("p.", "#true -> p."),
+            ("p.", "p."),
             ("q :- not p.", "not p -> q."),
             ("{q(X)} :- p(X).", "forall V1 X (V1 = X and exists Z (Z = X and p(Z)) and not not q(V1) -> q(V1))."),
             ("{q(V)} :- p(V).", "forall V V1 (V1 = V and exists Z (Z = V and p(Z)) and not not q(V1) -> q(V1))."),
@@ -963,7 +1064,7 @@ mod tests {
             ("{p} :- q.", "q and not not p -> p."),
             ("{p}.", "#true and not not p -> p."),
             ("{p(5)}.", "forall V1 (V1 = 5 and #true and not not p(V1) -> p(V1))."),
-            ("p. q.", "#true -> p. #true -> q."),
+            ("p. q.", "p. q."),
             ("{ra(X,a)} :- ta(X). ra(5,a).", "forall V1 V2 X (V1 = X and V2 = a and exists Z (Z = X and ta(Z)) and not not ra(V1, V2) -> ra(V1, V2)). forall V1 V2 (V1 = 5 and V2 = a and #true -> ra(V1, V2))."),
             ("p(X/2) :- X=4.", "forall V1 X (exists I$i J$i Q$i R$i (I$i = J$i * Q$i + R$i and (I$i = X and J$i = 2) and (J$i != 0 and R$i >= 0 and R$i < J$i) and V1 = Q$i) and exists Z Z1 (Z = X and Z1 = 4 and Z = Z1) -> p(V1))."),
         ] {
