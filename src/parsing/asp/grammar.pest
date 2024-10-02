@@ -58,13 +58,23 @@ comparison_eoi = _{ comparison ~ EOI }
 atomic_formula = { comparison | literal }
 atomic_formula_eoi = _{ atomic_formula ~ EOI }
 
+conditional_head = { atomic_formula | explicit_false }
+    explicit_false = { "#false" }
+conditional_head_eoi = _{ conditional_head ~ EOI }
+
+conditional_body = { atomic_formula ~ ("," ~ atomic_formula)* }
+conditional_body_eoi = _{ conditional_body ~ EOI }
+
+conditional_literal = { conditional_head ~ (":" ~ conditional_body)? }
+conditional_literal_eoi = _{ conditional_literal ~ EOI }
+
 head = { basic_head | choice_head | falsity }
 head_eoi = _{ head ~ EOI }
     basic_head = { atom }
     choice_head = { "{" ~ atom ~ "}" }
     falsity = { "#false"? }
 
-body = { (atomic_formula ~ (("," | ";") ~ atomic_formula)*)? }
+body = { (conditional_literal ~ (("," | ";") ~ conditional_literal)*)? }
 body_eoi = _{ body ~ EOI }
 
 rule = { (!"." ~ head ~ (":-" ~ body)?) ~ "." }

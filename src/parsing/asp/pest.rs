@@ -1,8 +1,9 @@
 use crate::{
     parsing::PestParser,
     syntax_tree::asp::{
-        Atom, AtomicFormula, BinaryOperator, Body, Comparison, Head, Literal, PrecomputedTerm,
-        Predicate, Program, Relation, Rule, Sign, Term, UnaryOperator, Variable,
+        Atom, AtomicFormula, BinaryOperator, Body, Comparison, ConditionalBody, ConditionalHead,
+        ConditionalLiteral, Head, Literal, PrecomputedTerm, Predicate, Program, Relation, Rule,
+        Sign, Term, UnaryOperator, Variable,
     },
 };
 
@@ -343,6 +344,85 @@ impl PestParser for AtomicFormulaParser {
     }
 }
 
+pub struct ConditionalHeadParser;
+
+impl PestParser for ConditionalHeadParser {
+    type Node = ConditionalHead;
+
+    type InternalParser = internal::Parser;
+    type Rule = internal::Rule;
+    const RULE: internal::Rule = internal::Rule::conditional_head_eoi;
+
+    fn translate_pair(pair: pest::iterators::Pair<'_, Self::Rule>) -> Self::Node {
+        match pair.as_rule() {
+            internal::Rule::conditional_head => {
+                ConditionalHeadParser::translate_pairs(pair.into_inner())
+            }
+            internal::Rule::atomic_formula => {
+                ConditionalHead::AtomicFormula(AtomicFormulaParser::translate_pair(pair))
+            }
+            internal::Rule::explicit_false => ConditionalHead::Falsity,
+            _ => Self::report_unexpected_pair(pair),
+        }
+    }
+}
+
+pub struct ConditionalBodyParser;
+
+impl PestParser for ConditionalBodyParser {
+    type Node = ConditionalBody;
+
+    type InternalParser = internal::Parser;
+    type Rule = internal::Rule;
+    const RULE: Self::Rule = internal::Rule::conditional_body_eoi;
+
+    fn translate_pair(pair: pest::iterators::Pair<'_, Self::Rule>) -> Self::Node {
+        if pair.as_rule() != internal::Rule::conditional_body {
+            Self::report_unexpected_pair(pair)
+        }
+
+        ConditionalBody {
+            formulas: pair
+                .into_inner()
+                .map(AtomicFormulaParser::translate_pair)
+                .collect(),
+        }
+    }
+}
+
+pub struct ConditionalLiteralParser;
+
+impl PestParser for ConditionalLiteralParser {
+    type Node = ConditionalLiteral;
+
+    type InternalParser = internal::Parser;
+    type Rule = internal::Rule;
+    const RULE: internal::Rule = internal::Rule::conditional_literal_eoi;
+
+    fn translate_pair(pair: pest::iterators::Pair<'_, Self::Rule>) -> Self::Node {
+        if pair.as_rule() != internal::Rule::conditional_literal {
+            Self::report_unexpected_pair(pair)
+        }
+
+        let mut pairs = pair.into_inner();
+
+        let head = pairs
+            .next()
+            .map(ConditionalHeadParser::translate_pair)
+            .unwrap_or_else(|| Self::report_missing_pair());
+        let conditions = pairs
+            .next()
+            .map(ConditionalBodyParser::translate_pair)
+            .unwrap_or_else(|| ConditionalBody { formulas: vec![] });
+
+        if let Some(pair) = pairs.next() {
+            Self::report_unexpected_pair(pair)
+        }
+
+        ConditionalLiteral { head, conditions }
+    }
+}
+
 pub struct HeadParser;
 
 impl PestParser for HeadParser {
@@ -384,7 +464,7 @@ impl PestParser for BodyParser {
         Body {
             formulas: pair
                 .into_inner()
-                .map(AtomicFormulaParser::translate_pair)
+                .map(ConditionalLiteralParser::translate_pair)
                 .collect(),
         }
     }
@@ -454,9 +534,9 @@ mod tests {
         crate::{
             parsing::TestedParser,
             syntax_tree::asp::{
-                Atom, AtomicFormula, BinaryOperator, Body, Comparison, Head, Literal,
-                PrecomputedTerm, Predicate, Program, Relation, Rule, Sign, Term, UnaryOperator,
-                Variable,
+                Atom, AtomicFormula, BinaryOperator, Body, Comparison, ConditionalBody,
+                ConditionalHead, ConditionalLiteral, Head, Literal, PrecomputedTerm, Predicate,
+                Program, Relation, Rule, Sign, Term, UnaryOperator, Variable,
             },
         },
     };
@@ -982,31 +1062,42 @@ mod tests {
             (
                 "p",
                 Body {
-                    formulas: vec![AtomicFormula::Literal(Literal {
-                        sign: Sign::NoSign,
-                        atom: Atom {
-                            predicate_symbol: "p".into(),
-                            terms: vec![],
-                        },
-                    })],
+                    formulas: vec![ConditionalLiteral {
+                        head: ConditionalHead::AtomicFormula(AtomicFormula::Literal(Literal {
+                            sign: Sign::NoSign,
+                            atom: Atom {
+                                predicate_symbol: "p".into(),
+                                terms: vec![],
+                            },
+                        })),
+                        conditions: ConditionalBody { formulas: vec![] },
+                    }],
                 },
             ),
             (
                 "p, N < 1",
                 Body {
                     formulas: vec![
-                        AtomicFormula::Literal(Literal {
-                            sign: Sign::NoSign,
-                            atom: Atom {
-                                predicate_symbol: "p".into(),
-                                terms: vec![],
-                            },
-                        }),
-                        AtomicFormula::Comparison(Comparison {
-                            relation: Relation::Less,
-                            lhs: Term::Variable(Variable("N".into())),
-                            rhs: Term::PrecomputedTerm(PrecomputedTerm::Numeral(1)),
-                        }),
+                        ConditionalLiteral {
+                            head: ConditionalHead::AtomicFormula(AtomicFormula::Literal(Literal {
+                                sign: Sign::NoSign,
+                                atom: Atom {
+                                    predicate_symbol: "p".into(),
+                                    terms: vec![],
+                                },
+                            })),
+                            conditions: ConditionalBody { formulas: vec![] },
+                        },
+                        ConditionalLiteral {
+                            head: ConditionalHead::AtomicFormula(AtomicFormula::Comparison(
+                                Comparison {
+                                    relation: Relation::Less,
+                                    lhs: Term::Variable(Variable("N".into())),
+                                    rhs: Term::PrecomputedTerm(PrecomputedTerm::Numeral(1)),
+                                },
+                            )),
+                            conditions: ConditionalBody { formulas: vec![] },
+                        },
                     ],
                 },
             ),
@@ -1032,13 +1123,18 @@ mod tests {
                             terms: vec![],
                         }),
                         body: Body {
-                            formulas: vec![AtomicFormula::Literal(Literal {
-                                sign: Sign::NoSign,
-                                atom: Atom {
-                                    predicate_symbol: "b".into(),
-                                    terms: vec![],
-                                },
-                            })],
+                            formulas: vec![ConditionalLiteral {
+                                head: ConditionalHead::AtomicFormula(AtomicFormula::Literal(
+                                    Literal {
+                                        sign: Sign::NoSign,
+                                        atom: Atom {
+                                            predicate_symbol: "b".into(),
+                                            terms: vec![],
+                                        },
+                                    },
+                                )),
+                                conditions: ConditionalBody { formulas: vec![] },
+                            }],
                         },
                     },
                 ),
@@ -1050,11 +1146,20 @@ mod tests {
                             terms: vec![],
                         }),
                         body: Body {
-                            formulas: vec![AtomicFormula::Comparison(Comparison {
-                                lhs: Term::PrecomputedTerm(PrecomputedTerm::Symbol("a".into())),
-                                rhs: Term::PrecomputedTerm(PrecomputedTerm::Symbol("b".into())),
-                                relation: Relation::NotEqual,
-                            })],
+                            formulas: vec![ConditionalLiteral {
+                                head: ConditionalHead::AtomicFormula(AtomicFormula::Comparison(
+                                    Comparison {
+                                        lhs: Term::PrecomputedTerm(PrecomputedTerm::Symbol(
+                                            "a".into(),
+                                        )),
+                                        rhs: Term::PrecomputedTerm(PrecomputedTerm::Symbol(
+                                            "b".into(),
+                                        )),
+                                        relation: Relation::NotEqual,
+                                    },
+                                )),
+                                conditions: ConditionalBody { formulas: vec![] },
+                            }],
                         },
                     },
                 ),
@@ -1103,13 +1208,18 @@ mod tests {
                                 terms: vec![],
                             }),
                             body: Body {
-                                formulas: vec![AtomicFormula::Literal(Literal {
-                                    sign: Sign::NoSign,
-                                    atom: Atom {
-                                        predicate_symbol: "a".into(),
-                                        terms: vec![],
-                                    },
-                                })],
+                                formulas: vec![ConditionalLiteral {
+                                    head: ConditionalHead::AtomicFormula(AtomicFormula::Literal(
+                                        Literal {
+                                            sign: Sign::NoSign,
+                                            atom: Atom {
+                                                predicate_symbol: "a".into(),
+                                                terms: vec![],
+                                            },
+                                        },
+                                    )),
+                                    conditions: ConditionalBody { formulas: vec![] },
+                                }],
                             },
                         },
                     ],

@@ -3,9 +3,9 @@ use {
         formatting::{Associativity, Precedence},
         syntax_tree::{
             asp::{
-                Atom, AtomicFormula, BinaryOperator, Body, Comparison, Head, Literal,
-                PrecomputedTerm, Predicate, Program, Relation, Rule, Sign, Term, UnaryOperator,
-                Variable,
+                Atom, AtomicFormula, BinaryOperator, Body, Comparison, ConditionalBody,
+                ConditionalHead, ConditionalLiteral, Head, Literal, PrecomputedTerm, Predicate,
+                Program, Relation, Rule, Sign, Term, UnaryOperator, Variable,
             },
             Node,
         },
@@ -198,6 +198,24 @@ impl Display for Format<'_, AtomicFormula> {
     }
 }
 
+impl Display for Format<'_, ConditionalHead> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        todo!()
+    }
+}
+
+impl Display for Format<'_, ConditionalBody> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        todo!()
+    }
+}
+
+impl Display for Format<'_, ConditionalLiteral> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        todo!()
+    }
+}
+
 impl Display for Format<'_, Head> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self.0 {
@@ -236,8 +254,9 @@ mod tests {
     use crate::{
         formatting::asp::default::Format,
         syntax_tree::asp::{
-            Atom, AtomicFormula, BinaryOperator, Body, Comparison, Head, Literal, PrecomputedTerm,
-            Program, Relation, Rule, Sign, Term, UnaryOperator, Variable,
+            Atom, AtomicFormula, BinaryOperator, Body, Comparison, ConditionalBody,
+            ConditionalHead, ConditionalLiteral, Head, Literal, PrecomputedTerm, Program, Relation,
+            Rule, Sign, Term, UnaryOperator, Variable,
         },
     };
 
@@ -480,18 +499,26 @@ mod tests {
         assert_eq!(
             Format(&Body {
                 formulas: vec![
-                    AtomicFormula::Literal(Literal {
-                        sign: Sign::NoSign,
-                        atom: Atom {
-                            predicate_symbol: "p".into(),
-                            terms: vec![Term::Variable(Variable("X".into()))]
-                        }
-                    }),
-                    AtomicFormula::Comparison(Comparison {
-                        relation: Relation::Less,
-                        lhs: Term::Variable(Variable("X".into())),
-                        rhs: Term::PrecomputedTerm(PrecomputedTerm::Numeral(10))
-                    })
+                    ConditionalLiteral {
+                        head: ConditionalHead::AtomicFormula(AtomicFormula::Literal(Literal {
+                            sign: Sign::NoSign,
+                            atom: Atom {
+                                predicate_symbol: "p".into(),
+                                terms: vec![Term::Variable(Variable("X".into()))]
+                            }
+                        })),
+                        conditions: ConditionalBody { formulas: vec![] },
+                    },
+                    ConditionalLiteral {
+                        head: ConditionalHead::AtomicFormula(AtomicFormula::Comparison(
+                            Comparison {
+                                relation: Relation::Less,
+                                lhs: Term::Variable(Variable("X".into())),
+                                rhs: Term::PrecomputedTerm(PrecomputedTerm::Numeral(10))
+                            }
+                        )),
+                        conditions: ConditionalBody { formulas: vec![] },
+                    },
                 ]
             })
             .to_string(),
@@ -522,13 +549,18 @@ mod tests {
                             terms: vec![]
                         }),
                         body: Body {
-                            formulas: vec![AtomicFormula::Literal(Literal {
-                                sign: Sign::Negation,
-                                atom: Atom {
-                                    predicate_symbol: "a".into(),
-                                    terms: vec![]
-                                }
-                            })]
+                            formulas: vec![ConditionalLiteral {
+                                head: ConditionalHead::AtomicFormula(AtomicFormula::Literal(
+                                    Literal {
+                                        sign: Sign::Negation,
+                                        atom: Atom {
+                                            predicate_symbol: "a".into(),
+                                            terms: vec![]
+                                        }
+                                    }
+                                )),
+                                conditions: ConditionalBody { formulas: vec![] },
+                            }]
                         }
                     }
                 ]
