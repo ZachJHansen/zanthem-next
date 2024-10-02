@@ -198,21 +198,36 @@ impl Display for Format<'_, AtomicFormula> {
     }
 }
 
+
 impl Display for Format<'_, ConditionalHead> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        todo!()
+        match self.0 {
+            ConditionalHead::AtomicFormula(a) => write!(f, "{}", Format(a)),
+            ConditionalHead::Falsity => write!(f, "#false"),
+        }
     }
 }
 
 impl Display for Format<'_, ConditionalBody> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        todo!()
+        let mut iter = self.0.formulas.iter().map(Format);
+        if let Some(formula) = iter.next() {
+            write!(f, "{formula}")?;
+            for formula in iter {
+                write!(f, "; {formula}")?;
+            }
+        }
+        Ok(())
     }
 }
 
 impl Display for Format<'_, ConditionalLiteral> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        todo!()
+        write!(f, "{}", Format(&self.0.head))?;
+        if !self.0.conditions.formulas.is_empty() {
+            write!(f, " : {}", Format(&self.0.conditions))?;
+        }
+        Ok(())
     }
 }
 
