@@ -284,11 +284,17 @@ impl ConditionalHead {
     }
 
     pub fn predicates(&self) -> IndexSet<Predicate> {
-        todo!()
+        match &self {
+            ConditionalHead::AtomicFormula(a) => a.predicates(),
+            ConditionalHead::Falsity => IndexSet::new(),
+        }
     }
 
     pub fn positive_predicates(&self) -> IndexSet<Predicate> {
-        todo!()
+        match &self {
+            ConditionalHead::AtomicFormula(a) => a.positive_predicates(),
+            ConditionalHead::Falsity => IndexSet::new(),
+        }
     }
 }
 
@@ -317,11 +323,19 @@ impl ConditionalBody {
     }
 
     pub fn predicates(&self) -> IndexSet<Predicate> {
-        todo!()
+        let mut predicates = IndexSet::new();
+        for f in self.formulas.iter() {
+            predicates.extend(f.predicates());
+        }
+        predicates
     }
 
     pub fn positive_predicates(&self) -> IndexSet<Predicate> {
-        todo!()
+        let mut predicates = IndexSet::new();
+        for f in self.formulas.iter() {
+            predicates.extend(f.positive_predicates());
+        }
+        predicates
     }
 }
 
@@ -354,11 +368,15 @@ impl ConditionalLiteral {
     }
 
     pub fn predicates(&self) -> IndexSet<Predicate> {
-        todo!()
+        let mut predicates = self.head.predicates();
+        predicates.extend(self.conditions.predicates());
+        predicates
     }
 
     pub fn positive_predicates(&self) -> IndexSet<Predicate> {
-        todo!()
+        let mut predicates = self.head.positive_predicates();
+        predicates.extend(self.conditions.positive_predicates());
+        predicates
     }
 }
 
