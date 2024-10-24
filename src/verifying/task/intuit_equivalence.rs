@@ -5,7 +5,7 @@ use {
         syntax_tree::{asp, fol},
         translating::{shorthand::shorthand, tau_star::tau_star},
         verifying::{
-            problem::{AnnotatedFormula, FormulaType, Problem, Role},
+            problem::{AnnotatedFormula, FormulaType, Interpretation, Problem, Role},
             task::Task,
         },
     },
@@ -56,7 +56,7 @@ impl Task for IntuitEquivalenceTask {
             fol::Direction::Universal | fol::Direction::Forward
         ) {
             problems.push(
-                Problem::with_name("forward")
+                Problem::with_name("forward", Interpretation::Standard)
                     .add_theory(left.clone(), |i, formula| AnnotatedFormula {
                         name: format!("left_{i}"),
                         role: Role::Axiom,
@@ -77,7 +77,7 @@ impl Task for IntuitEquivalenceTask {
             fol::Direction::Universal | fol::Direction::Backward
         ) {
             problems.push(
-                Problem::with_name("backward")
+                Problem::with_name("backward", Interpretation::Standard)
                     .add_theory(right, |i, formula| AnnotatedFormula {
                         name: format!("right_{i}"),
                         role: Role::Axiom,

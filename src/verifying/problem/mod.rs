@@ -85,7 +85,10 @@ impl fmt::Display for AnnotatedFormula {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let name = &self.name;
         let role = &self.role;
-        let formula = crate::formatting::fol::tptp::Format(&self.formula);
+        let formula = match &self.formula_type {
+            FormulaType::Tff => format!("{}", crate::formatting::fol::tptp::Format(&self.formula)),
+            FormulaType::Fof => format!("{}", crate::formatting::fol::iltp::Format(&self.formula)),
+        };
         let formula_type = &self.formula_type;
         writeln!(f, "{formula_type}({name}, {role}, {formula}).")
     }
@@ -99,10 +102,10 @@ pub struct Problem {
 }
 
 impl Problem {
-    pub fn with_name<S: Into<String>>(name: S) -> Problem {
+    pub fn with_name<S: Into<String>>(name: S, interpretation: Interpretation) -> Problem {
         Problem {
             name: name.into(),
-            interpretation: Interpretation::Standard,
+            interpretation,
             formulas: vec![],
         }
     }

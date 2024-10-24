@@ -12,7 +12,7 @@ use {
         translating::{completion::completion, tau_star::tau_star},
         verifying::{
             outline::{GeneralLemma, ProofOutline, ProofOutlineError, ProofOutlineWarning},
-            problem::{self, Problem},
+            problem::{self, Interpretation, Problem},
             task::Task,
         },
     },
@@ -739,17 +739,20 @@ impl Task for AssembledExternalEquivalenceTask {
             for (i, lemma) in self.proof_outline.forward_lemmas.iter().enumerate() {
                 for (j, conjecture) in lemma.conjectures.iter().enumerate() {
                     problems.push(
-                        Problem::with_name(format!("forward_outline_{i}_{j}"))
-                            .add_annotated_formulas(axioms.clone())
-                            .add_annotated_formulas(std::iter::once(conjecture.clone()))
-                            .rename_conflicting_symbols(),
+                        Problem::with_name(
+                            format!("forward_outline_{i}_{j}"),
+                            Interpretation::Standard,
+                        )
+                        .add_annotated_formulas(axioms.clone())
+                        .add_annotated_formulas(std::iter::once(conjecture.clone()))
+                        .rename_conflicting_symbols(),
                     );
                 }
                 axioms.append(&mut lemma.consequences.clone());
             }
 
             problems.append(
-                &mut Problem::with_name("forward_problem")
+                &mut Problem::with_name("forward_problem", Interpretation::Standard)
                     .add_annotated_formulas(self.stable_premises.clone())
                     .add_annotated_formulas(self.forward_premises)
                     .add_annotated_formulas(
@@ -782,17 +785,20 @@ impl Task for AssembledExternalEquivalenceTask {
             for (i, lemma) in self.proof_outline.backward_lemmas.iter().enumerate() {
                 for (j, conjecture) in lemma.conjectures.iter().enumerate() {
                     problems.push(
-                        Problem::with_name(format!("backward_outline_{i}_{j}"))
-                            .add_annotated_formulas(axioms.clone())
-                            .add_annotated_formulas(std::iter::once(conjecture.clone()))
-                            .rename_conflicting_symbols(),
+                        Problem::with_name(
+                            format!("backward_outline_{i}_{j}"),
+                            Interpretation::Standard,
+                        )
+                        .add_annotated_formulas(axioms.clone())
+                        .add_annotated_formulas(std::iter::once(conjecture.clone()))
+                        .rename_conflicting_symbols(),
                     );
                 }
                 axioms.append(&mut lemma.consequences.clone());
             }
 
             problems.append(
-                &mut Problem::with_name("backward_problem")
+                &mut Problem::with_name("backward_problem", Interpretation::Standard)
                     .add_annotated_formulas(self.stable_premises)
                     .add_annotated_formulas(self.backward_premises)
                     .add_annotated_formulas(

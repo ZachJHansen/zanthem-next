@@ -8,7 +8,7 @@ use {
             tau_star::tau_star,
         },
         verifying::{
-            problem::{AnnotatedFormula, FormulaType, Problem, Role},
+            problem::{AnnotatedFormula, FormulaType, Interpretation, Problem, Role},
             task::Task,
         },
     },
@@ -89,7 +89,7 @@ impl Task for StrongEquivalenceTask {
             fol::Direction::Universal | fol::Direction::Forward
         ) {
             problems.push(
-                Problem::with_name("forward")
+                Problem::with_name("forward", Interpretation::Standard)
                     .add_theory(transition_axioms.clone(), |i, formula| AnnotatedFormula {
                         name: format!("transition_axiom_{i}"),
                         role: Role::Axiom,
@@ -116,7 +116,7 @@ impl Task for StrongEquivalenceTask {
             fol::Direction::Universal | fol::Direction::Backward
         ) {
             problems.push(
-                Problem::with_name("backward")
+                Problem::with_name("backward", Interpretation::Standard)
                     .add_theory(transition_axioms, |i, formula| AnnotatedFormula {
                         name: format!("transition_axiom_{i}"),
                         role: Role::Axiom,
