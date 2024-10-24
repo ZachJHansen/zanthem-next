@@ -125,6 +125,7 @@ pub enum Translation {
 pub enum Equivalence {
     Strong,
     External,
+    Intuitionistic,
 }
 
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]

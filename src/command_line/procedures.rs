@@ -12,6 +12,7 @@ use {
             prover::{vampire::Vampire, Prover, Report, Status, Success},
             task::{
                 external_equivalence::ExternalEquivalenceTask,
+                intuit_equivalence::IntuitEquivalenceTask,
                 strong_equivalence::StrongEquivalenceTask, Task,
             },
         },
@@ -124,6 +125,7 @@ pub fn main() -> Result<()> {
                 }
                 .decompose()?
                 .report_warnings(),
+
                 Equivalence::External => ExternalEquivalenceTask {
                     specification: match files
                         .specification()
@@ -149,6 +151,25 @@ pub fn main() -> Result<()> {
                     task_decomposition,
                     direction,
                     bypass_tightness,
+                    simplify: !no_simplify,
+                    break_equivalences: !no_eq_break,
+                }
+                .decompose()?
+                .report_warnings(),
+
+                Equivalence::Intuitionistic => IntuitEquivalenceTask {
+                    left: asp::Program::from_file(
+                        files
+                            .left()
+                            .ok_or(anyhow!("no left program was provided"))?,
+                    )?,
+                    right: asp::Program::from_file(
+                        files
+                            .right()
+                            .ok_or(anyhow!("no right program was provided"))?,
+                    )?,
+                    task_decomposition,
+                    direction,
                     simplify: !no_simplify,
                     break_equivalences: !no_eq_break,
                 }
