@@ -105,6 +105,7 @@ pub fn main() -> Result<()> {
             prover_cores,
             save_problems: out_dir,
             files,
+            formula_representation,
         } => {
             let start_time = if !no_timing {
                 Some(Instant::now())
@@ -181,6 +182,7 @@ pub fn main() -> Result<()> {
                     direction,
                     simplify: !no_simplify,
                     break_equivalences: !no_eq_break,
+                    translation: formula_representation,
                 }
                 .decompose()?
                 .report_warnings(),

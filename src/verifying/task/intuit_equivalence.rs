@@ -1,9 +1,9 @@
 use {
     crate::{
-        command_line::arguments::TaskDecomposition,
+        command_line::arguments::{FormulaRepresentationTranslation, TaskDecomposition},
         convenience::with_warnings::{Result, WithWarnings},
         syntax_tree::{asp, fol},
-        translating::tau_star::tau_star,
+        translating::{shorthand::shorthand, tau_star::tau_star},
         verifying::{
             problem::{AnnotatedFormula, Problem, Role},
             task::Task,
@@ -23,6 +23,7 @@ pub struct IntuitEquivalenceTask {
     pub direction: fol::Direction,
     pub simplify: bool,
     pub break_equivalences: bool,
+    pub translation: FormulaRepresentationTranslation,
 }
 
 impl Task for IntuitEquivalenceTask {
@@ -30,8 +31,14 @@ impl Task for IntuitEquivalenceTask {
     type Warning = Infallible;
 
     fn decompose(self) -> Result<Vec<Problem>, Self::Warning, Self::Error> {
-        let mut left = tau_star(self.left);
-        let mut right = tau_star(self.right);
+        let mut left = match self.translation {
+            FormulaRepresentationTranslation::TauStar => tau_star(self.left),
+            FormulaRepresentationTranslation::Shorthand => shorthand(self.left),
+        };
+        let mut right = match self.translation {
+            FormulaRepresentationTranslation::TauStar => tau_star(self.right),
+            FormulaRepresentationTranslation::Shorthand => shorthand(self.right),
+        };
 
         if self.simplify {
             left = crate::simplifying::fol::ht::simplify(left);

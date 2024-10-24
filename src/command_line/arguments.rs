@@ -56,6 +56,10 @@ pub enum Command {
         #[arg(long, value_enum, default_value_t)]
         direction: Direction,
 
+        /// The translation used to obtain a formula representation
+        #[arg(long, value_enum, default_value_t)]
+        formula_representation: FormulaRepresentationTranslation,
+
         /// Bypass the tightness checks during verification of external equivalence
         #[arg(long, action)]
         bypass_tightness: bool,
@@ -112,6 +116,13 @@ pub enum Simplification {
     #[default]
     CompleteHT,
     ShallowHT,
+}
+
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
+pub enum FormulaRepresentationTranslation {
+    #[default]
+    TauStar,
+    Shorthand,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
