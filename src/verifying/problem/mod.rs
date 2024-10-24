@@ -27,11 +27,15 @@ impl fmt::Display for FormulaType {
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub enum Interpretation {
     Standard,
+    IltpStd,
 }
 
 impl fmt::Display for Interpretation {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, include_str!("standard_interpretation.p"))
+        match self {
+            Interpretation::Standard => write!(f, include_str!("standard_interpretation.p")),
+            Interpretation::IltpStd => write!(f, include_str!("iltp_std_interpretation.p")),
+        }
     }
 }
 
@@ -256,43 +260,46 @@ impl fmt::Display for Problem {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.interpretation)?;
 
-        for (i, predicate) in self.predicates().into_iter().enumerate() {
-            let symbol = predicate.symbol;
-            // let input: String = repeat("general")
-            //     .take(predicate.arity)
-            //     .intersperse(" * ")
-            //     .collect();
-            let input: String =
-                Itertools::intersperse(repeat("general").take(predicate.arity), " * ").collect();
-            if predicate.arity > 0 {
-                writeln!(f, "tff(predicate_{i}, type, {symbol}: ({input}) > $o).")?
-            } else {
-                writeln!(f, "tff(predicate_{i}, type, {symbol}: $o).")?
+        if self.interpretation == Interpretation::Standard {
+            for (i, predicate) in self.predicates().into_iter().enumerate() {
+                let symbol = predicate.symbol;
+                // let input: String = repeat("general")
+                //     .take(predicate.arity)
+                //     .intersperse(" * ")
+                //     .collect();
+                let input: String =
+                    Itertools::intersperse(repeat("general").take(predicate.arity), " * ")
+                        .collect();
+                if predicate.arity > 0 {
+                    writeln!(f, "tff(predicate_{i}, type, {symbol}: ({input}) > $o).")?
+                } else {
+                    writeln!(f, "tff(predicate_{i}, type, {symbol}: $o).")?
+                }
             }
-        }
 
-        for (i, symbol) in self.symbols().into_iter().enumerate() {
-            writeln!(f, "tff(type_symbol_{i}, type, {symbol}: symbol).")?
-        }
+            for (i, symbol) in self.symbols().into_iter().enumerate() {
+                writeln!(f, "tff(type_symbol_{i}, type, {symbol}: symbol).")?
+            }
 
-        for (i, constant) in self.function_constants().into_iter().enumerate() {
-            let name = crate::formatting::fol::tptp::Format(&constant);
-            let sort = match constant.sort {
-                Sort::General => "general",
-                Sort::Integer => "$int",
-                Sort::Symbol => "symbol",
-            };
-            writeln!(f, "tff(type_function_constant_{i}, type, {name}: {sort}).")?
-        }
+            for (i, constant) in self.function_constants().into_iter().enumerate() {
+                let name = crate::formatting::fol::tptp::Format(&constant);
+                let sort = match constant.sort {
+                    Sort::General => "general",
+                    Sort::Integer => "$int",
+                    Sort::Symbol => "symbol",
+                };
+                writeln!(f, "tff(type_function_constant_{i}, type, {name}: {sort}).")?
+            }
 
-        let mut symbols = Vec::from_iter(self.symbols());
-        symbols.sort_unstable();
-        for (i, s) in symbols.windows(2).enumerate() {
-            writeln!(
-                f,
-                "tff(symbol_order_{i}, axiom, p__less__(f__symbolic__({}), f__symbolic__({}))).",
-                s[0], s[1]
-            )?
+            let mut symbols = Vec::from_iter(self.symbols());
+            symbols.sort_unstable();
+            for (i, s) in symbols.windows(2).enumerate() {
+                writeln!(
+                    f,
+                    "tff(symbol_order_{i}, axiom, p__less__(f__symbolic__({}), f__symbolic__({}))).",
+                    s[0], s[1]
+                )?
+            }
         }
 
         for formula in &self.formulas {

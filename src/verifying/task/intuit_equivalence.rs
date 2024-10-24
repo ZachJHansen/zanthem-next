@@ -50,24 +50,33 @@ impl Task for IntuitEquivalenceTask {
             right = crate::breaking::fol::ht::break_equivalences_theory(right);
         }
 
+        let (ftype, interp) = match self.translation {
+            FormulaRepresentationTranslation::TauStar => {
+                (FormulaType::Tff, Interpretation::Standard)
+            }
+            FormulaRepresentationTranslation::Shorthand => {
+                (FormulaType::Fof, Interpretation::IltpStd)
+            }
+        };
+
         let mut problems = Vec::new();
         if matches!(
             self.direction,
             fol::Direction::Universal | fol::Direction::Forward
         ) {
             problems.push(
-                Problem::with_name("forward", Interpretation::Standard)
+                Problem::with_name("forward", interp.clone())
                     .add_theory(left.clone(), |i, formula| AnnotatedFormula {
                         name: format!("left_{i}"),
                         role: Role::Axiom,
                         formula,
-                        formula_type: FormulaType::Tff,
+                        formula_type: ftype.clone(),
                     })
                     .add_theory(right.clone(), |i, formula| AnnotatedFormula {
                         name: format!("right_{i}"),
                         role: Role::Conjecture,
                         formula,
-                        formula_type: FormulaType::Tff,
+                        formula_type: ftype.clone(),
                     })
                     .rename_conflicting_symbols(),
             );
@@ -77,18 +86,18 @@ impl Task for IntuitEquivalenceTask {
             fol::Direction::Universal | fol::Direction::Backward
         ) {
             problems.push(
-                Problem::with_name("backward", Interpretation::Standard)
+                Problem::with_name("backward", interp)
                     .add_theory(right, |i, formula| AnnotatedFormula {
                         name: format!("right_{i}"),
                         role: Role::Axiom,
                         formula,
-                        formula_type: FormulaType::Tff,
+                        formula_type: ftype.clone(),
                     })
                     .add_theory(left, |i, formula| AnnotatedFormula {
                         name: format!("left_{i}"),
                         role: Role::Conjecture,
                         formula,
-                        formula_type: FormulaType::Tff,
+                        formula_type: ftype.clone(),
                     })
                     .rename_conflicting_symbols(),
             );
