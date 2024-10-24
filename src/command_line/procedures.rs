@@ -7,7 +7,9 @@ use {
         },
         simplifying::fol::ht::{simplify, simplify_shallow},
         syntax_tree::{asp, fol, Node as _},
-        translating::{completion::completion, gamma::gamma, tau_star::tau_star},
+        translating::{
+            completion::completion, gamma::gamma, shorthand::shorthand, tau_star::tau_star,
+        },
         verifying::{
             prover::{vampire::Vampire, Prover, Report, Status, Success},
             task::{
@@ -75,6 +77,13 @@ pub fn main() -> Result<()> {
                     let program =
                         input.map_or_else(asp::Program::from_stdin, asp::Program::from_file)?;
                     let theory = tau_star(program);
+                    print!("{theory}")
+                }
+
+                Translation::Shorthand => {
+                    let program =
+                        input.map_or_else(asp::Program::from_stdin, asp::Program::from_file)?;
+                    let theory = shorthand(program);
                     print!("{theory}")
                 }
             }
