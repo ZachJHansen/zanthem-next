@@ -10,6 +10,21 @@ use {
 };
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
+pub enum FormulaType {
+    Tff,
+    Fof,
+}
+
+impl fmt::Display for FormulaType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            FormulaType::Tff => write!(f, "tff"),
+            FormulaType::Fof => write!(f, "fof"),
+        }
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub enum Interpretation {
     Standard,
 }
@@ -40,6 +55,7 @@ pub struct AnnotatedFormula {
     pub name: String,
     pub role: Role,
     pub formula: Formula,
+    pub formula_type: FormulaType,
 }
 
 impl AnnotatedFormula {
@@ -60,6 +76,7 @@ impl AnnotatedFormula {
             name: self.name,
             role: self.role,
             formula: self.formula.rename_conflicting_symbols(possible_conflicts),
+            formula_type: self.formula_type,
         }
     }
 }
@@ -69,7 +86,8 @@ impl fmt::Display for AnnotatedFormula {
         let name = &self.name;
         let role = &self.role;
         let formula = crate::formatting::fol::tptp::Format(&self.formula);
-        writeln!(f, "tff({name}, {role}, {formula}).")
+        let formula_type = &self.formula_type;
+        writeln!(f, "{formula_type}({name}, {role}, {formula}).")
     }
 }
 
@@ -99,12 +117,14 @@ impl Problem {
                     name: "unnamed_formula".to_string(),
                     role: anf.role,
                     formula: anf.formula,
+                    formula_type: anf.formula_type,
                 });
             } else if anf.name.starts_with('_') {
                 self.formulas.push(AnnotatedFormula {
                     name: format!("f{}", anf.name),
                     role: anf.role,
                     formula: anf.formula,
+                    formula_type: anf.formula_type,
                 });
             } else {
                 self.formulas.push(anf);
@@ -284,6 +304,7 @@ impl fmt::Display for Problem {
 mod tests {
     use {
         super::{AnnotatedFormula, Interpretation, Problem, Role},
+        crate::verifying::problem::FormulaType,
         std::vec,
     };
 
@@ -297,21 +318,25 @@ mod tests {
                     name: "axiom_0".into(),
                     role: Role::Axiom,
                     formula: "p(a)".parse().unwrap(),
+                    formula_type: FormulaType::Tff,
                 },
                 AnnotatedFormula {
                     name: "axiom_1".into(),
                     role: Role::Axiom,
                     formula: "forall X p(X) -> q(X)".parse().unwrap(),
+                    formula_type: FormulaType::Tff,
                 },
                 AnnotatedFormula {
                     name: "conjecture_0".into(),
                     role: Role::Conjecture,
                     formula: "p(a)".parse().unwrap(),
+                    formula_type: FormulaType::Tff,
                 },
                 AnnotatedFormula {
                     name: "conjecture_1".into(),
                     role: Role::Conjecture,
                     formula: "q(a)".parse().unwrap(),
+                    formula_type: FormulaType::Tff,
                 },
             ],
         };
@@ -327,16 +352,19 @@ mod tests {
                             name: "axiom_0".into(),
                             role: Role::Axiom,
                             formula: "p(a)".parse().unwrap(),
+                            formula_type: FormulaType::Tff,
                         },
                         AnnotatedFormula {
                             name: "axiom_1".into(),
                             role: Role::Axiom,
                             formula: "forall X p(X) -> q(X)".parse().unwrap(),
+                            formula_type: FormulaType::Tff,
                         },
                         AnnotatedFormula {
                             name: "conjecture_0".into(),
                             role: Role::Conjecture,
                             formula: "p(a)".parse().unwrap(),
+                            formula_type: FormulaType::Tff,
                         },
                     ],
                 },
@@ -348,16 +376,19 @@ mod tests {
                             name: "axiom_0".into(),
                             role: Role::Axiom,
                             formula: "p(a)".parse().unwrap(),
+                            formula_type: FormulaType::Tff,
                         },
                         AnnotatedFormula {
                             name: "axiom_1".into(),
                             role: Role::Axiom,
                             formula: "forall X p(X) -> q(X)".parse().unwrap(),
+                            formula_type: FormulaType::Tff,
                         },
                         AnnotatedFormula {
                             name: "conjecture_1".into(),
                             role: Role::Conjecture,
                             formula: "q(a)".parse().unwrap(),
+                            formula_type: FormulaType::Tff,
                         },
                     ],
                 }
@@ -375,16 +406,19 @@ mod tests {
                             name: "axiom_0".into(),
                             role: Role::Axiom,
                             formula: "p(a)".parse().unwrap(),
+                            formula_type: FormulaType::Tff,
                         },
                         AnnotatedFormula {
                             name: "axiom_1".into(),
                             role: Role::Axiom,
                             formula: "forall X p(X) -> q(X)".parse().unwrap(),
+                            formula_type: FormulaType::Tff,
                         },
                         AnnotatedFormula {
                             name: "conjecture_0".into(),
                             role: Role::Conjecture,
                             formula: "p(a)".parse().unwrap(),
+                            formula_type: FormulaType::Tff,
                         },
                     ],
                 },
@@ -396,21 +430,25 @@ mod tests {
                             name: "axiom_0".into(),
                             role: Role::Axiom,
                             formula: "p(a)".parse().unwrap(),
+                            formula_type: FormulaType::Tff,
                         },
                         AnnotatedFormula {
                             name: "axiom_1".into(),
                             role: Role::Axiom,
                             formula: "forall X p(X) -> q(X)".parse().unwrap(),
+                            formula_type: FormulaType::Tff,
                         },
                         AnnotatedFormula {
                             name: "conjecture_0".into(),
                             role: Role::Axiom,
                             formula: "p(a)".parse().unwrap(),
+                            formula_type: FormulaType::Tff,
                         },
                         AnnotatedFormula {
                             name: "conjecture_1".into(),
                             role: Role::Conjecture,
                             formula: "q(a)".parse().unwrap(),
+                            formula_type: FormulaType::Tff,
                         },
                     ],
                 }

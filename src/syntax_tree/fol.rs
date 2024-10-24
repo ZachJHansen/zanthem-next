@@ -13,7 +13,7 @@ use {
         },
         simplifying::fol::ht::join_nested_quantifiers,
         syntax_tree::{impl_node, Node},
-        verifying::problem,
+        verifying::problem::{self, FormulaType},
     },
     clap::ValueEnum,
     derive_more::derive::IntoIterator,
@@ -968,7 +968,11 @@ pub struct AnnotatedFormula {
 impl_node!(AnnotatedFormula, Format, AnnotatedFormulaParser);
 
 impl AnnotatedFormula {
-    pub fn into_problem_formula(self, role: problem::Role) -> problem::AnnotatedFormula {
+    pub fn into_problem_formula(
+        self,
+        role: problem::Role,
+        formula_type: FormulaType,
+    ) -> problem::AnnotatedFormula {
         problem::AnnotatedFormula {
             name: if self.name.is_empty() {
                 // TODO: Revisit default naming scheme!
@@ -978,6 +982,7 @@ impl AnnotatedFormula {
             },
             role,
             formula: self.formula,
+            formula_type,
         }
     }
 

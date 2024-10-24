@@ -601,7 +601,7 @@ impl Task for ValidatedExternalEquivalenceTask {
         let mut stable_premises: Vec<_> = self
             .user_guide_assumptions
             .into_iter()
-            .map(|a| a.into_problem_formula(problem::Role::Axiom))
+            .map(|a| a.into_problem_formula(problem::Role::Axiom, problem::FormulaType::Tff))
             .collect();
 
         let mut forward_premises = Vec::new();
@@ -614,23 +614,36 @@ impl Task for ValidatedExternalEquivalenceTask {
         for formula in self.left {
             match formula.role {
                 Assumption => match formula.direction {
-                    Universal => stable_premises.push(formula.into_problem_formula(Axiom)),
-                    Forward => forward_premises.push(formula.into_problem_formula(Axiom)),
+                    Universal => stable_premises
+                        .push(formula.into_problem_formula(Axiom, problem::FormulaType::Tff)),
+                    Forward => forward_premises
+                        .push(formula.into_problem_formula(Axiom, problem::FormulaType::Tff)),
                     Backward => warnings.push(
                         ExternalEquivalenceTaskWarning::InconsistentDirectionAnnotation(formula),
                     ),
                 },
                 Spec => {
                     if matches!(formula.direction, Universal | Forward) {
-                        forward_premises.push(formula.clone().into_problem_formula(Axiom))
+                        forward_premises.push(
+                            formula
+                                .clone()
+                                .into_problem_formula(Axiom, problem::FormulaType::Tff),
+                        )
                     }
                     if matches!(formula.direction, Universal | Backward) {
                         if self.break_equivalences {
                             for formula in break_equivalences_annotated_formula(formula) {
-                                backward_conclusions.push(formula.into_problem_formula(Conjecture))
+                                backward_conclusions.push(
+                                    formula.into_problem_formula(
+                                        Conjecture,
+                                        problem::FormulaType::Tff,
+                                    ),
+                                )
                             }
                         } else {
-                            backward_conclusions.push(formula.into_problem_formula(Conjecture))
+                            backward_conclusions.push(
+                                formula.into_problem_formula(Conjecture, problem::FormulaType::Tff),
+                            )
                         }
                     }
                 }
@@ -641,23 +654,36 @@ impl Task for ValidatedExternalEquivalenceTask {
         for formula in self.right {
             match formula.role {
                 Assumption => match formula.direction {
-                    Universal => stable_premises.push(formula.into_problem_formula(Axiom)),
+                    Universal => stable_premises
+                        .push(formula.into_problem_formula(Axiom, problem::FormulaType::Tff)),
                     Forward => warnings.push(
                         ExternalEquivalenceTaskWarning::InconsistentDirectionAnnotation(formula),
                     ),
-                    Backward => backward_premises.push(formula.into_problem_formula(Axiom)),
+                    Backward => backward_premises
+                        .push(formula.into_problem_formula(Axiom, problem::FormulaType::Tff)),
                 },
                 Spec => {
                     if matches!(formula.direction, Universal | Backward) {
-                        backward_premises.push(formula.clone().into_problem_formula(Axiom))
+                        backward_premises.push(
+                            formula
+                                .clone()
+                                .into_problem_formula(Axiom, problem::FormulaType::Tff),
+                        )
                     }
                     if matches!(formula.direction, Universal | Forward) {
                         if self.break_equivalences {
                             for formula in break_equivalences_annotated_formula(formula) {
-                                forward_conclusions.push(formula.into_problem_formula(Conjecture))
+                                forward_conclusions.push(
+                                    formula.into_problem_formula(
+                                        Conjecture,
+                                        problem::FormulaType::Tff,
+                                    ),
+                                )
                             }
                         } else {
-                            forward_conclusions.push(formula.into_problem_formula(Conjecture))
+                            forward_conclusions.push(
+                                formula.into_problem_formula(Conjecture, problem::FormulaType::Tff),
+                            )
                         }
                     }
                 }
@@ -705,10 +731,9 @@ impl Task for AssembledExternalEquivalenceTask {
             let mut axioms = self.stable_premises.clone();
             axioms.extend(self.forward_premises.clone());
             axioms.extend(
-                self.proof_outline
-                    .forward_definitions
-                    .into_iter()
-                    .map(|f| f.into_problem_formula(problem::Role::Axiom)),
+                self.proof_outline.forward_definitions.into_iter().map(|f| {
+                    f.into_problem_formula(problem::Role::Axiom, problem::FormulaType::Tff)
+                }),
             );
 
             for (i, lemma) in self.proof_outline.forward_lemmas.iter().enumerate() {
@@ -749,7 +774,9 @@ impl Task for AssembledExternalEquivalenceTask {
                 self.proof_outline
                     .backward_definitions
                     .into_iter()
-                    .map(|f| f.into_problem_formula(problem::Role::Axiom)),
+                    .map(|f| {
+                        f.into_problem_formula(problem::Role::Axiom, problem::FormulaType::Tff)
+                    }),
             );
 
             for (i, lemma) in self.proof_outline.backward_lemmas.iter().enumerate() {

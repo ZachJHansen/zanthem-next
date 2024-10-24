@@ -8,7 +8,7 @@ use {
             tau_star::tau_star,
         },
         verifying::{
-            problem::{AnnotatedFormula, Problem, Role},
+            problem::{AnnotatedFormula, FormulaType, Problem, Role},
             task::Task,
         },
     },
@@ -94,16 +94,19 @@ impl Task for StrongEquivalenceTask {
                         name: format!("transition_axiom_{i}"),
                         role: Role::Axiom,
                         formula,
+                        formula_type: FormulaType::Tff,
                     })
                     .add_theory(left.clone(), |i, formula| AnnotatedFormula {
                         name: format!("left_{i}"),
                         role: Role::Axiom,
                         formula,
+                        formula_type: FormulaType::Tff,
                     })
                     .add_theory(right.clone(), |i, formula| AnnotatedFormula {
                         name: format!("right_{i}"),
                         role: Role::Conjecture,
                         formula,
+                        formula_type: FormulaType::Tff,
                     })
                     .rename_conflicting_symbols(),
             );
@@ -118,16 +121,19 @@ impl Task for StrongEquivalenceTask {
                         name: format!("transition_axiom_{i}"),
                         role: Role::Axiom,
                         formula,
+                        formula_type: FormulaType::Tff,
                     })
                     .add_theory(right, |i, formula| AnnotatedFormula {
                         name: format!("right_{i}"),
                         role: Role::Axiom,
                         formula,
+                        formula_type: FormulaType::Tff,
                     })
                     .add_theory(left, |i, formula| AnnotatedFormula {
                         name: format!("left_{i}"),
                         role: Role::Conjecture,
                         formula,
+                        formula_type: FormulaType::Tff,
                     })
                     .rename_conflicting_symbols(),
             );

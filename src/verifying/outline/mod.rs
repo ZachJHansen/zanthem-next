@@ -32,8 +32,9 @@ impl TryFrom<fol::AnnotatedFormula> for GeneralLemma {
             fol::Role::Lemma => Ok(GeneralLemma {
                 conjectures: vec![annotated_formula
                     .clone()
-                    .into_problem_formula(problem::Role::Conjecture)],
-                consequences: vec![annotated_formula.into_problem_formula(problem::Role::Axiom)],
+                    .into_problem_formula(problem::Role::Conjecture, problem::FormulaType::Tff)],
+                consequences: vec![annotated_formula
+                    .into_problem_formula(problem::Role::Axiom, problem::FormulaType::Tff)],
             }),
             fol::Role::InductiveLemma => {
                 let induction_formulas = annotated_formula.formula.clone().inductive_lemma()?;
@@ -53,10 +54,17 @@ impl TryFrom<fol::AnnotatedFormula> for GeneralLemma {
                 };
                 Ok(GeneralLemma {
                     conjectures: vec![
-                        base_annotated.into_problem_formula(problem::Role::Conjecture),
-                        step_annotated.into_problem_formula(problem::Role::Conjecture),
+                        base_annotated.into_problem_formula(
+                            problem::Role::Conjecture,
+                            problem::FormulaType::Tff,
+                        ),
+                        step_annotated.into_problem_formula(
+                            problem::Role::Conjecture,
+                            problem::FormulaType::Tff,
+                        ),
                     ],
-                    consequences: vec![annotated_formula.into_problem_formula(problem::Role::Axiom)],
+                    consequences: vec![annotated_formula
+                        .into_problem_formula(problem::Role::Axiom, problem::FormulaType::Tff)],
                 })
             }
             fol::Role::Assumption | fol::Role::Spec | fol::Role::Definition => Err(

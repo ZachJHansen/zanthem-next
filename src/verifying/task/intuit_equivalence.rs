@@ -5,7 +5,7 @@ use {
         syntax_tree::{asp, fol},
         translating::{shorthand::shorthand, tau_star::tau_star},
         verifying::{
-            problem::{AnnotatedFormula, Problem, Role},
+            problem::{AnnotatedFormula, FormulaType, Problem, Role},
             task::Task,
         },
     },
@@ -61,11 +61,13 @@ impl Task for IntuitEquivalenceTask {
                         name: format!("left_{i}"),
                         role: Role::Axiom,
                         formula,
+                        formula_type: FormulaType::Tff,
                     })
                     .add_theory(right.clone(), |i, formula| AnnotatedFormula {
                         name: format!("right_{i}"),
                         role: Role::Conjecture,
                         formula,
+                        formula_type: FormulaType::Tff,
                     })
                     .rename_conflicting_symbols(),
             );
@@ -80,11 +82,13 @@ impl Task for IntuitEquivalenceTask {
                         name: format!("right_{i}"),
                         role: Role::Axiom,
                         formula,
+                        formula_type: FormulaType::Tff,
                     })
                     .add_theory(left, |i, formula| AnnotatedFormula {
                         name: format!("left_{i}"),
                         role: Role::Conjecture,
                         formula,
+                        formula_type: FormulaType::Tff,
                     })
                     .rename_conflicting_symbols(),
             );
