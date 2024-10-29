@@ -1,0 +1,2 @@
+assumption: forall V1 V2 V3 V4 (div(V1, V2, V3, V4) <-> exists I1$i J1$i J2$i (V3 = J2$i and V4 = J1$i and I1$i = V2 and V1 = I1$i * J2$i + J1$i and 0 <= J1$i and J1$i < V2)).
+output: div/4.
