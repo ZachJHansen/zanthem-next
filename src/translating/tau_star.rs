@@ -723,7 +723,7 @@ fn tau_b_cl(l: asp::ConditionalLiteral, z: &IndexSet<asp::Variable>) -> fol::For
     };
 
     if local_vars.is_empty() {
-        return inner_formula;
+        inner_formula
     } else {
         let mut variables = vec![];
         for v in local_vars.iter() {
@@ -732,14 +732,13 @@ fn tau_b_cl(l: asp::ConditionalLiteral, z: &IndexSet<asp::Variable>) -> fol::For
                 sort: fol::Sort::General,
             });
         }
-        let formula = fol::Formula::QuantifiedFormula {
+        fol::Formula::QuantifiedFormula {
             quantification: fol::Quantification {
                 quantifier: fol::Quantifier::Forall,
                 variables,
             },
             formula: inner_formula.into(),
-        };
-        return formula;
+        }
     }
 }
 
