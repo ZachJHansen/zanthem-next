@@ -1,10 +1,7 @@
 use {
-    crate::{
-        simplifying::fol::ht::simplify_conditionals,
-        syntax_tree::{
-            asp::{self, ConditionalHead},
-            fol,
-        },
+    crate::syntax_tree::{
+        asp::{self, ConditionalHead},
+        fol,
     },
     indexmap::IndexSet,
     lazy_static::lazy_static,
@@ -716,10 +713,13 @@ fn tau_b_cl(l: asp::ConditionalLiteral, z: &IndexSet<asp::Variable>) -> fol::For
     }
     let antecedent = fol::Formula::conjoin(formulas);
 
-    let inner_formula = fol::Formula::BinaryFormula {
-        connective: fol::BinaryConnective::Implication,
-        lhs: antecedent.into(),
-        rhs: consequent.into(),
+    let inner_formula = match antecedent {
+        fol::Formula::AtomicFormula(fol::AtomicFormula::Truth) => consequent,
+        _ => fol::Formula::BinaryFormula {
+            connective: fol::BinaryConnective::Implication,
+            lhs: antecedent.into(),
+            rhs: consequent.into(),
+        },
     };
 
     if local_vars.is_empty() {
@@ -949,7 +949,7 @@ pub fn tau_star(p: asp::Program) -> fol::Theory {
     for r in p.rules.iter() {
         formulas.push(tau_star_rule(r, &globals));
     }
-    simplify_conditionals(fol::Theory { formulas })
+    fol::Theory { formulas }
 }
 
 #[cfg(test)]
@@ -957,7 +957,6 @@ mod tests {
     use indexmap::IndexSet;
 
     use crate::{
-        simplifying::fol::ht::simplify_conditionals_formula,
         syntax_tree::{asp, fol},
         translating::tau_star::{tau_b_cl, tau_star_rule},
     };
@@ -1010,6 +1009,7 @@ mod tests {
     #[test]
     fn test_tau_b_cl() {
         for (src, target) in [
+            (("q(X)", IndexSet::from_iter(vec![asp::Variable("X".to_string())])), "exists Z (Z = X and q(Z))"),
             (("not asg(V,I) : color(I)", IndexSet::from_iter(vec![asp::Variable("V".to_string())])), "forall I (exists Z (Z = I and color(Z)) -> exists Z Z1 (Z = V and Z1 = I and not asg(Z, Z1)))"),
             (("#false : p(X,Y), q(Y)", IndexSet::from_iter(vec![asp::Variable("X".to_string()), asp::Variable("Y".to_string()),])), "(exists Z Z1 (Z = X and Z1 = Y and p(Z,Z1)) and exists Z (Z = Y and q(Z))) -> #false"),
         ] {
@@ -1038,7 +1038,7 @@ mod tests {
             (("p :- s; not not q : t, not r.", vec![]), "(s and (t and not r -> not not q)) -> p"),
         ] {
             let rule: asp::Rule = src.0.parse().unwrap();
-            let src = fol::Theory { formulas: vec![simplify_conditionals_formula(tau_star_rule(&rule, &src.1))] };
+            let src = fol::Theory { formulas: vec![tau_star_rule(&rule, &src.1)] };
             let target = fol::Theory { formulas: vec![target.parse().unwrap()] };
             assert_eq!(
                 src,
@@ -1053,7 +1053,7 @@ mod tests {
         for (src, target) in [
             ("a:- b. a :- c.", "b -> a. c -> a."),
             ("p(a). p(b). q(X, Y) :- p(X), p(Y).", "forall V1 (V1 = a and #true -> p(V1)). forall V1 (V1 = b and #true -> p(V1)). forall V1 V2 X Y (V1 = X and V2 = Y and (exists Z (Z = X and p(Z)) and exists Z (Z = Y and p(Z))) -> q(V1,V2))."),
-            ("p.", "p."),
+            ("p.", "#true -> p."),
             ("q :- not p.", "not p -> q."),
             ("{q(X)} :- p(X).", "forall V1 X (V1 = X and exists Z (Z = X and p(Z)) and not not q(V1) -> q(V1))."),
             ("{q(V)} :- p(V).", "forall V V1 (V1 = V and exists Z (Z = V and p(Z)) and not not q(V1) -> q(V1))."),
@@ -1063,7 +1063,7 @@ mod tests {
             ("{p} :- q.", "q and not not p -> p."),
             ("{p}.", "#true and not not p -> p."),
             ("{p(5)}.", "forall V1 (V1 = 5 and #true and not not p(V1) -> p(V1))."),
-            ("p. q.", "p. q."),
+            ("p. q.", "#true -> p. #true -> q."),
             ("{ra(X,a)} :- ta(X). ra(5,a).", "forall V1 V2 X (V1 = X and V2 = a and exists Z (Z = X and ta(Z)) and not not ra(V1, V2) -> ra(V1, V2)). forall V1 V2 (V1 = 5 and V2 = a and #true -> ra(V1, V2))."),
             ("p(X/2) :- X=4.", "forall V1 X (exists I$i J$i Q$i R$i (I$i = J$i * Q$i + R$i and (I$i = X and J$i = 2) and (J$i != 0 and R$i >= 0 and R$i < J$i) and V1 = Q$i) and exists Z Z1 (Z = X and Z1 = 4 and Z = Z1) -> p(V1))."),
         ] {
