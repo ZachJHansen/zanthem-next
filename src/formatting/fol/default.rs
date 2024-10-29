@@ -21,6 +21,7 @@ impl Display for Format<'_, UnaryOperator> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self.0 {
             UnaryOperator::Negative => write!(f, "-"),
+            UnaryOperator::AbsoluteValue => write!(f, "#abs"),
         }
     }
 }
@@ -40,22 +41,26 @@ impl Format<'_, IntegerTerm> {}
 impl Precedence for Format<'_, IntegerTerm> {
     fn precedence(&self) -> usize {
         match self.0 {
-            IntegerTerm::Numeral(1..) => 1,
+            IntegerTerm::UnaryOperation {
+                op: UnaryOperator::AbsoluteValue,
+                ..
+            } => 0,
+            IntegerTerm::Numeral(1..) => 2,
             IntegerTerm::UnaryOperation {
                 op: UnaryOperator::Negative,
                 ..
             }
             | IntegerTerm::Numeral(_)
             | IntegerTerm::FunctionConstant(_)
-            | IntegerTerm::Variable(_) => 0,
+            | IntegerTerm::Variable(_) => 1,
             IntegerTerm::BinaryOperation {
                 op: BinaryOperator::Multiply,
                 ..
-            } => 2,
+            } => 3,
             IntegerTerm::BinaryOperation {
                 op: BinaryOperator::Add | BinaryOperator::Subtract,
                 ..
-            } => 3,
+            } => 4,
         }
     }
 
@@ -439,7 +444,8 @@ mod tests {
         syntax_tree::fol::{
             AnnotatedFormula, Atom, AtomicFormula, BinaryConnective, BinaryOperator, Comparison,
             Direction, Formula, GeneralTerm, Guard, IntegerTerm, Quantification, Quantifier,
-            Relation, Role, Sort, Specification, SymbolicTerm, UnaryConnective, Variable,
+            Relation, Role, Sort, Specification, SymbolicTerm, UnaryConnective, UnaryOperator,
+            Variable,
         },
     };
 
@@ -451,6 +457,27 @@ mod tests {
         assert_eq!(
             Format(&IntegerTerm::Variable("A".into())).to_string(),
             "A$i"
+        );
+        assert_eq!(
+            Format(&IntegerTerm::UnaryOperation {
+                op: UnaryOperator::AbsoluteValue,
+                arg: IntegerTerm::Numeral(-1).into()
+            })
+            .to_string(),
+            "#abs(-1)"
+        );
+        assert_eq!(
+            Format(&IntegerTerm::UnaryOperation {
+                op: UnaryOperator::AbsoluteValue,
+                arg: IntegerTerm::BinaryOperation {
+                    op: BinaryOperator::Add,
+                    lhs: IntegerTerm::Variable("A".into()).into(),
+                    rhs: IntegerTerm::Numeral(42).into()
+                }
+                .into()
+            })
+            .to_string(),
+            "#abs(A$i + 42)"
         );
     }
 

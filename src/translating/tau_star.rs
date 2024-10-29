@@ -1,7 +1,13 @@
 use {
-    crate::syntax_tree::{
-        asp::{self, ConditionalHead},
-        fol,
+    crate::{
+        syntax_tree::{
+            asp::{self, ConditionalHead},
+            fol,
+        },
+        translating::tau_star_basics::{
+            construct_equality_formula, construct_interval_formula,
+            construct_total_function_formula,
+        },
     },
     indexmap::IndexSet,
     lazy_static::lazy_static,
@@ -74,102 +80,6 @@ fn choose_fresh_variable_names(
         fresh_vars.push(candidate.to_string());
     }
     fresh_vars
-}
-
-// Z = t
-fn construct_equality_formula(term: asp::Term, z: fol::Variable) -> fol::Formula {
-    let z_var_term = match z.sort {
-        fol::Sort::General => fol::GeneralTerm::Variable(z.name),
-        fol::Sort::Integer => fol::GeneralTerm::IntegerTerm(fol::IntegerTerm::Variable(z.name)),
-        fol::Sort::Symbol => unreachable!("tau* should not produce variables of the Symbol sort"),
-    };
-
-    let rhs = match term {
-        asp::Term::PrecomputedTerm(t) => match t {
-            asp::PrecomputedTerm::Infimum => fol::GeneralTerm::Infimum,
-            asp::PrecomputedTerm::Supremum => fol::GeneralTerm::Supremum,
-            asp::PrecomputedTerm::Numeral(i) => {
-                fol::GeneralTerm::IntegerTerm(fol::IntegerTerm::Numeral(i))
-            }
-            asp::PrecomputedTerm::Symbol(s) => {
-                fol::GeneralTerm::SymbolicTerm(fol::SymbolicTerm::Symbol(s))
-            }
-        },
-        asp::Term::Variable(v) => fol::GeneralTerm::Variable(v.0),
-        _ => unreachable!(
-            "equality should be between two variables or a variable and a precomputed term"
-        ),
-    };
-
-    fol::Formula::AtomicFormula(fol::AtomicFormula::Comparison(fol::Comparison {
-        term: z_var_term,
-        guards: vec![fol::Guard {
-            relation: fol::Relation::Equal,
-            term: rhs,
-        }],
-    }))
-}
-
-// +,-,*
-// exists I J (Z = I op J & val_t1(I) & val_t2(J))
-fn construct_total_function_formula(
-    valti: fol::Formula,
-    valtj: fol::Formula,
-    binop: asp::BinaryOperator,
-    i_var: fol::Variable,
-    j_var: fol::Variable,
-    z: fol::Variable,
-) -> fol::Formula {
-    let i = i_var.name;
-    let j = j_var.name;
-    let z_var_term = match z.sort {
-        fol::Sort::General => fol::GeneralTerm::Variable(z.name),
-        fol::Sort::Integer => fol::GeneralTerm::IntegerTerm(fol::IntegerTerm::Variable(z.name)),
-        fol::Sort::Symbol => unreachable!("tau* should not produce variables of the Symbol sort"),
-    };
-    let zequals = fol::Formula::AtomicFormula(fol::AtomicFormula::Comparison(fol::Comparison {
-        // Z = I binop J
-        term: z_var_term,
-        guards: vec![fol::Guard {
-            relation: fol::Relation::Equal,
-            term: fol::GeneralTerm::IntegerTerm(fol::IntegerTerm::BinaryOperation {
-                op: match binop {
-                    asp::BinaryOperator::Add => fol::BinaryOperator::Add,
-                    asp::BinaryOperator::Subtract => fol::BinaryOperator::Subtract,
-                    asp::BinaryOperator::Multiply => fol::BinaryOperator::Multiply,
-                    _ => unreachable!("addition, subtraction and multiplication are the only supported total functions"),
-                },
-                lhs: fol::IntegerTerm::Variable(i.clone()).into(),
-                rhs: fol::IntegerTerm::Variable(j.clone()).into(),
-            }),
-        }],
-    }));
-    fol::Formula::QuantifiedFormula {
-        quantification: fol::Quantification {
-            quantifier: fol::Quantifier::Exists,
-            variables: vec![
-                fol::Variable {
-                    name: i,
-                    sort: fol::Sort::Integer,
-                },
-                fol::Variable {
-                    name: j,
-                    sort: fol::Sort::Integer,
-                },
-            ],
-        },
-        formula: fol::Formula::BinaryFormula {
-            connective: fol::BinaryConnective::Conjunction,
-            lhs: fol::Formula::BinaryFormula {
-                connective: fol::BinaryConnective::Conjunction,
-                lhs: zequals.into(),
-                rhs: valti.into(),
-            }
-            .into(),
-            rhs: valtj.into(),
-        }
-        .into(),
-    }
 }
 
 // Integer division. Not Abstract Gringo compliant in negative divisor edge cases.
@@ -334,70 +244,6 @@ fn construct_partial_function_formula(
             connective: fol::BinaryConnective::Conjunction,
             lhs: subformula.into(),
             rhs: zequals.into(),
-        }
-        .into(),
-    }
-}
-
-// t1..t2
-// exists I J K (val_t1(I) & val_t2(J) & I <= K <= J & Z = K)
-fn construct_interval_formula(
-    valti: fol::Formula,
-    valtj: fol::Formula,
-    i_var: fol::Variable,
-    j_var: fol::Variable,
-    k_var: fol::Variable,
-    z: fol::Variable,
-) -> fol::Formula {
-    let z_var_term = match z.sort {
-        fol::Sort::General => fol::GeneralTerm::Variable(z.name),
-        fol::Sort::Integer => fol::GeneralTerm::IntegerTerm(fol::IntegerTerm::Variable(z.name)),
-        fol::Sort::Symbol => unreachable!("tau* should not produce variables of the Symbol sort"),
-    };
-
-    // I <= K <= J
-    let range = fol::Formula::AtomicFormula(fol::AtomicFormula::Comparison(fol::Comparison {
-        term: fol::GeneralTerm::IntegerTerm(fol::IntegerTerm::Variable(i_var.name.clone())),
-        guards: vec![
-            fol::Guard {
-                relation: fol::Relation::LessEqual,
-                term: fol::GeneralTerm::IntegerTerm(fol::IntegerTerm::Variable(k_var.name.clone())),
-            },
-            fol::Guard {
-                relation: fol::Relation::LessEqual,
-                term: fol::GeneralTerm::IntegerTerm(fol::IntegerTerm::Variable(j_var.name.clone())),
-            },
-        ],
-    }));
-
-    // val_t1(I) & val_t2(J) & Z = k
-    let subformula = fol::Formula::BinaryFormula {
-        connective: fol::BinaryConnective::Conjunction,
-        lhs: fol::Formula::BinaryFormula {
-            connective: fol::BinaryConnective::Conjunction,
-            lhs: valti.into(),
-            rhs: valtj.into(),
-        }
-        .into(),
-        rhs: fol::Formula::AtomicFormula(fol::AtomicFormula::Comparison(fol::Comparison {
-            term: z_var_term,
-            guards: vec![fol::Guard {
-                relation: fol::Relation::Equal,
-                term: fol::GeneralTerm::IntegerTerm(fol::IntegerTerm::Variable(k_var.name.clone())),
-            }],
-        }))
-        .into(),
-    };
-
-    fol::Formula::QuantifiedFormula {
-        quantification: fol::Quantification {
-            quantifier: fol::Quantifier::Exists,
-            variables: vec![i_var, j_var, k_var],
-        },
-        formula: fol::Formula::BinaryFormula {
-            connective: fol::BinaryConnective::Conjunction,
-            lhs: subformula.into(),
-            rhs: range.into(),
         }
         .into(),
     }
