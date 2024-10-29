@@ -38,7 +38,8 @@ pub fn main() -> Result<()> {
         }
 
         Command::Derive {
-            input,
+            outline,
+            user_guide,
             task_decomposition,
             no_simplify,
             no_eq_break,
@@ -55,13 +56,16 @@ pub fn main() -> Result<()> {
                 None
             };
 
-            let proof_outline = input.map_or_else(
-                fol::Specification::from_stdin,
-                fol::Specification::from_file,
-            )?;
+            println!(
+                "WARNING: Do not specify directions (forward, backward) in any annotated formulas!"
+            );
+
+            let proof_outline = fol::Specification::from_file(outline)?;
+            let user_guide = fol::UserGuide::from_file(user_guide)?;
 
             let problems = DerivationTask {
                 proof_outline,
+                user_guide,
                 task_decomposition,
                 simplify: !no_simplify,
                 break_equivalences: !no_eq_break,

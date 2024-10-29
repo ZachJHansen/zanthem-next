@@ -24,8 +24,11 @@ pub enum Command {
 
     /// Sequentially derive a series of lemmas from a set of assumptions
     Derive {
-        /// The file (at least one lemma and optional assumptions)
-        input: Option<PathBuf>,
+        /// The proof outline file (lemmas and definitions)
+        outline: PathBuf,
+
+        /// The user guide defining placeholders and assumptions
+        user_guide: PathBuf,
 
         /// The decomposition strategy to use
         #[arg(long, value_enum, default_value_t)]
