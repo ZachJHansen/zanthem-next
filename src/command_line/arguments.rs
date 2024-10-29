@@ -22,6 +22,48 @@ pub enum Command {
         input: Option<PathBuf>,
     },
 
+    /// Sequentially derive a series of lemmas from a set of assumptions
+    Derive {
+        /// The file (at least one lemma and optional assumptions)
+        input: Option<PathBuf>,
+
+        /// The decomposition strategy to use
+        #[arg(long, value_enum, default_value_t)]
+        task_decomposition: TaskDecomposition,
+
+        /// Omit simplifications
+        #[arg(long, action)]
+        no_simplify: bool,
+
+        /// Omit breaking equivalences
+        #[arg(long, action)]
+        no_eq_break: bool,
+
+        /// The time limit in seconds to prove each conjecture passed to Vampire
+        #[arg(long, short, default_value_t = 30)]
+        time_limit: usize,
+
+        /// Omit proof search and just create problem files
+        #[arg(long, action)]
+        no_proof_search: bool,
+
+        /// The number of prover instances to spawn
+        #[arg(long, short = 'n', default_value_t = 1)]
+        prover_instances: usize,
+
+        /// The number of threads each prover may use
+        #[arg(long, short = 'm', default_value_t = 1)]
+        prover_cores: usize,
+
+        /// Omit timing information
+        #[arg(long, action)]
+        no_timing: bool,
+
+        /// The destination directory for the problem files
+        #[arg(long)]
+        out_dir: Option<PathBuf>,
+    },
+
     /// Simplify a first-order theory
     Simplify {
         /// The translation to use
