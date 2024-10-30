@@ -12,7 +12,7 @@ use {
             UserGuideParser, VariableParser,
         },
         simplifying::fol::ht::join_nested_quantifiers,
-        syntax_tree::{impl_node, Node},
+        syntax_tree::{asp, impl_node, Node},
         verifying::problem,
     },
     clap::ValueEnum,
@@ -339,6 +339,19 @@ pub enum Relation {
 }
 
 impl_node!(Relation, Format, RelationParser);
+
+impl From<asp::Relation> for Relation {
+    fn from(relation: asp::Relation) -> Self {
+        match relation {
+            asp::Relation::Equal => Relation::Equal,
+            asp::Relation::NotEqual => Relation::NotEqual,
+            asp::Relation::Greater => Relation::Greater,
+            asp::Relation::Less => Relation::Less,
+            asp::Relation::GreaterEqual => Relation::GreaterEqual,
+            asp::Relation::LessEqual => Relation::LessEqual,
+        }
+    }
+}
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub struct Guard {

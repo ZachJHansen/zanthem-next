@@ -2,85 +2,16 @@ use {
     crate::{
         syntax_tree::{
             asp::{self, ConditionalHead},
-            fol,
+            fol::{self, Guard},
         },
         translating::tau_star_basics::{
+            choose_fresh_global_variables, choose_fresh_ijk, choose_fresh_variable_names,
             construct_equality_formula, construct_interval_formula,
             construct_total_function_formula,
         },
     },
     indexmap::IndexSet,
-    lazy_static::lazy_static,
-    regex::Regex,
 };
-
-lazy_static! {
-    static ref RE: Regex = Regex::new(r"^V(?<number>[0-9]*)$").unwrap();
-}
-
-/// Choose fresh variants of `Vn` by incrementing `n`
-fn choose_fresh_global_variables(program: &asp::Program) -> Vec<String> {
-    let mut max_arity = 0;
-    let mut head_arity;
-    for rule in program.rules.iter() {
-        head_arity = rule.head.arity();
-        if head_arity > max_arity {
-            max_arity = head_arity;
-        }
-    }
-    let mut max_taken_var = 0;
-    let taken_vars = program.variables();
-    for var in taken_vars {
-        if let Some(caps) = RE.captures(&var.0) {
-            let taken: usize = (caps["number"]).parse().unwrap_or(0);
-            if taken > max_taken_var {
-                max_taken_var = taken;
-            }
-        }
-    }
-    let mut globals = Vec::<String>::new();
-    for i in 1..max_arity + 1 {
-        let mut v: String = "V".to_owned();
-        let counter: &str = &(max_taken_var + i).to_string();
-        v.push_str(counter);
-        globals.push(v);
-    }
-    globals
-}
-
-/// Choose `arity` variable names by incrementing `variant`, disjoint from `variables`
-fn choose_fresh_variable_names(
-    variables: &IndexSet<fol::Variable>,
-    variant: &str,
-    arity: usize,
-) -> Vec<String> {
-    let mut taken_vars = Vec::<String>::new();
-    for var in variables.iter() {
-        taken_vars.push(var.name.to_string());
-    }
-    let mut fresh_vars = Vec::<String>::new();
-    let arity_bound = match taken_vars.contains(&variant.to_string()) {
-        true => arity + 1,
-        false => {
-            fresh_vars.push(variant.to_string());
-            arity
-        }
-    };
-    for n in 1..arity_bound {
-        let mut candidate: String = variant.to_owned();
-        let number: &str = &n.to_string();
-        candidate.push_str(number);
-        let mut m = n;
-        while taken_vars.contains(&candidate) || fresh_vars.contains(&candidate) {
-            variant.clone_into(&mut candidate);
-            m += 1;
-            let number = &m.to_string();
-            candidate.push_str(number);
-        }
-        fresh_vars.push(candidate.to_string());
-    }
-    fresh_vars
-}
 
 // Integer division. Not Abstract Gringo compliant in negative divisor edge cases.
 // Follows the corrected arXiv paper (https://arxiv.org/abs/2008.02025), not the TPLP paper
@@ -126,7 +57,7 @@ fn construct_partial_function_formula(
         .unwrap();
     let iequals = fol::Formula::AtomicFormula(fol::AtomicFormula::Comparison(fol::Comparison {
         term: fol::GeneralTerm::IntegerTerm(fol::IntegerTerm::Variable(i.clone())),
-        guards: vec![fol::Guard {
+        guards: vec![Guard {
             relation: fol::Relation::Equal,
             term: fol::GeneralTerm::IntegerTerm(fol::IntegerTerm::BinaryOperation {
                 op: fol::BinaryOperator::Add,
@@ -148,7 +79,7 @@ fn construct_partial_function_formula(
             connective: fol::BinaryConnective::Conjunction,
             lhs: fol::Formula::AtomicFormula(fol::AtomicFormula::Comparison(fol::Comparison {
                 term: fol::GeneralTerm::IntegerTerm(fol::IntegerTerm::Variable(j.clone())),
-                guards: vec![fol::Guard {
+                guards: vec![Guard {
                     relation: fol::Relation::NotEqual,
                     term: fol::GeneralTerm::IntegerTerm(fol::IntegerTerm::Numeral(0)),
                 }],
@@ -156,7 +87,7 @@ fn construct_partial_function_formula(
             .into(),
             rhs: fol::Formula::AtomicFormula(fol::AtomicFormula::Comparison(fol::Comparison {
                 term: fol::GeneralTerm::IntegerTerm(fol::IntegerTerm::Variable(rvar.clone())),
-                guards: vec![fol::Guard {
+                guards: vec![Guard {
                     relation: fol::Relation::GreaterEqual,
                     term: fol::GeneralTerm::IntegerTerm(fol::IntegerTerm::Numeral(0)),
                 }],
@@ -166,7 +97,7 @@ fn construct_partial_function_formula(
         .into(),
         rhs: fol::Formula::AtomicFormula(fol::AtomicFormula::Comparison(fol::Comparison {
             term: fol::GeneralTerm::IntegerTerm(fol::IntegerTerm::Variable(rvar.clone())),
-            guards: vec![fol::Guard {
+            guards: vec![Guard {
                 relation: fol::Relation::Less,
                 term: fol::GeneralTerm::IntegerTerm(fol::IntegerTerm::Variable(j.clone())),
             }],
@@ -200,7 +131,7 @@ fn construct_partial_function_formula(
         asp::BinaryOperator::Divide => {
             fol::Formula::AtomicFormula(fol::AtomicFormula::Comparison(fol::Comparison {
                 term: z_var_term,
-                guards: vec![fol::Guard {
+                guards: vec![Guard {
                     relation: fol::Relation::Equal,
                     term: fol::GeneralTerm::IntegerTerm(fol::IntegerTerm::Variable(qvar.clone())),
                 }],
@@ -209,7 +140,7 @@ fn construct_partial_function_formula(
         asp::BinaryOperator::Modulo => {
             fol::Formula::AtomicFormula(fol::AtomicFormula::Comparison(fol::Comparison {
                 term: z_var_term,
-                guards: vec![fol::Guard {
+                guards: vec![Guard {
                     relation: fol::Relation::Equal,
                     term: fol::GeneralTerm::IntegerTerm(fol::IntegerTerm::Variable(rvar.clone())),
                 }],
@@ -260,89 +191,59 @@ fn val(t: asp::Term, z: fol::Variable) -> fol::Formula {
     }
     taken_vars.insert(z.clone());
 
-    let mut fresh_ivar = choose_fresh_variable_names(&taken_vars, "I", 1);
-    let mut fresh_jvar = choose_fresh_variable_names(&taken_vars, "J", 1);
-    let mut fresh_kvar = choose_fresh_variable_names(&taken_vars, "K", 1);
+    let fresh_int_vars = choose_fresh_ijk(&taken_vars);
 
-    // Fresh integer variables
-    let var1 = fol::Variable {
-        name: fresh_ivar.pop().unwrap(),
-        sort: fol::Sort::Integer,
-    };
-    let var2 = fol::Variable {
-        name: fresh_jvar.pop().unwrap(),
-        sort: fol::Sort::Integer,
-    };
-    let var3 = fol::Variable {
-        name: fresh_kvar.pop().unwrap(),
-        sort: fol::Sort::Integer,
-    };
     match t {
         asp::Term::PrecomputedTerm(_) | asp::Term::Variable(_) => construct_equality_formula(t, z),
         asp::Term::UnaryOperation { op, arg } => {
             match op {
                 asp::UnaryOperator::Negative => {
                     let lhs = asp::Term::PrecomputedTerm(asp::PrecomputedTerm::Numeral(0)); // Shorthand for 0 - t
-                    let valti = val(lhs, var1.clone()); // val_t1(I)
-                    let valtj = val(*arg, var2.clone()); // val_t2(J)
+                    let valti = val(lhs, fresh_int_vars["I"].clone()); // val_t1(I)
+                    let valtj = val(*arg, fresh_int_vars["J"].clone()); // val_t2(J)
                     construct_total_function_formula(
                         valti,
                         valtj,
                         asp::BinaryOperator::Subtract,
-                        var1,
-                        var2,
+                        fresh_int_vars["I"].clone(),
+                        fresh_int_vars["J"].clone(),
                         z,
                     )
                 }
             }
         }
         asp::Term::BinaryOperation { op, lhs, rhs } => {
-            let valti = val(*lhs, var1.clone()); // val_t1(I)
-            let valtj = val(*rhs, var2.clone()); // val_t2(J)
+            let valti = val(*lhs, fresh_int_vars["I"].clone()); // val_t1(I)
+            let valtj = val(*rhs, fresh_int_vars["J"].clone()); // val_t2(J)
             match op {
-                asp::BinaryOperator::Add => construct_total_function_formula(
+                asp::BinaryOperator::Add
+                | asp::BinaryOperator::Subtract
+                | asp::BinaryOperator::Multiply => construct_total_function_formula(
                     valti,
                     valtj,
-                    asp::BinaryOperator::Add,
-                    var1,
-                    var2,
+                    op,
+                    fresh_int_vars["I"].clone(),
+                    fresh_int_vars["J"].clone(),
                     z,
                 ),
-                asp::BinaryOperator::Subtract => construct_total_function_formula(
-                    valti,
-                    valtj,
-                    asp::BinaryOperator::Subtract,
-                    var1,
-                    var2,
-                    z,
-                ),
-                asp::BinaryOperator::Multiply => construct_total_function_formula(
-                    valti,
-                    valtj,
-                    asp::BinaryOperator::Multiply,
-                    var1,
-                    var2,
-                    z,
-                ),
-                asp::BinaryOperator::Divide => construct_partial_function_formula(
-                    valti,
-                    valtj,
-                    asp::BinaryOperator::Divide,
-                    var1,
-                    var2,
-                    z,
-                ),
-                asp::BinaryOperator::Modulo => construct_partial_function_formula(
-                    valti,
-                    valtj,
-                    asp::BinaryOperator::Modulo,
-                    var1,
-                    var2,
-                    z,
-                ),
-                asp::BinaryOperator::Interval => {
-                    construct_interval_formula(valti, valtj, var1, var2, var3, z)
+                asp::BinaryOperator::Divide | asp::BinaryOperator::Modulo => {
+                    construct_partial_function_formula(
+                        valti,
+                        valtj,
+                        op,
+                        fresh_int_vars["I"].clone(),
+                        fresh_int_vars["J"].clone(),
+                        z,
+                    )
                 }
+                asp::BinaryOperator::Interval => construct_interval_formula(
+                    valti,
+                    valtj,
+                    fresh_int_vars["I"].clone(),
+                    fresh_int_vars["J"].clone(),
+                    fresh_int_vars["K"].clone(),
+                    z,
+                ),
             }
         }
     }
@@ -491,15 +392,8 @@ fn tau_b_comparison(c: asp::Comparison, taken_vars: IndexSet<fol::Variable>) -> 
     // Compute Z1 rel Z2
     let z1_rel_z2 = fol::Formula::AtomicFormula(fol::AtomicFormula::Comparison(fol::Comparison {
         term: term_z1,
-        guards: vec![fol::Guard {
-            relation: match c.relation {
-                asp::Relation::Equal => fol::Relation::Equal,
-                asp::Relation::NotEqual => fol::Relation::NotEqual,
-                asp::Relation::Greater => fol::Relation::Greater,
-                asp::Relation::Less => fol::Relation::Less,
-                asp::Relation::GreaterEqual => fol::Relation::GreaterEqual,
-                asp::Relation::LessEqual => fol::Relation::LessEqual,
-            },
+        guards: vec![Guard {
+            relation: fol::Relation::from(c.relation),
             term: term_z2,
         }],
     }));
