@@ -394,7 +394,7 @@ pub fn main() -> Result<()> {
 #[cfg(test)]
 mod tests {
 
-    use crate::syntax_tree::asp;
+    use crate::syntax_tree::{asp, fol};
 
     #[test]
     fn asp_program_parse_and_format() {
@@ -409,6 +409,23 @@ mod tests {
                 string,
                 format!("{program}"),
                 "assertion `left == right` failed:\n left:\n{string}\n right:\n{program}"
+            );
+        }
+    }
+
+    #[test]
+    fn fol_formula_parse_and_format() {
+        for string in [
+            "forall X (p(X) <-> exists N$i (q(N$i) and |N$i| = X))",
+            "p(|1 + |3 - 5||)",
+            "p(||3 - 5||)",
+            "p(|-|3 - 5||)",
+        ] {
+            let formula: fol::Formula = string.parse().unwrap();
+            assert_eq!(
+                string,
+                format!("{formula}"),
+                "assertion `left == right` failed:\n left:\n{string}\n right:\n{formula}"
             );
         }
     }
