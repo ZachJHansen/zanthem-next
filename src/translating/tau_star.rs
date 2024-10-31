@@ -210,6 +210,8 @@ fn val(t: asp::Term, z: fol::Variable) -> fol::Formula {
                         z,
                     )
                 }
+
+                asp::UnaryOperator::AbsoluteValue => todo!(),
             }
         }
         asp::Term::BinaryOperation { op, lhs, rhs } => {

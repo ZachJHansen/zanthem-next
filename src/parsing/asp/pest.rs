@@ -3,7 +3,7 @@ use crate::{
     syntax_tree::asp::{
         Atom, AtomicFormula, BinaryOperator, Body, Comparison, ConditionalBody, ConditionalHead,
         ConditionalLiteral, Head, Literal, PrecomputedTerm, Predicate, Program, Relation, Rule,
-        Sign, Term, UnaryOperator, Variable,
+        Sign, Term, UnaryFunction, UnaryOperator, Variable,
     },
 };
 
@@ -84,6 +84,38 @@ impl PestParser for UnaryOperatorParser {
     }
 }
 
+pub struct UnaryFunctionParser;
+
+impl PestParser for UnaryFunctionParser {
+    type Node = UnaryFunction;
+
+    type InternalParser = internal::Parser;
+    type Rule = internal::Rule;
+    const RULE: internal::Rule = internal::Rule::unary_function_eoi;
+
+    fn translate_pair(pair: pest::iterators::Pair<'_, Self::Rule>) -> Self::Node {
+        let mut pairs = pair.into_inner();
+
+        let op = match pairs.next() {
+            Some(pair) if pair.as_rule() == internal::Rule::absolute_value => {
+                UnaryOperator::AbsoluteValue
+            }
+            Some(pair) => Self::report_unexpected_pair(pair),
+            None => Self::report_missing_pair(),
+        };
+
+        let arg = match pairs.next() {
+            Some(pair) if pair.as_rule() == internal::Rule::term => {
+                TermParser::translate_pair(pair)
+            }
+            Some(pair) => Self::report_unexpected_pair(pair),
+            None => Self::report_missing_pair(),
+        };
+
+        UnaryFunction { op, arg }
+    }
+}
+
 pub struct BinaryOperatorParser;
 
 impl PestParser for BinaryOperatorParser {
@@ -119,6 +151,13 @@ impl PestParser for TermParser {
         internal::PRATT_PARSER
             .map_primary(|primary| match primary.as_rule() {
                 internal::Rule::term => TermParser::translate_pair(primary),
+                internal::Rule::unary_function => {
+                    let function = UnaryFunctionParser::translate_pair(primary);
+                    Term::UnaryOperation {
+                        op: function.op,
+                        arg: function.arg.into(),
+                    }
+                }
                 internal::Rule::precomputed_term => {
                     Term::PrecomputedTerm(PrecomputedTermParser::translate_pair(primary))
                 }
@@ -641,6 +680,44 @@ mod tests {
                     Term::UnaryOperation {
                         op: UnaryOperator::Negative,
                         arg: Term::PrecomputedTerm(PrecomputedTerm::Numeral(-1)).into(),
+                    },
+                ),
+                (
+                    "#abs(1)",
+                    Term::UnaryOperation {
+                        op: UnaryOperator::AbsoluteValue,
+                        arg: Term::PrecomputedTerm(PrecomputedTerm::Numeral(1)).into(),
+                    },
+                ),
+                (
+                    "#abs(-1)",
+                    Term::UnaryOperation {
+                        op: UnaryOperator::AbsoluteValue,
+                        arg: Term::PrecomputedTerm(PrecomputedTerm::Numeral(-1)).into(),
+                    },
+                ),
+                (
+                    "-#abs(-1)",
+                    Term::UnaryOperation {
+                        op: UnaryOperator::Negative,
+                        arg: Term::UnaryOperation {
+                            op: UnaryOperator::AbsoluteValue,
+                            arg: Term::PrecomputedTerm(PrecomputedTerm::Numeral(-1)).into(),
+                        }.into(),
+                    },
+                ),
+                (
+                    "-#abs(3*-1)",
+                    Term::UnaryOperation {
+                        op: UnaryOperator::Negative,
+                        arg: Term::UnaryOperation {
+                            op: UnaryOperator::AbsoluteValue,
+                            arg: Term::BinaryOperation { 
+                                op: BinaryOperator::Multiply, 
+                                lhs: Term::PrecomputedTerm(PrecomputedTerm::Numeral(3)).into(), 
+                                rhs: Term::PrecomputedTerm(PrecomputedTerm::Numeral(-1)).into(), 
+                            }.into(),
+                        }.into(),
                     },
                 ),
                 (

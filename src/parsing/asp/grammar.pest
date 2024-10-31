@@ -15,6 +15,10 @@ unary_operator = _{ negative }
 unary_operator_eoi = _{ unary_operator ~ EOI }
     negative = { !integer ~ "-" }
 
+unary_function_symbol = _{ absolute_value }
+unary_function_symbol_eoi = _{ unary_function_symbol ~ EOI }
+    absolute_value = { "#abs" }
+
 binary_operator = _{ add | subtract | multiply | divide | modulo | interval }
 binary_operator_eoi = _{ binary_operator ~ EOI }
     add = { "+" }
@@ -24,9 +28,12 @@ binary_operator_eoi = _{ binary_operator ~ EOI }
     modulo = { "\\" }
     interval = { ".." }
 
+unary_function = { unary_function_symbol ~ "(" ~ term ~ ")" }
+unary_function_eoi = _{ unary_function ~ EOI }
+
 term = { unary_operator* ~ primary_term ~ (binary_operator ~ unary_operator* ~ primary_term)* }
 term_eoi = _{ term ~ EOI }
-    primary_term = _{ precomputed_term | variable | "(" ~ term ~ ")"}
+    primary_term = _{ precomputed_term | variable | unary_function | "(" ~ term ~ ")"}
 
 predicate = { symbol ~ "/" ~ arity }
 predicate_eoi = _{ predicate ~ EOI }

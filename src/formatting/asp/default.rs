@@ -5,7 +5,7 @@ use {
             asp::{
                 Atom, AtomicFormula, BinaryOperator, Body, Comparison, ConditionalBody,
                 ConditionalHead, ConditionalLiteral, Head, Literal, PrecomputedTerm, Predicate,
-                Program, Relation, Rule, Sign, Term, UnaryOperator, Variable,
+                Program, Relation, Rule, Sign, Term, UnaryFunction, UnaryOperator, Variable,
             },
             Node,
         },
@@ -36,6 +36,7 @@ impl Display for Format<'_, UnaryOperator> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self.0 {
             UnaryOperator::Negative => write!(f, "-"),
+            UnaryOperator::AbsoluteValue => write!(f, "#abs"),
         }
     }
 }
@@ -56,25 +57,29 @@ impl Display for Format<'_, BinaryOperator> {
 impl Precedence for Format<'_, Term> {
     fn precedence(&self) -> usize {
         match self.0 {
-            Term::PrecomputedTerm(PrecomputedTerm::Numeral(1..)) => 1,
+            Term::UnaryOperation {
+                op: UnaryOperator::AbsoluteValue,
+                ..
+            } => 0,
+            Term::PrecomputedTerm(PrecomputedTerm::Numeral(1..)) => 2,
             Term::UnaryOperation {
                 op: UnaryOperator::Negative,
                 ..
             }
             | Term::PrecomputedTerm(_)
-            | Term::Variable(_) => 0,
+            | Term::Variable(_) => 1,
             Term::BinaryOperation {
                 op: BinaryOperator::Multiply | BinaryOperator::Divide | BinaryOperator::Modulo,
                 ..
-            } => 2,
+            } => 3,
             Term::BinaryOperation {
                 op: BinaryOperator::Add | BinaryOperator::Subtract,
                 ..
-            } => 3,
+            } => 4,
             Term::BinaryOperation {
                 op: BinaryOperator::Interval,
                 ..
-            } => 4,
+            } => 5,
         }
     }
 
@@ -91,6 +96,12 @@ impl Precedence for Format<'_, Term> {
             },
             Term::PrecomputedTerm(_) | Term::Variable(_) => unreachable!(),
         }
+    }
+}
+
+impl Display for Format<'_, UnaryFunction> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "{}({})", Format(&self.0.op), Format(&self.0.arg))
     }
 }
 

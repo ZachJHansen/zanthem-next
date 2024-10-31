@@ -34,6 +34,9 @@ pub fn main() -> Result<()> {
                 }
             }
 
+            let func: asp::Term = "#abs(1)".parse().unwrap();
+            println!("{func}");
+
             Ok(())
         }
 
