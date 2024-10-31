@@ -3,7 +3,7 @@ use crate::{
         asp::{self, ConditionalHead},
         fol::{self, Guard},
     },
-    translating::tau_star::basics::choose_fresh_variable_names,
+    translating::asp_to_ht::basics::choose_fresh_variable_names,
 };
 
 use super::{val_agc, val_original, Version};
@@ -19,7 +19,7 @@ fn tau_b_first_order_literal(
     let atom = l.atom;
     let terms = atom.terms;
     let arity = terms.len();
-    let varnames = choose_fresh_variable_names(&taken_vars, "Z", arity);
+    let varnames = choose_fresh_variable_names(taken_vars, "Z", arity);
 
     // Compute val_t1(Z1) & val_t2(Z2) & ... & val_tk(Zk)
     let mut var_terms: Vec<fol::GeneralTerm> = Vec::with_capacity(arity);
@@ -138,7 +138,7 @@ fn tau_b_comparison(
     v: Version,
     taken_vars: &mut IndexSet<fol::Variable>,
 ) -> fol::Formula {
-    let varnames = choose_fresh_variable_names(&taken_vars, "Z", 2);
+    let varnames = choose_fresh_variable_names(taken_vars, "Z", 2);
 
     // Compute val_t1(Z1) & val_t2(Z2)
     let term_z1 = fol::GeneralTerm::Variable(varnames[0].clone());
@@ -270,7 +270,7 @@ mod tests {
     use indexmap::IndexSet;
 
     use super::{tau_b, tau_b_cl};
-    use crate::{syntax_tree::asp, translating::tau_star::Version};
+    use crate::{syntax_tree::asp, translating::asp_to_ht::Version};
 
     #[test]
     fn test_tau_b_original() {

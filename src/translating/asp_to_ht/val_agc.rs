@@ -5,7 +5,7 @@ use crate::{
         asp::{self, PrecomputedTerm, Term},
         fol::{self, Formula, GeneralTerm, Guard, IntegerTerm, Quantification, Quantifier, Sort},
     },
-    translating::tau_star::basics::{
+    translating::asp_to_ht::basics::{
         choose_fresh_ijk, construct_equality_formula, construct_interval_formula,
         construct_total_function_formula, variable_to_general_term,
     },
@@ -113,10 +113,10 @@ fn division_helper_f2(
 
     // I * J >= 0
     let ij_geq_zero = Formula::AtomicFormula(fol::AtomicFormula::Comparison(fol::Comparison {
-        term: i_times_j.clone().into(),
+        term: i_times_j.clone(),
         guards: vec![Guard {
             relation: fol::Relation::GreaterEqual,
-            term: GeneralTerm::IntegerTerm(IntegerTerm::Numeral(0)).into(),
+            term: GeneralTerm::IntegerTerm(IntegerTerm::Numeral(0)),
         }],
     }));
 
@@ -131,10 +131,10 @@ fn division_helper_f2(
 
     // I * J < 0
     let ij_less_zero = Formula::AtomicFormula(fol::AtomicFormula::Comparison(fol::Comparison {
-        term: i_times_j.into(),
+        term: i_times_j,
         guards: vec![Guard {
             relation: fol::Relation::Less,
-            term: GeneralTerm::IntegerTerm(IntegerTerm::Numeral(0)).into(),
+            term: GeneralTerm::IntegerTerm(IntegerTerm::Numeral(0)),
         }],
     }));
 
@@ -145,7 +145,7 @@ fn division_helper_f2(
             relation: fol::Relation::Equal,
             term: GeneralTerm::IntegerTerm(IntegerTerm::UnaryOperation {
                 op: fol::UnaryOperator::Negative,
-                arg: IntegerTerm::Variable(k.name.into()).into(),
+                arg: IntegerTerm::Variable(k.name).into(),
             }),
         }],
     }));
@@ -183,19 +183,19 @@ fn division_helper_f3(
 
     // I * J >= 0
     let ij_geq_zero = Formula::AtomicFormula(fol::AtomicFormula::Comparison(fol::Comparison {
-        term: i_times_j.clone().into(),
+        term: i_times_j.clone(),
         guards: vec![Guard {
             relation: fol::Relation::GreaterEqual,
-            term: GeneralTerm::IntegerTerm(IntegerTerm::Numeral(0)).into(),
+            term: GeneralTerm::IntegerTerm(IntegerTerm::Numeral(0)),
         }],
     }));
 
     // I * J < 0
     let ij_less_zero = Formula::AtomicFormula(fol::AtomicFormula::Comparison(fol::Comparison {
-        term: i_times_j.into(),
+        term: i_times_j,
         guards: vec![Guard {
             relation: fol::Relation::Less,
-            term: GeneralTerm::IntegerTerm(IntegerTerm::Numeral(0)).into(),
+            term: GeneralTerm::IntegerTerm(IntegerTerm::Numeral(0)),
         }],
     }));
 
@@ -291,8 +291,7 @@ pub(crate) fn val(
     z: fol::Variable,
     taken_variables: IndexSet<fol::Variable>,
 ) -> Formula {
-    let mut taken_variables: IndexSet<fol::Variable> =
-        IndexSet::from_iter(taken_variables.into_iter());
+    let mut taken_variables: IndexSet<fol::Variable> = IndexSet::from_iter(taken_variables);
     taken_variables.insert(z.clone());
     for var in t.variables().iter() {
         taken_variables.insert(fol::Variable {

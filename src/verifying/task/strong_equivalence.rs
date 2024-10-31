@@ -4,11 +4,11 @@ use {
         convenience::with_warnings::{Result, WithWarnings},
         syntax_tree::{asp, fol},
         translating::{
-            gamma::{self, gamma},
-            tau_star::{
+            asp_to_ht::{
                 tau_star,
                 Version::{AbstractGringoCompliant, Original},
             },
+            gamma::{self, gamma},
         },
         verifying::{
             problem::{AnnotatedFormula, Problem, Role},

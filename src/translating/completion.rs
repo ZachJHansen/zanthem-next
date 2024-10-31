@@ -168,8 +168,8 @@ mod tests {
     use crate::{
         syntax_tree::fol,
         translating::{
+            asp_to_ht::{tau_star::tau_star, Version},
             completion::completion,
-            tau_star::{tau_star::tau_star, Version},
         },
     };
 

@@ -10,11 +10,11 @@ use {
         simplifying::fol::ht::simplify,
         syntax_tree::{asp, fol},
         translating::{
-            completion::completion,
-            tau_star::{
+            asp_to_ht::{
                 tau_star,
                 Version::{AbstractGringoCompliant, Original},
             },
+            completion::completion,
         },
         verifying::{
             outline::{GeneralLemma, ProofOutline, ProofOutlineError, ProofOutlineWarning},

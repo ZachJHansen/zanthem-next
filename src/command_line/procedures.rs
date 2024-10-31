@@ -8,9 +8,9 @@ use {
         simplifying::fol::ht::{simplify, simplify_shallow},
         syntax_tree::{asp, fol, Node as _},
         translating::{
+            asp_to_ht::{tau_star, Version},
             completion::completion,
             gamma::gamma,
-            tau_star::{tau_star, Version},
         },
         verifying::{
             prover::{vampire::Vampire, Prover, Report, Status, Success},

@@ -1,6 +1,6 @@
 use crate::{
     syntax_tree::{asp, fol},
-    translating::tau_star::{
+    translating::asp_to_ht::{
         basics::choose_fresh_global_variables, tau_b_cl::tau_body, val_original, Version,
     },
 };

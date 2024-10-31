@@ -5,7 +5,7 @@ use crate::{
         asp,
         fol::{self, Guard},
     },
-    translating::tau_star::basics::{
+    translating::asp_to_ht::basics::{
         choose_fresh_ijk, choose_fresh_variable_names, construct_equality_formula,
         construct_interval_formula, construct_total_function_formula,
     },
