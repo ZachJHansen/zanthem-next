@@ -400,6 +400,9 @@ mod tests {
     fn asp_program_parse_and_format() {
         for string in [
             "p(X) :- q(X).\n",
+            "p(Y) :- Y = 1..|-5 + 3|.\n",
+            "q :- p, not not q.\n",
+            "p(|Y + 1|) :- src(Y), Y < -|-1|.\n",
         ] {
             let program: asp::Program = string.parse().unwrap();
             assert_eq!(
