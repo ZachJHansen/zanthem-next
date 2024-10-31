@@ -283,7 +283,8 @@ mod tests {
         ("not p(X,5)", "exists Z Z1 (Z = X and Z1 = 5 and not p(Z,Z1))"),
         ("not p(X,0-5)", "exists Z Z1 (Z = X and exists I$i J$i (Z1 = I$i - J$i and I$i = 0 and J$i = 5) and not p(Z,Z1))"),
         ("p(X,-1..5)", "exists Z Z1 (Z = X and exists I$i J$i K$i (I$i = -1 and J$i = 5 and Z1 = K$i and I$i <= K$i <= J$i) and p(Z,Z1))"),
-        ("p(X,-(1..5))", "exists Z Z1 (Z = X and exists I$i J$i (Z1 = I$i - J$i and I$i = 0 and exists I$i J1$i K$i (I$i = 1 and J1$i = 5  and J$i = K$i and I$i <= K$i <= J1$i)) and p(Z,Z1))")
+        ("p(X,-(1..5))", "exists Z Z1 (Z = X and exists I$i J$i (Z1 = I$i - J$i and I$i = 0 and exists I$i J1$i K$i (I$i = 1 and J1$i = 5  and J$i = K$i and I$i <= K$i <= J1$i)) and p(Z,Z1))"),
+        ("p(1/0)", "exists Z (exists I$i J$i Q$i R$i (I$i = J$i * Q$i + R$i and (I$i = 1 and J$i = 0) and (J$i != 0 and R$i >= 0 and R$i < J$i) and Z$g = Q$i) and p(Z))"),
     ] {
         let left = tau_b(src.parse().unwrap(), Version::Original);
         let right = target.parse().unwrap();
@@ -296,19 +297,55 @@ mod tests {
     }
 
     #[test]
+    fn test_tau_b_agc() {
+        for (src, target) in [
+            ("p(t)", "exists Z (Z = t and p(Z))"),
+            ("not p(t)", "exists Z (Z = t and not p(Z))"),
+            ("X < 1..5", "exists Z Z1 (Z = X and exists I$i J$i K$i (I$i = 1 and J$i = 5 and Z1 = K$i and I$i <= K$i <= J$i) and Z < Z1)"),
+            ("not not p(t)", "exists Z (Z = t and not not p(Z))"),
+            ("not not x", "not not x"),
+            ("not p(X,5)", "exists Z Z1 (Z = X and Z1 = 5 and not p(Z,Z1))"),
+            ("not p(X,0-5)", "exists Z Z1 (Z = X and exists I$i J$i (Z1 = I$i - J$i and I$i = 0 and J$i = 5) and not p(Z,Z1))"),
+            ("p(X,-1..5)", "exists Z Z1 (Z = X and exists I$i J$i K$i (I$i = -1 and J$i = 5 and Z1 = K$i and I$i <= K$i <= J$i) and p(Z,Z1))"),
+            ("p(X,-(1..5))", "exists Z Z1 (Z = X and exists I$i J$i (Z1 = I$i - J$i and I$i = 0 and exists I1$i J1$i K1$i (I1$i = 1 and J1$i = 5  and J$i = K1$i and I1$i <= K1$i <= J1$i)) and p(Z,Z1))"),
+            ("p(1/0)", "exists Z (exists I$i J$i K$i (I$i = 1 and J$i = 0 and (K$i * |J$i| <= |I$i| < (K$i+1) * |J$i|) and ((I$i * J$i >= 0 and Z = K$i) or (I$i*J$i < 0 and Z = -K$i)) ) and p(Z))"),
+        ] {
+            let left = tau_b(src.parse().unwrap(), Version::AbstractGringoCompliant);
+            let right = target.parse().unwrap();
+
+            assert!(
+                left == right,
+                "assertion `left == right` failed:\n left:\n{left}\n right:\n{right}"
+            );
+        }
+    }
+
+    #[test]
     fn test_tau_b_cl_original() {
         for (src, target) in [
-        (("q(X)", IndexSet::from_iter(vec![asp::Variable("X".to_string())])), "exists Z (Z = X and q(Z))"),
-        (("not asg(V,I) : color(I)", IndexSet::from_iter(vec![asp::Variable("V".to_string())])), "forall I (exists Z (Z = I and color(Z)) -> exists Z Z1 (Z = V and Z1 = I and not asg(Z, Z1)))"),
-        (("#false : p(X,Y), q(Y)", IndexSet::from_iter(vec![asp::Variable("X".to_string()), asp::Variable("Y".to_string()),])), "(exists Z Z1 (Z = X and Z1 = Y and p(Z,Z1)) and exists Z (Z = Y and q(Z))) -> #false"),
-    ] {
-        let src = tau_b_cl(src.0.parse().unwrap(), Version::Original, &src.1);
-        let target = target.parse().unwrap();
-        assert_eq!(
-            src,
-            target,
-            "{src} != {target}"
-        )
-    }
+            (("q(X)", IndexSet::from_iter(vec![asp::Variable("X".to_string())])), "exists Z (Z = X and q(Z))"),
+            (("not asg(V,I) : color(I)", IndexSet::from_iter(vec![asp::Variable("V".to_string())])), "forall I (exists Z (Z = I and color(Z)) -> exists Z Z1 (Z = V and Z1 = I and not asg(Z, Z1)))"),
+            (("#false : p(X,Y), q(Y)", IndexSet::from_iter(vec![asp::Variable("X".to_string()), asp::Variable("Y".to_string()),])), "(exists Z Z1 (Z = X and Z1 = Y and p(Z,Z1)) and exists Z (Z = Y and q(Z))) -> #false"),
+        ] {
+            let src = tau_b_cl(src.0.parse().unwrap(), Version::Original, &src.1);
+            let target = target.parse().unwrap();
+            assert_eq!(
+                src,
+                target,
+                "{src} != {target}"
+            )
+        }
+
+        for (src, target) in [
+            (("p(X,Y) : not q(X/Y)", IndexSet::from_iter(vec![asp::Variable("X".to_string())])), "forall Y (exists Z (exists I$i J$i K$i (I$i = X and J$i = Y and (K$i * |J$i| <= |I$i| < (K$i+1) * |J$i|) and ((I$i * J$i >= 0 and Z = K$i) or (I$i*J$i < 0 and Z = -K$i)) ) and not q(Z)) -> exists Z Z1 (Z = X and Z1 = Y and p(Z, Z1)))"),
+        ] {
+            let src = tau_b_cl(src.0.parse().unwrap(), Version::AbstractGringoCompliant, &src.1);
+            let target = target.parse().unwrap();
+            assert_eq!(
+                src,
+                target,
+                "{src} != {target}"
+            )
+        }
     }
 }
