@@ -98,7 +98,6 @@ impl Display for Format<'_, Term> {
             Term::UnaryOperation {
                 op: UnaryOperator::Negative,
                 arg,
-                ..
             } => self.fmt_unary(Format(arg.as_ref()), f),
             Term::UnaryOperation {
                 op: UnaryOperator::AbsoluteValue,

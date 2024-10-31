@@ -21,7 +21,7 @@ impl Display for Format<'_, UnaryOperator> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self.0 {
             UnaryOperator::Negative => write!(f, "-"),
-            UnaryOperator::AbsoluteValue => write!(f, "#abs"),
+            UnaryOperator::AbsoluteValue => write!(f, "|"),
         }
     }
 }
@@ -41,26 +41,19 @@ impl Format<'_, IntegerTerm> {}
 impl Precedence for Format<'_, IntegerTerm> {
     fn precedence(&self) -> usize {
         match self.0 {
-            IntegerTerm::UnaryOperation {
-                op: UnaryOperator::AbsoluteValue,
-                ..
-            } => 0,
-            IntegerTerm::Numeral(1..) => 2,
-            IntegerTerm::UnaryOperation {
-                op: UnaryOperator::Negative,
-                ..
-            }
+            IntegerTerm::Numeral(1..) => 1,
+            IntegerTerm::UnaryOperation { .. }
             | IntegerTerm::Numeral(_)
             | IntegerTerm::FunctionConstant(_)
-            | IntegerTerm::Variable(_) => 1,
+            | IntegerTerm::Variable(_) => 0,
             IntegerTerm::BinaryOperation {
                 op: BinaryOperator::Multiply,
                 ..
-            } => 3,
+            } => 2,
             IntegerTerm::BinaryOperation {
                 op: BinaryOperator::Add | BinaryOperator::Subtract,
                 ..
-            } => 4,
+            } => 3,
         }
     }
 
@@ -85,7 +78,20 @@ impl Display for Format<'_, IntegerTerm> {
             IntegerTerm::Numeral(n) => write!(f, "{n}"),
             IntegerTerm::FunctionConstant(c) => write!(f, "{c}$i"),
             IntegerTerm::Variable(v) => write!(f, "{v}$i"),
-            IntegerTerm::UnaryOperation { arg, .. } => self.fmt_unary(Format(arg.as_ref()), f),
+            IntegerTerm::UnaryOperation {
+                op: UnaryOperator::Negative,
+                arg,
+            } => self.fmt_unary(Format(arg.as_ref()), f),
+            IntegerTerm::UnaryOperation {
+                op: UnaryOperator::AbsoluteValue,
+                arg,
+            } => write!(
+                f,
+                "{}{}{}",
+                Format(&UnaryOperator::AbsoluteValue),
+                Format(arg.as_ref()),
+                Format(&UnaryOperator::AbsoluteValue)
+            ),
             IntegerTerm::BinaryOperation { lhs, rhs, .. } => {
                 self.fmt_binary(Format(lhs.as_ref()), Format(rhs.as_ref()), f)
             }
@@ -464,7 +470,7 @@ mod tests {
                 arg: IntegerTerm::Numeral(-1).into()
             })
             .to_string(),
-            "#abs(-1)"
+            "|-1|"
         );
         assert_eq!(
             Format(&IntegerTerm::UnaryOperation {
@@ -477,7 +483,7 @@ mod tests {
                 .into()
             })
             .to_string(),
-            "#abs(A$i + 42)"
+            "|A$i + 42|"
         );
     }
 
