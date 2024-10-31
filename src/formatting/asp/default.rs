@@ -5,7 +5,7 @@ use {
             asp::{
                 Atom, AtomicFormula, BinaryOperator, Body, Comparison, ConditionalBody,
                 ConditionalHead, ConditionalLiteral, Head, Literal, PrecomputedTerm, Predicate,
-                Program, Relation, Rule, Sign, Term, UnaryFunction, UnaryOperator, Variable,
+                Program, Relation, Rule, Sign, Term, UnaryOperator, Variable,
             },
             Node,
         },
@@ -96,12 +96,6 @@ impl Precedence for Format<'_, Term> {
             },
             Term::PrecomputedTerm(_) | Term::Variable(_) => unreachable!(),
         }
-    }
-}
-
-impl Display for Format<'_, UnaryFunction> {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "{}({})", Format(&self.0.op), Format(&self.0.arg))
     }
 }
 

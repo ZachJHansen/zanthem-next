@@ -5,8 +5,7 @@ use {
             AtomParser, AtomicFormulaParser, BinaryOperatorParser, BodyParser, ComparisonParser,
             ConditionalBodyParser, ConditionalHeadParser, ConditionalLiteralParser, HeadParser,
             LiteralParser, PrecomputedTermParser, PredicateParser, ProgramParser, RelationParser,
-            RuleParser, SignParser, TermParser, UnaryFunctionParser, UnaryOperatorParser,
-            VariableParser,
+            RuleParser, SignParser, TermParser, UnaryOperatorParser, VariableParser,
         },
         syntax_tree::{impl_node, Node},
     },
@@ -47,14 +46,6 @@ pub enum UnaryOperator {
 }
 
 impl_node!(UnaryOperator, Format, UnaryOperatorParser);
-
-#[derive(Clone, Debug, Eq, PartialEq, Hash)]
-pub struct UnaryFunction {
-    pub op: UnaryOperator,
-    pub arg: Term,
-}
-
-impl_node!(UnaryFunction, Format, UnaryFunctionParser);
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub enum BinaryOperator {
