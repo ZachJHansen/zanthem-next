@@ -7,7 +7,11 @@ use {
         },
         simplifying::fol::ht::{simplify, simplify_shallow},
         syntax_tree::{asp, fol, Node as _},
-        translating::{completion::completion, gamma::gamma, tau_star::tau_star},
+        translating::{
+            completion::completion,
+            gamma::gamma,
+            tau_star::{tau_star, Version},
+        },
         verifying::{
             prover::{vampire::Vampire, Prover, Report, Status, Success},
             task::{
@@ -206,10 +210,16 @@ pub fn main() -> Result<()> {
                     print!("{gamma_theory}")
                 }
 
-                Translation::TauStar => {
+                Translation::TauStarV1 | Translation::TauStarV2 => {
                     let program =
                         input.map_or_else(asp::Program::from_stdin, asp::Program::from_file)?;
-                    let theory = tau_star(program);
+                    let theory = match with {
+                        Translation::TauStarV1 => tau_star::tau_star(program, Version::Original),
+                        Translation::TauStarV2 => {
+                            tau_star::tau_star(program, Version::AbstractGringoCompliant)
+                        }
+                        _ => unreachable!(),
+                    };
                     print!("{theory}")
                 }
             }
@@ -219,6 +229,7 @@ pub fn main() -> Result<()> {
 
         Command::Verify {
             equivalence,
+            formula_representation,
             task_decomposition,
             direction,
             bypass_tightness,
@@ -255,6 +266,7 @@ pub fn main() -> Result<()> {
                     )?,
                     task_decomposition,
                     direction,
+                    formula_representation,
                     simplify: !no_simplify,
                     break_equivalences: !no_eq_break,
                 }
@@ -282,6 +294,7 @@ pub fn main() -> Result<()> {
                         .proof_outline()
                         .map(fol::Specification::from_file)
                         .unwrap_or_else(|| Ok(fol::Specification::empty()))?,
+                    formula_representation,
                     task_decomposition,
                     direction,
                     bypass_tightness,

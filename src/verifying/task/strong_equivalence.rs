@@ -1,11 +1,14 @@
 use {
     crate::{
-        command_line::arguments::TaskDecomposition,
+        command_line::arguments::{FormulaRepresentation, TaskDecomposition},
         convenience::with_warnings::{Result, WithWarnings},
         syntax_tree::{asp, fol},
         translating::{
             gamma::{self, gamma},
-            tau_star::tau_star,
+            tau_star::{
+                tau_star,
+                Version::{AbstractGringoCompliant, Original},
+            },
         },
         verifying::{
             problem::{AnnotatedFormula, Problem, Role},
@@ -22,6 +25,7 @@ pub enum StrongEquivalenceTaskError {}
 pub struct StrongEquivalenceTask {
     pub left: asp::Program,
     pub right: asp::Program,
+    pub formula_representation: FormulaRepresentation,
     pub task_decomposition: TaskDecomposition,
     pub direction: fol::Direction,
     pub simplify: bool,
@@ -62,8 +66,13 @@ impl Task for StrongEquivalenceTask {
     fn decompose(self) -> Result<Vec<Problem>, Self::Warning, Self::Error> {
         let transition_axioms = self.transition_axioms(); // These are the "forall X (hp(X) -> tp(X))" axioms.
 
-        let mut left = tau_star(self.left);
-        let mut right = tau_star(self.right);
+        let version = match self.formula_representation {
+            FormulaRepresentation::TauStarV1 => Original,
+            FormulaRepresentation::TauStarV2 => AbstractGringoCompliant,
+        };
+
+        let mut left = tau_star::tau_star(self.left, version);
+        let mut right = tau_star::tau_star(self.right, version);
 
         if self.simplify {
             left = crate::simplifying::fol::ht::simplify(left);

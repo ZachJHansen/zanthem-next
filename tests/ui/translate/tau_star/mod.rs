@@ -20,7 +20,7 @@ fn translate_examples() {
         let assert = cmd
             .arg("translate")
             .arg("--with")
-            .arg("tau-star")
+            .arg("tau-star-v1")
             .arg(program)
             .assert();
 

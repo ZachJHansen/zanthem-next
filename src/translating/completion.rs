@@ -167,7 +167,10 @@ enum Component {
 mod tests {
     use crate::{
         syntax_tree::fol,
-        translating::{completion::completion, tau_star::tau_star},
+        translating::{
+            completion::completion,
+            tau_star::{tau_star::tau_star, Version},
+        },
     };
 
     #[test]
@@ -183,7 +186,7 @@ mod tests {
             ("p(X) :- q(X, Y).", "forall V1 (p(V1) <-> exists X Y (V1 = X and exists Z Z1 (Z = X and Z1 = Y and q(Z, Z1))))."),
             (":- s(X, I), not covered(X).", "forall X I (exists Z Z1 (Z = X and Z1 = I and s(Z, Z1)) and exists Z (Z = X and not covered(Z)) -> #false)."),
         ] {
-            let left = completion(tau_star(src.parse().unwrap())).unwrap();
+            let left = completion(tau_star(src.parse().unwrap(), Version::Original)).unwrap();
             let right = target.parse().unwrap();
 
             assert!(

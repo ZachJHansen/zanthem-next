@@ -93,6 +93,10 @@ pub enum Command {
         #[arg(long, value_enum)]
         equivalence: Equivalence,
 
+        /// The ASP-to-HT translation to use
+        #[arg(long, value_enum)]
+        formula_representation: FormulaRepresentation,
+
         /// The decomposition strategy to use
         #[arg(long, value_enum, default_value_t)]
         task_decomposition: TaskDecomposition,
@@ -163,7 +167,14 @@ pub enum Simplification {
 pub enum Translation {
     Completion,
     Gamma,
-    TauStar,
+    TauStarV1,
+    TauStarV2,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
+pub enum FormulaRepresentation {
+    TauStarV1,
+    TauStarV2,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
