@@ -84,38 +84,6 @@ impl PestParser for UnaryOperatorParser {
     }
 }
 
-// pub struct UnaryFunctionParser;
-
-// impl PestParser for UnaryFunctionParser {
-//     type Node = UnaryFunction;
-
-//     type InternalParser = internal::Parser;
-//     type Rule = internal::Rule;
-//     const RULE: internal::Rule = internal::Rule::unary_function_eoi;
-
-//     fn translate_pair(pair: pest::iterators::Pair<'_, Self::Rule>) -> Self::Node {
-//         let mut pairs = pair.into_inner();
-
-//         let op = match pairs.next() {
-//             Some(pair) if pair.as_rule() == internal::Rule::absolute_value => {
-//                 UnaryOperator::AbsoluteValue
-//             }
-//             Some(pair) => Self::report_unexpected_pair(pair),
-//             None => Self::report_missing_pair(),
-//         };
-
-//         let arg = match pairs.next() {
-//             Some(pair) if pair.as_rule() == internal::Rule::term => {
-//                 TermParser::translate_pair(pair)
-//             }
-//             Some(pair) => Self::report_unexpected_pair(pair),
-//             None => Self::report_missing_pair(),
-//         };
-
-//         UnaryFunction { op, arg }
-//     }
-// }
-
 pub struct BinaryOperatorParser;
 
 impl PestParser for BinaryOperatorParser {

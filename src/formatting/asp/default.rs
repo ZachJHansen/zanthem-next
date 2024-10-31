@@ -36,7 +36,7 @@ impl Display for Format<'_, UnaryOperator> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self.0 {
             UnaryOperator::Negative => write!(f, "-"),
-            UnaryOperator::AbsoluteValue => write!(f, "#abs"),
+            UnaryOperator::AbsoluteValue => write!(f, "|"),
         }
     }
 }
@@ -57,29 +57,20 @@ impl Display for Format<'_, BinaryOperator> {
 impl Precedence for Format<'_, Term> {
     fn precedence(&self) -> usize {
         match self.0 {
-            Term::UnaryOperation {
-                op: UnaryOperator::AbsoluteValue,
-                ..
-            } => 0,
-            Term::PrecomputedTerm(PrecomputedTerm::Numeral(1..)) => 2,
-            Term::UnaryOperation {
-                op: UnaryOperator::Negative,
-                ..
-            }
-            | Term::PrecomputedTerm(_)
-            | Term::Variable(_) => 1,
+            Term::PrecomputedTerm(PrecomputedTerm::Numeral(1..)) => 1,
+            Term::UnaryOperation { .. } | Term::PrecomputedTerm(_) | Term::Variable(_) => 0,
             Term::BinaryOperation {
                 op: BinaryOperator::Multiply | BinaryOperator::Divide | BinaryOperator::Modulo,
                 ..
-            } => 3,
+            } => 2,
             Term::BinaryOperation {
                 op: BinaryOperator::Add | BinaryOperator::Subtract,
                 ..
-            } => 4,
+            } => 3,
             Term::BinaryOperation {
                 op: BinaryOperator::Interval,
                 ..
-            } => 5,
+            } => 4,
         }
     }
 
@@ -104,7 +95,21 @@ impl Display for Format<'_, Term> {
         match self.0 {
             Term::PrecomputedTerm(c) => Format(c).fmt(f),
             Term::Variable(v) => Format(v).fmt(f),
-            Term::UnaryOperation { arg, .. } => self.fmt_unary(Format(arg.as_ref()), f),
+            Term::UnaryOperation {
+                op: UnaryOperator::Negative,
+                arg,
+                ..
+            } => self.fmt_unary(Format(arg.as_ref()), f),
+            Term::UnaryOperation {
+                op: UnaryOperator::AbsoluteValue,
+                arg,
+            } => write!(
+                f,
+                "{}{}{}",
+                Format(&UnaryOperator::AbsoluteValue),
+                Format(arg.as_ref()),
+                Format(&UnaryOperator::AbsoluteValue)
+            ),
             Term::BinaryOperation { lhs, rhs, .. } => {
                 self.fmt_binary(Format(lhs.as_ref()), Format(rhs.as_ref()), f)
             }
@@ -322,6 +327,15 @@ mod tests {
         assert_eq!(
             Format(&Term::Variable(Variable("A".into()))).to_string(),
             "A"
+        );
+
+        assert_eq!(
+            Format(&Term::UnaryOperation {
+                op: UnaryOperator::AbsoluteValue,
+                arg: Term::PrecomputedTerm(PrecomputedTerm::Numeral(1)).into(),
+            })
+            .to_string(),
+            "|1|"
         );
 
         assert_eq!(
