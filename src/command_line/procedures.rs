@@ -390,3 +390,23 @@ pub fn main() -> Result<()> {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+
+    use crate::syntax_tree::asp;
+
+    #[test]
+    fn asp_program_parse_and_format() {
+        for string in [
+            "p(X) :- q(X).\n",
+        ] {
+            let program: asp::Program = string.parse().unwrap();
+            assert_eq!(
+                string,
+                format!("{program}"),
+                "assertion `left == right` failed:\n left:\n{string}\n right:\n{program}"
+            );
+        }
+    }
+}
