@@ -17,7 +17,7 @@ fn tau_star_fo_head_rule(r: &asp::Rule, v: Version, globals: &[String]) -> fol::
     let head_arity = r.head.arity(); // n
     let fvars = &globals[0..head_arity]; // V, |V| = n
     let mut gvars = Vec::<fol::Variable>::new(); // G
-    for var in r.variables().iter() {
+    for var in r.global_variables().iter() {
         gvars.push(fol::Variable {
             sort: fol::Sort::General,
             name: var.to_string(),
@@ -159,7 +159,7 @@ fn tau_star_prop_head_rule(r: &asp::Rule, v: Version) -> fol::Formula {
 // Handles the case when we have a rule with an empty head
 fn tau_star_constraint_rule(r: &asp::Rule, v: Version) -> fol::Formula {
     let mut gvars = Vec::<fol::Variable>::new();
-    for var in r.variables().iter() {
+    for var in r.global_variables().iter() {
         gvars.push(fol::Variable {
             sort: fol::Sort::General,
             name: var.to_string(),
@@ -222,9 +222,9 @@ mod tests {
     #[test]
     fn test_tau_star_rule_original() {
         for (src, target) in [
-        (("p(X) :- q(X,Y) : t(Y).", vec!["V".to_string()]), "forall V X Y (V = X and forall Y (exists Z (Z = Y and t(Z)) -> exists Z Z1 (Z = X and Z1 = Y and q(Z, Z1))) -> p(V))"),
-        (("p(X) :- q(X,Y) : t(Y), 1 < X; t(X).", vec!["V".to_string()]), "forall V X Y (V = X and (forall Y (exists Z (Z = Y and t(Z)) and exists Z Z1 (Z = 1 and Z1 = X and Z < Z1) -> exists Z Z1 (Z = X and Z1 = Y and q(Z, Z1))) and exists Z (Z = X and t(Z))) -> p(V))"),
-        (("p(X) :- q(X,Y) : t(Y), 1 < X, t(X).",vec!["V".to_string()]), "forall V X Y (V = X and (forall Y (exists Z (Z = Y and t(Z)) and exists Z Z1 (Z = 1 and Z1 = X and Z < Z1) and exists Z (Z = X and t(Z)) -> exists Z Z1 (Z = X and Z1 = Y and q(Z, Z1)))) -> p(V))"),
+        (("p(X) :- q(X,Y) : t(Y).", vec!["V".to_string()]), "forall V X (V = X and forall Y (exists Z (Z = Y and t(Z)) -> exists Z Z1 (Z = X and Z1 = Y and q(Z, Z1))) -> p(V))"),
+        (("p(X) :- q(X,Y) : t(Y), 1 < X; t(X).", vec!["V".to_string()]), "forall V X (V = X and (forall Y (exists Z (Z = Y and t(Z)) and exists Z Z1 (Z = 1 and Z1 = X and Z < Z1) -> exists Z Z1 (Z = X and Z1 = Y and q(Z, Z1))) and exists Z (Z = X and t(Z))) -> p(V))"),
+        (("p(X) :- q(X,Y) : t(Y), 1 < X, t(X).",vec!["V".to_string()]), "forall V X (V = X and (forall Y (exists Z (Z = Y and t(Z)) and exists Z Z1 (Z = 1 and Z1 = X and Z < Z1) and exists Z (Z = X and t(Z)) -> exists Z Z1 (Z = X and Z1 = Y and q(Z, Z1)))) -> p(V))"),
         (("p(X) :- q(X), t(X).",vec!["V".to_string()]), "forall V X (V = X and (exists Z (Z = X and q(Z)) and exists Z (Z = X and t(Z))) -> p(V))"),
         (("p(X) :- q(X); t(X).",vec!["V".to_string()]), "forall V X (V = X and (exists Z (Z = X and q(Z)) and exists Z (Z = X and t(Z))) -> p(V))"),      
         (("p :- q : t; r.", vec![]), "((t -> q) and r) -> p"),  
