@@ -1,30 +1,16 @@
 use crate::{
     syntax_tree::{asp, fol},
     translating::asp_to_ht::{
-        basics::choose_fresh_global_variables, tau_b_cl::tau_body, val_original, Version,
+        basics::choose_fresh_global_variables, tau_b_cl::tau_body, val_agc, val_original, Version,
     },
 };
 
-use super::val_agc;
-
 // Handles the case when we have a rule with a first-order atom or choice atom in the head
 fn tau_star_fo_head_rule(r: &asp::Rule, v: Version, globals: &[String]) -> fol::Formula {
-    let head_symbol = r.head.predicate().unwrap();
-    let fol_head_predicate = fol::Predicate {
-        symbol: head_symbol.symbol,
-        arity: head_symbol.arity,
-    };
-    let head_arity = r.head.arity(); // n
-    let fvars = &globals[0..head_arity]; // V, |V| = n
-    let mut gvars = Vec::<fol::Variable>::new(); // G
-    for var in r.global_variables().iter() {
-        gvars.push(fol::Variable {
-            sort: fol::Sort::General,
-            name: var.to_string(),
-        });
-    }
-
+    let fol_head_predicate = fol::Predicate::from(r.head.predicate().unwrap());
+    let fvars = &globals[0..r.head.arity()]; // V, |V| = n
     let head_terms = r.head.terms().unwrap(); // Transform p(t) into p(V)
+
     let mut new_terms = Vec::<fol::GeneralTerm>::new();
     let mut fo_vars = Vec::<fol::Variable>::new();
     for (i, _) in head_terms.iter().enumerate() {
@@ -69,41 +55,19 @@ fn tau_star_fo_head_rule(r: &asp::Rule, v: Version, globals: &[String]) -> fol::
         },
         _ => unreachable!("only atoms and choice rules are supported in this function constructor"),
     };
-    let imp = fol::Formula::BinaryFormula {
+
+    fol::Formula::BinaryFormula {
         connective: fol::BinaryConnective::Implication,
         lhs: new_body.into(),
         rhs: new_head.into(),
-    }; // val_t(V) & tau^B(Body) -> p(V) OR val_t(V) & tau^B(Body) & ~~p(V) -> p(V)
-    for var in fvars.iter() {
-        gvars.push(fol::Variable {
-            sort: fol::Sort::General,
-            name: var.to_string(),
-        });
     }
-    gvars.sort(); // TODO
-    fol::Formula::QuantifiedFormula {
-        quantification: fol::Quantification {
-            quantifier: fol::Quantifier::Forall,
-            variables: gvars,
-        },
-        formula: imp.into(),
-    } // forall G V ( val_t(V) & tau^B(Body) -> p(V) ) OR forall G V ( val_t(V) & tau^B(Body) -> p(V) )
+    .universal_closure()
+    // forall G V ( val_t(V) & tau^B(Body) -> p(V) ) OR forall G V ( val_t(V) & tau^B(Body) -> p(V) )
 }
 
 // Handles the case when we have a rule with a propositional atom or choice atom in the head
 fn tau_star_prop_head_rule(r: &asp::Rule, v: Version) -> fol::Formula {
-    let head_symbol = r.head.predicate().unwrap();
-    let fol_head_predicate = fol::Predicate {
-        symbol: head_symbol.symbol,
-        arity: head_symbol.arity,
-    };
-    let mut gvars = Vec::<fol::Variable>::new(); // G
-    for var in r.variables().iter() {
-        gvars.push(fol::Variable {
-            sort: fol::Sort::General,
-            name: var.to_string(),
-        });
-    }
+    let fol_head_predicate = fol::Predicate::from(r.head.predicate().unwrap());
     let new_head = fol::Formula::AtomicFormula(fol::AtomicFormula::Atom(fol::Atom {
         predicate_symbol: fol_head_predicate.symbol,
         terms: vec![],
@@ -135,53 +99,14 @@ fn tau_star_prop_head_rule(r: &asp::Rule, v: Version) -> fol::Formula {
         }
     };
 
-    let imp = fol::Formula::BinaryFormula {
+    fol::Formula::BinaryFormula {
         // tau^B(Body) -> p OR tau^B(Body) & ~~p -> p
         connective: fol::BinaryConnective::Implication,
         lhs: new_body.into(),
         rhs: new_head.into(),
-    };
-    gvars.sort(); // TODO
-    if !gvars.is_empty() {
-        // forall G ( tau^B(Body) -> p ) OR forall G ( tau^B(Body) & ~~p -> p )
-        fol::Formula::QuantifiedFormula {
-            quantification: fol::Quantification {
-                quantifier: fol::Quantifier::Forall,
-                variables: gvars,
-            },
-            formula: imp.into(),
-        }
-    } else {
-        imp // tau^B(Body) -> p  OR tau^B(Body) & ~~p -> p
     }
-}
-
-// Handles the case when we have a rule with an empty head
-fn tau_star_constraint_rule(r: &asp::Rule, v: Version) -> fol::Formula {
-    let mut gvars = Vec::<fol::Variable>::new();
-    for var in r.global_variables().iter() {
-        gvars.push(fol::Variable {
-            sort: fol::Sort::General,
-            name: var.to_string(),
-        });
-    }
-    let imp = fol::Formula::BinaryFormula {
-        connective: fol::BinaryConnective::Implication,
-        lhs: tau_body(r.body.clone(), v, r.global_variables()).into(),
-        rhs: fol::Formula::AtomicFormula(fol::AtomicFormula::Falsity).into(),
-    }; // tau^B(Body) -> \bot
-    gvars.sort(); // TODO
-    if !gvars.is_empty() {
-        fol::Formula::QuantifiedFormula {
-            quantification: fol::Quantification {
-                quantifier: fol::Quantifier::Forall,
-                variables: gvars,
-            },
-            formula: imp.into(),
-        } // forall G ( tau^B(Body) -> \bot )
-    } else {
-        imp
-    } // tau^B(Body) -> \bot
+    .universal_closure()
+    // forall G ( tau^B(Body) -> p ) OR forall G ( tau^B(Body) & ~~p -> p )
 }
 
 // Translate a rule using a pre-defined list of global variables
@@ -196,7 +121,13 @@ fn tau_star_rule(r: &asp::Rule, v: Version, globals: &[String]) -> fol::Formula 
                 tau_star_prop_head_rule(r, v)
             }
         }
-        None => tau_star_constraint_rule(r, v),
+        // Handles the case when we have a rule with an empty head
+        None => fol::Formula::BinaryFormula {
+            connective: fol::BinaryConnective::Implication,
+            lhs: tau_body(r.body.clone(), v, r.global_variables()).into(),
+            rhs: fol::Formula::AtomicFormula(fol::AtomicFormula::Falsity).into(),
+        }
+        .universal_closure(),
     }
 }
 
@@ -227,6 +158,7 @@ mod tests {
         (("p(X) :- q(X,Y) : t(Y), 1 < X, t(X).",vec!["V".to_string()]), "forall V X (V = X and (forall Y (exists Z (Z = Y and t(Z)) and exists Z Z1 (Z = 1 and Z1 = X and Z < Z1) and exists Z (Z = X and t(Z)) -> exists Z Z1 (Z = X and Z1 = Y and q(Z, Z1)))) -> p(V))"),
         (("p(X) :- q(X), t(X).",vec!["V".to_string()]), "forall V X (V = X and (exists Z (Z = X and q(Z)) and exists Z (Z = X and t(Z))) -> p(V))"),
         (("p(X) :- q(X); t(X).",vec!["V".to_string()]), "forall V X (V = X and (exists Z (Z = X and q(Z)) and exists Z (Z = X and t(Z))) -> p(V))"),      
+        (("p :- q(X).", vec![]), "forall X ( exists Z (Z = X and q(Z)) -> p)"), 
         (("p :- q : t; r.", vec![]), "((t -> q) and r) -> p"),  
         (("p :- q : t, r.", vec![]), "(t and r -> q) -> p"),  
         (("p :- s, q : t, r.", vec![]), "(s and (t and r -> q)) -> p"),
