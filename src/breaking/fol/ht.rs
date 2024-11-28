@@ -15,6 +15,7 @@ pub fn break_equivalences_annotated_formula(annotated_formula: AnnotatedFormula)
             .map(|(i, formula)| AnnotatedFormula {
                 role: annotated_formula.role,
                 direction: annotated_formula.direction,
+                forgotten: annotated_formula.forgotten.clone(),
                 name: format!("{}_{}", annotated_formula.name, i),
                 formula,
             })

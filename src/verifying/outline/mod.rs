@@ -43,12 +43,14 @@ impl TryFrom<fol::AnnotatedFormula> for GeneralLemma {
                 let base_annotated = fol::AnnotatedFormula {
                     role: fol::Role::Lemma,
                     direction: annotated_formula.direction,
+                    forgotten: annotated_formula.forgotten.clone(),
                     name: format!("{}base_case", annotated_formula.name),
                     formula: base,
                 };
                 let step_annotated = fol::AnnotatedFormula {
                     role: fol::Role::Lemma,
                     direction: annotated_formula.direction,
+                    forgotten: annotated_formula.forgotten.clone(),
                     name: format!("{}inductive_step", annotated_formula.name),
                     formula: step,
                 };

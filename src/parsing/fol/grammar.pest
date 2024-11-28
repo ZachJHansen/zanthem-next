@@ -121,7 +121,9 @@ direction_eoi = _{ direction ~ EOI }
     forward   = { "forward" }
     backward  = { "backward" }
 
-annotated_formula = { role ~ ("(" ~ direction ~ ")")? ~ ("[" ~ symbolic_constant ~ "]")? ~ ":" ~ formula }
+forgetting_tuple = { "<" ~ (symbolic_constant ~ ("," ~ symbolic_constant)*)? ~ ">" }
+
+annotated_formula = { role ~ ("(" ~ direction ~ ")")? ~ ("[" ~ symbolic_constant ~ "]")? ~ forgetting_tuple? ~ ":" ~ formula }
 annotated_formula_eoi = _{ annotated_formula ~ EOI }
 
 specification = { (annotated_formula ~ ".")* }

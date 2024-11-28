@@ -962,6 +962,7 @@ pub struct AnnotatedFormula {
     pub role: Role,
     pub direction: Direction,
     pub name: String,
+    pub forgotten: Vec<String>,
     pub formula: Formula,
 }
 
@@ -995,6 +996,7 @@ impl AnnotatedFormula {
             role: self.role,
             direction: self.direction,
             name: self.name.clone(),
+            forgotten: self.forgotten.clone(),
             formula: self.formula.clone().universal_closure(),
         }
     }
@@ -1004,6 +1006,7 @@ impl AnnotatedFormula {
             role: self.role,
             direction: self.direction,
             name: self.name.clone(),
+            forgotten: self.forgotten.clone(),
             formula: self
                 .formula
                 .clone()

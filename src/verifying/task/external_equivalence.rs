@@ -468,18 +468,21 @@ impl Task for ExternalEquivalenceTask {
                     Some(p) if public_predicates.contains(&p) => fol::AnnotatedFormula {
                         role: fol::Role::Spec,
                         direction: fol::Direction::Universal,
+                        forgotten: vec![],
                         name: format!("completed_definition_of_{}_{}", p.symbol, p.arity),
                         formula,
                     },
                     Some(p) => fol::AnnotatedFormula {
                         role: fol::Role::Assumption,
                         direction: fol::Direction::Universal,
+                        forgotten: vec![],
                         name: format!("completed_definition_of_{}_{}", p.symbol, p.arity),
                         formula,
                     },
                     None => fol::AnnotatedFormula {
                         role: fol::Role::Spec,
                         direction: fol::Direction::Universal,
+                        forgotten: vec![],
                         name: format!("constraint_{}", constraint_counter.next().unwrap()),
                         formula,
                     },

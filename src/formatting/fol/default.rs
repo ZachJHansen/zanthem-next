@@ -387,6 +387,15 @@ impl Display for Format<'_, AnnotatedFormula> {
             write!(f, "[{}]", self.0.name)?;
         }
 
+        if !self.0.forgotten.is_empty() {
+            let mut iter = self.0.forgotten.iter();
+            write!(f, "<{}", iter.next().unwrap())?;
+            for formula in iter {
+                write!(f, ", {formula}")?;
+            }
+            write!(f, ">")?;
+        }
+
         write!(f, ": ")?;
 
         Format(&self.0.formula).fmt(f)?;
@@ -840,6 +849,7 @@ mod tests {
                     role: Role::Spec,
                     direction: Direction::Forward,
                     name: "about_p_0".to_string(),
+                    forgotten: vec![],
                     formula: Formula::UnaryFormula {
                         connective: UnaryConnective::Negation,
                         formula: Formula::AtomicFormula(AtomicFormula::Atom(Atom {
@@ -853,6 +863,7 @@ mod tests {
                     role: Role::Assumption,
                     direction: Direction::Universal,
                     name: String::default(),
+                    forgotten: vec![],
                     formula: Formula::AtomicFormula(AtomicFormula::Atom(Atom {
                         predicate_symbol: "p".into(),
                         terms: vec![GeneralTerm::IntegerTerm(IntegerTerm::Numeral(5))],
@@ -862,6 +873,7 @@ mod tests {
                     role: Role::InductiveLemma,
                     direction: Direction::Backward,
                     name: "il1".to_string(),
+                    forgotten: vec!["formulaB".into(), "formulaC".into()],
                     formula: Formula::QuantifiedFormula {
                         quantification: Quantification {
                             quantifier: Quantifier::Forall,
@@ -898,7 +910,7 @@ mod tests {
             ],
         })
         .to_string();
-        let right = "spec(forward)[about_p_0]: not p(0).\nassumption: p(5).\ninductive-lemma(backward)[il1]: forall X (p(X) <-> q(X) or t).\n".to_string();
+        let right = "spec(forward)[about_p_0]: not p(0).\nassumption: p(5).\ninductive-lemma(backward)[il1]<formulaB, formulaC>: forall X (p(X) <-> q(X) or t).\n".to_string();
         assert_eq!(left, right, "\n{left}!=\n{right}");
     }
 }

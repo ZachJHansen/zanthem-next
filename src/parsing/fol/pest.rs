@@ -690,6 +690,17 @@ impl PestParser for AnnotatedFormulaParser {
             name = String::default();
         }
 
+        let mut forgotten = vec![];
+        if matches!(next.as_rule(), internal::Rule::forgetting_tuple) {
+            let forgetting_pairs = next.into_inner();
+            for pair in forgetting_pairs {
+                if matches!(pair.as_rule(), internal::Rule::symbolic_constant) {
+                    forgotten.push(pair.as_str().into());
+                }
+            }
+            next = pairs.next().unwrap_or_else(|| Self::report_missing_pair());
+        }
+
         let formula = FormulaParser::translate_pair(next);
 
         if let Some(pair) = pairs.next() {
@@ -700,6 +711,7 @@ impl PestParser for AnnotatedFormulaParser {
             role,
             direction,
             name,
+            forgotten,
             formula,
         }
     }
@@ -1611,6 +1623,7 @@ mod tests {
                         role: Role::Lemma,
                         direction: Direction::Universal,
                         name: String::default(),
+                        forgotten: vec![],
                         formula: Formula::AtomicFormula(AtomicFormula::Comparison(Comparison {
                             term: GeneralTerm::IntegerTerm(IntegerTerm::Numeral(2)),
                             guards: vec![Guard {
@@ -1626,6 +1639,7 @@ mod tests {
                         role: Role::Spec,
                         direction: Direction::Forward,
                         name: "about_p_0".to_string(),
+                        forgotten: vec![],
                         formula: Formula::UnaryFormula {
                             connective: UnaryConnective::Negation,
                             formula: Formula::AtomicFormula(AtomicFormula::Atom(Atom {
@@ -1642,6 +1656,7 @@ mod tests {
                         role: Role::Assumption,
                         direction: Direction::Universal,
                         name: String::default(),
+                        forgotten: vec![],
                         formula: Formula::AtomicFormula(AtomicFormula::Atom(Atom {
                             predicate_symbol: "p".into(),
                             terms: vec![GeneralTerm::IntegerTerm(IntegerTerm::Numeral(5))],
@@ -1649,11 +1664,28 @@ mod tests {
                     },
                 ),
                 (
-                    "lemma(forward): a > 1",
+                    "lemma(forward)<f1>: a > 1",
                     AnnotatedFormula {
                         role: Role::Lemma,
                         direction: Direction::Forward,
                         name: String::default(),
+                        forgotten: vec!["f1".into()],
+                        formula: Formula::AtomicFormula(AtomicFormula::Comparison(Comparison {
+                            term: GeneralTerm::SymbolicTerm(SymbolicTerm::Symbol("a".to_string())),
+                            guards: vec![Guard {
+                                relation: Relation::Greater,
+                                term: GeneralTerm::IntegerTerm(IntegerTerm::Numeral(1)),
+                            }],
+                        })),
+                    },
+                ),
+                (
+                    "lemma(forward)[f4]<f1, f2, f3>: a > 1",
+                    AnnotatedFormula {
+                        role: Role::Lemma,
+                        direction: Direction::Forward,
+                        name: "f4".into(),
+                        forgotten: vec!["f1".into(), "f2".into(), "f3".into()],
                         formula: Formula::AtomicFormula(AtomicFormula::Comparison(Comparison {
                             term: GeneralTerm::SymbolicTerm(SymbolicTerm::Symbol("a".to_string())),
                             guards: vec![Guard {
@@ -1669,6 +1701,7 @@ mod tests {
                         role: Role::Lemma,
                         name: "false".to_string(),
                         direction: Direction::Backward,
+                        forgotten: vec![],
                         formula: Formula::AtomicFormula(AtomicFormula::Falsity),
                     },
                 ),
@@ -1678,6 +1711,7 @@ mod tests {
                         role: Role::Definition,
                         name: "comp_1".to_string(),
                         direction: Direction::Universal,
+                        forgotten: vec![],
                         formula: Formula::QuantifiedFormula {
                             quantification: Quantification {
                                 quantifier: Quantifier::Forall,
@@ -1724,6 +1758,7 @@ mod tests {
                                 role: Role::Assumption,
                                 direction: Direction::Universal,
                                 name: String::default(),
+                                forgotten: vec![],
                                 formula: Formula::AtomicFormula(AtomicFormula::Atom(Atom {
                                     predicate_symbol: "p".into(),
                                     terms: vec![GeneralTerm::IntegerTerm(IntegerTerm::Numeral(5))],
@@ -1749,6 +1784,7 @@ mod tests {
                                 role: Role::Spec,
                                 direction: Direction::Forward,
                                 name: "about_p_0".to_string(),
+                                forgotten: vec![],
                                 formula: Formula::UnaryFormula {
                                     connective: UnaryConnective::Negation,
                                     formula: Formula::AtomicFormula(AtomicFormula::Atom(Atom {
@@ -1764,6 +1800,7 @@ mod tests {
                                 role: Role::Assumption,
                                 direction: Direction::Universal,
                                 name: String::default(),
+                                forgotten: vec![],
                                 formula: Formula::AtomicFormula(AtomicFormula::Atom(Atom {
                                     predicate_symbol: "p".into(),
                                     terms: vec![GeneralTerm::IntegerTerm(IntegerTerm::Numeral(5))],
@@ -1773,6 +1810,7 @@ mod tests {
                                 role: Role::InductiveLemma,
                                 direction: Direction::Universal,
                                 name: String::default(),
+                                forgotten: vec![],
                                 formula: Formula::QuantifiedFormula {
                                     quantification: Quantification { quantifier: Quantifier::Forall, variables: vec![Variable {name: "N".to_string(), sort: Sort::Integer}] },
                                     formula: Formula::BinaryFormula {
