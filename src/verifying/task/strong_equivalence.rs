@@ -93,18 +93,21 @@ impl Task for StrongEquivalenceTask {
                     .add_theory(transition_axioms.clone(), |i, formula| AnnotatedFormula {
                         name: format!("transition_axiom_{i}"),
                         role: Role::Axiom,
+                        forgotten: vec![],
                         formula,
                         formula_type: FormulaType::Tff,
                     })
                     .add_theory(left.clone(), |i, formula| AnnotatedFormula {
                         name: format!("left_{i}"),
                         role: Role::Axiom,
+                        forgotten: vec![],
                         formula,
                         formula_type: FormulaType::Tff,
                     })
                     .add_theory(right.clone(), |i, formula| AnnotatedFormula {
                         name: format!("right_{i}"),
                         role: Role::Conjecture,
+                        forgotten: vec![],
                         formula,
                         formula_type: FormulaType::Tff,
                     })
@@ -120,18 +123,21 @@ impl Task for StrongEquivalenceTask {
                     .add_theory(transition_axioms, |i, formula| AnnotatedFormula {
                         name: format!("transition_axiom_{i}"),
                         role: Role::Axiom,
+                        forgotten: vec![],
                         formula,
                         formula_type: FormulaType::Tff,
                     })
                     .add_theory(right, |i, formula| AnnotatedFormula {
                         name: format!("right_{i}"),
                         role: Role::Axiom,
+                        forgotten: vec![],
                         formula,
                         formula_type: FormulaType::Tff,
                     })
                     .add_theory(left, |i, formula| AnnotatedFormula {
                         name: format!("left_{i}"),
                         role: Role::Conjecture,
+                        forgotten: vec![],
                         formula,
                         formula_type: FormulaType::Tff,
                     })

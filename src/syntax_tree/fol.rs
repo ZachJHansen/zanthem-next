@@ -982,6 +982,7 @@ impl AnnotatedFormula {
                 self.name
             },
             role,
+            forgotten: self.forgotten,
             formula: self.formula,
             formula_type,
         }

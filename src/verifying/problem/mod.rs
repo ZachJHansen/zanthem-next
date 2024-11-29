@@ -58,6 +58,7 @@ impl fmt::Display for Role {
 pub struct AnnotatedFormula {
     pub name: String,
     pub role: Role,
+    pub forgotten: Vec<String>,
     pub formula: Formula,
     pub formula_type: FormulaType,
 }
@@ -79,6 +80,7 @@ impl AnnotatedFormula {
         AnnotatedFormula {
             name: self.name,
             role: self.role,
+            forgotten: self.forgotten,
             formula: self.formula.rename_conflicting_symbols(possible_conflicts),
             formula_type: self.formula_type,
         }
@@ -123,6 +125,7 @@ impl Problem {
                 self.formulas.push(AnnotatedFormula {
                     name: "unnamed_formula".to_string(),
                     role: anf.role,
+                    forgotten: anf.forgotten,
                     formula: anf.formula,
                     formula_type: anf.formula_type,
                 });
@@ -130,11 +133,43 @@ impl Problem {
                 self.formulas.push(AnnotatedFormula {
                     name: format!("f{}", anf.name),
                     role: anf.role,
+                    forgotten: anf.forgotten,
                     formula: anf.formula,
                     formula_type: anf.formula_type,
                 });
             } else {
                 self.formulas.push(anf);
+            }
+        }
+        self
+    }
+
+    pub fn add_annotated_formulas_with_forgetting(
+        mut self,
+        annotated_formulas: impl IntoIterator<Item = AnnotatedFormula>,
+        forgotten_formulas: Vec<String>,
+    ) -> Self {
+        for anf in annotated_formulas {
+            if !forgotten_formulas.contains(&anf.name) {
+                if anf.name.is_empty() {
+                    self.formulas.push(AnnotatedFormula {
+                        name: "unnamed_formula".to_string(),
+                        role: anf.role,
+                        forgotten: anf.forgotten,
+                        formula: anf.formula,
+                        formula_type: anf.formula_type,
+                    });
+                } else if anf.name.starts_with('_') {
+                    self.formulas.push(AnnotatedFormula {
+                        name: format!("f{}", anf.name),
+                        role: anf.role,
+                        forgotten: anf.forgotten,
+                        formula: anf.formula,
+                        formula_type: anf.formula_type,
+                    });
+                } else {
+                    self.formulas.push(anf);
+                }
             }
         }
         self
@@ -216,7 +251,12 @@ impl Problem {
             .into_iter()
             .enumerate()
             .map(|(i, c)| {
-                let mut formulas = axioms.clone();
+                let mut formulas = vec![];
+                for ax in axioms.clone() {
+                    if !c.forgotten.contains(&ax.name) {
+                        formulas.push(ax);
+                    }
+                }
                 formulas.push(c);
                 Problem {
                     name: format!("{}_{i}", self.name),
@@ -228,21 +268,29 @@ impl Problem {
     }
 
     pub fn decompose_sequential(&self) -> Vec<Self> {
-        let mut formulas = self.axioms();
+        let mut growing_axiom_set = self.axioms();
         self.conjectures()
             .into_iter()
             .enumerate()
             .map(|(i, c)| {
-                if let Some(last) = formulas.last_mut() {
+                if let Some(last) = growing_axiom_set.last_mut() {
                     last.role = Role::Axiom;
                 }
 
+                let mut formulas = vec![];
+                for f in growing_axiom_set.clone() {
+                    if !c.forgotten.contains(&f.name) {
+                        formulas.push(f);
+                    }
+                }
+
+                growing_axiom_set.push(c.clone());
                 formulas.push(c);
 
                 Problem {
                     name: format!("{}_{i}", self.name),
                     interpretation: self.interpretation.clone(),
-                    formulas: formulas.clone(),
+                    formulas,
                 }
             })
             .collect_vec()
@@ -327,24 +375,28 @@ mod tests {
                 AnnotatedFormula {
                     name: "axiom_0".into(),
                     role: Role::Axiom,
+                    forgotten: vec![],
                     formula: "p(a)".parse().unwrap(),
                     formula_type: FormulaType::Tff,
                 },
                 AnnotatedFormula {
                     name: "axiom_1".into(),
                     role: Role::Axiom,
+                    forgotten: vec![],
                     formula: "forall X p(X) -> q(X)".parse().unwrap(),
                     formula_type: FormulaType::Tff,
                 },
                 AnnotatedFormula {
                     name: "conjecture_0".into(),
                     role: Role::Conjecture,
+                    forgotten: vec![],
                     formula: "p(a)".parse().unwrap(),
                     formula_type: FormulaType::Tff,
                 },
                 AnnotatedFormula {
                     name: "conjecture_1".into(),
                     role: Role::Conjecture,
+                    forgotten: vec![],
                     formula: "q(a)".parse().unwrap(),
                     formula_type: FormulaType::Tff,
                 },
@@ -361,18 +413,21 @@ mod tests {
                         AnnotatedFormula {
                             name: "axiom_0".into(),
                             role: Role::Axiom,
+                            forgotten: vec![],
                             formula: "p(a)".parse().unwrap(),
                             formula_type: FormulaType::Tff,
                         },
                         AnnotatedFormula {
                             name: "axiom_1".into(),
                             role: Role::Axiom,
+                            forgotten: vec![],
                             formula: "forall X p(X) -> q(X)".parse().unwrap(),
                             formula_type: FormulaType::Tff,
                         },
                         AnnotatedFormula {
                             name: "conjecture_0".into(),
                             role: Role::Conjecture,
+                            forgotten: vec![],
                             formula: "p(a)".parse().unwrap(),
                             formula_type: FormulaType::Tff,
                         },
@@ -385,18 +440,21 @@ mod tests {
                         AnnotatedFormula {
                             name: "axiom_0".into(),
                             role: Role::Axiom,
+                            forgotten: vec![],
                             formula: "p(a)".parse().unwrap(),
                             formula_type: FormulaType::Tff,
                         },
                         AnnotatedFormula {
                             name: "axiom_1".into(),
                             role: Role::Axiom,
+                            forgotten: vec![],
                             formula: "forall X p(X) -> q(X)".parse().unwrap(),
                             formula_type: FormulaType::Tff,
                         },
                         AnnotatedFormula {
                             name: "conjecture_1".into(),
                             role: Role::Conjecture,
+                            forgotten: vec![],
                             formula: "q(a)".parse().unwrap(),
                             formula_type: FormulaType::Tff,
                         },
@@ -415,18 +473,21 @@ mod tests {
                         AnnotatedFormula {
                             name: "axiom_0".into(),
                             role: Role::Axiom,
+                            forgotten: vec![],
                             formula: "p(a)".parse().unwrap(),
                             formula_type: FormulaType::Tff,
                         },
                         AnnotatedFormula {
                             name: "axiom_1".into(),
                             role: Role::Axiom,
+                            forgotten: vec![],
                             formula: "forall X p(X) -> q(X)".parse().unwrap(),
                             formula_type: FormulaType::Tff,
                         },
                         AnnotatedFormula {
                             name: "conjecture_0".into(),
                             role: Role::Conjecture,
+                            forgotten: vec![],
                             formula: "p(a)".parse().unwrap(),
                             formula_type: FormulaType::Tff,
                         },
@@ -439,24 +500,28 @@ mod tests {
                         AnnotatedFormula {
                             name: "axiom_0".into(),
                             role: Role::Axiom,
+                            forgotten: vec![],
                             formula: "p(a)".parse().unwrap(),
                             formula_type: FormulaType::Tff,
                         },
                         AnnotatedFormula {
                             name: "axiom_1".into(),
                             role: Role::Axiom,
+                            forgotten: vec![],
                             formula: "forall X p(X) -> q(X)".parse().unwrap(),
                             formula_type: FormulaType::Tff,
                         },
                         AnnotatedFormula {
                             name: "conjecture_0".into(),
                             role: Role::Axiom,
+                            forgotten: vec![],
                             formula: "p(a)".parse().unwrap(),
                             formula_type: FormulaType::Tff,
                         },
                         AnnotatedFormula {
                             name: "conjecture_1".into(),
                             role: Role::Conjecture,
+                            forgotten: vec![],
                             formula: "q(a)".parse().unwrap(),
                             formula_type: FormulaType::Tff,
                         },

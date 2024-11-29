@@ -189,6 +189,20 @@ pub fn main() -> Result<()> {
             };
 
             if let Some(out_dir) = out_dir {
+                for problem in problems.clone() {
+                    println!("> Proving {}...", problem.name);
+                    println!("Axioms:");
+                    for axiom in problem.axioms() {
+                        println!("    {}", axiom.formula);
+                    }
+                    println!();
+                    println!("Conjectures:");
+                    for conjecture in problem.conjectures() {
+                        println!("    {}", conjecture.formula);
+                    }
+                    println!();
+                }
+
                 for problem in &problems {
                     let mut path = out_dir.clone();
                     path.push(format!("{}.p", problem.name));

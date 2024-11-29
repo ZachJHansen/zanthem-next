@@ -1,0 +1,4 @@
+lemma[f1]: not t.
+lemma[f2]: p or q.
+lemma[f3]<f2>: p -> t.
+lemma[f4]<f1>: p -> t or q.

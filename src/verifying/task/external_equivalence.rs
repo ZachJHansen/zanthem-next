@@ -746,7 +746,7 @@ impl Task for AssembledExternalEquivalenceTask {
                             format!("forward_outline_{i}_{j}"),
                             Interpretation::Standard,
                         )
-                        .add_annotated_formulas(axioms.clone())
+                        .add_annotated_formulas_with_forgetting(axioms.clone(), conjecture.forgotten.clone())
                         .add_annotated_formulas(std::iter::once(conjecture.clone()))
                         .rename_conflicting_symbols(),
                     );
@@ -792,7 +792,7 @@ impl Task for AssembledExternalEquivalenceTask {
                             format!("backward_outline_{i}_{j}"),
                             Interpretation::Standard,
                         )
-                        .add_annotated_formulas(axioms.clone())
+                        .add_annotated_formulas_with_forgetting(axioms.clone(), conjecture.forgotten.clone())
                         .add_annotated_formulas(std::iter::once(conjecture.clone()))
                         .rename_conflicting_symbols(),
                     );

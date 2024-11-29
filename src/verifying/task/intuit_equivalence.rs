@@ -69,12 +69,14 @@ impl Task for IntuitEquivalenceTask {
                     .add_theory(left.clone(), |i, formula| AnnotatedFormula {
                         name: format!("left_{i}"),
                         role: Role::Axiom,
+                        forgotten: vec![],
                         formula,
                         formula_type: ftype.clone(),
                     })
                     .add_theory(right.clone(), |i, formula| AnnotatedFormula {
                         name: format!("right_{i}"),
                         role: Role::Conjecture,
+                        forgotten: vec![],
                         formula,
                         formula_type: ftype.clone(),
                     })
@@ -90,12 +92,14 @@ impl Task for IntuitEquivalenceTask {
                     .add_theory(right, |i, formula| AnnotatedFormula {
                         name: format!("right_{i}"),
                         role: Role::Axiom,
+                        forgotten: vec![],
                         formula,
                         formula_type: ftype.clone(),
                     })
                     .add_theory(left, |i, formula| AnnotatedFormula {
                         name: format!("left_{i}"),
                         role: Role::Conjecture,
+                        forgotten: vec![],
                         formula,
                         formula_type: ftype.clone(),
                     })
