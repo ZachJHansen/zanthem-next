@@ -23,6 +23,7 @@ use {
     anyhow::{anyhow, Context, Result},
     clap::Parser as _,
     either::Either,
+    std::collections::HashSet,
     std::time::Instant,
 };
 
@@ -36,10 +37,14 @@ pub fn main() -> Result<()> {
                     let is_tight = program.is_tight();
                     println!("{is_tight}");
                 }
-            }
 
-            let func: asp::Term = "#abs(1)".parse().unwrap();
-            println!("{func}");
+                Property::CnfPdg => {
+                    let theory =
+                        input.map_or_else(fol::Theory::from_stdin, fol::Theory::from_file)?;
+                    println!("print vertices and edges");
+                    theory.cnf_pdg(HashSet::new());
+                }
+            }
 
             Ok(())
         }
