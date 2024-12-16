@@ -46,22 +46,15 @@ fn choose_unique_id(
         .filter(|occurrence| occurrence.atom == key.atom)
         .map(|occurrence| occurrence.id);
 
-    let lhs_max = match max(matching_lhs_ids) {
-        Some(i) => i,
-        None => 0,
-    };
+    let lhs_max = max(matching_lhs_ids).unwrap_or(0);
 
-    let rhs_max = match max(matching_rhs_ids) {
-        Some(i) => i,
-        None => 0,
-    };
+    let rhs_max = max(matching_rhs_ids).unwrap_or(0);
 
-    let id;
-    if lhs_max >= rhs_max {
-        id = lhs_max + 1;
+    let id = if lhs_max >= rhs_max {
+        lhs_max + 1
     } else {
-        id = rhs_max + 1;
-    }
+        rhs_max + 1
+    };
 
     Occurrence {
         id,
@@ -123,7 +116,7 @@ impl Formula {
                     for key in counter.clone().keys() {
                         if let Some(val) = counter.get_mut(key) {
                             *val = OccurrenceData {
-                                count: (*val).count + 1,
+                                count: val.count + 1,
                                 negated: true,
                             };
                         }
@@ -143,15 +136,15 @@ impl Formula {
                             match rhs.clone().unbox() {
                                 UnboxedFormula::AtomicFormula(AtomicFormula::Falsity) => {
                                     *val = OccurrenceData {
-                                        count: (*val).count + 1,
+                                        count: val.count + 1,
                                         negated: true,
                                     };
                                 }
 
                                 _ => {
                                     *val = OccurrenceData {
-                                        count: (*val).count + 1,
-                                        negated: (*val).negated,
+                                        count: val.count + 1,
+                                        negated: val.negated,
                                     };
                                 }
                             }
