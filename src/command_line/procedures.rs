@@ -8,17 +8,16 @@ use {
         simplifying::fol::ht::{simplify, simplify_shallow},
         syntax_tree::{asp, fol, Node as _},
         translating::{
-            shorthand::shorthand,
             asp_to_ht::{tau_star, Version},
             completion::completion,
             gamma::gamma,
+            shorthand::shorthand,
         },
         verifying::{
             prover::{vampire::Vampire, Prover, Report, Status, Success},
             task::{
-                external_equivalence::ExternalEquivalenceTask,
+                derivation::DerivationTask, external_equivalence::ExternalEquivalenceTask,
                 intuit_equivalence::IntuitEquivalenceTask,
-                derivation::DerivationTask, 
                 strong_equivalence::StrongEquivalenceTask, Task,
             },
         },
@@ -257,7 +256,6 @@ pub fn main() -> Result<()> {
             prover_cores,
             save_problems: out_dir,
             files,
-            formula_representation,
         } => {
             let start_time = if !no_timing {
                 Some(Instant::now())

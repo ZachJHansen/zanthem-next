@@ -52,26 +52,36 @@ pub fn translate_comparison(comparison: asp::Comparison) -> Formula {
 
 pub fn body_translate(body: asp::Body) -> Formula {
     let mut atomic_formulas = Vec::new();
+
     for literal in body.formulas {
-        let formula = match literal {
-            asp::AtomicFormula::Literal(l) => match l.sign {
-                asp::Sign::NoSign => translate_atom(l.atom),
-                asp::Sign::Negation => Formula::UnaryFormula {
-                    connective: fol::UnaryConnective::Negation,
-                    formula: translate_atom(l.atom).into(),
+        if literal.basic() {
+            let formula = match literal.head {
+                asp::ConditionalHead::Falsity => {
+                    Formula::AtomicFormula(fol::AtomicFormula::Falsity)
+                }
+                asp::ConditionalHead::AtomicFormula(f) => match f {
+                    asp::AtomicFormula::Literal(l) => match l.sign {
+                        asp::Sign::NoSign => translate_atom(l.atom),
+                        asp::Sign::Negation => Formula::UnaryFormula {
+                            connective: fol::UnaryConnective::Negation,
+                            formula: translate_atom(l.atom).into(),
+                        },
+                        asp::Sign::DoubleNegation => Formula::UnaryFormula {
+                            connective: fol::UnaryConnective::Negation,
+                            formula: Formula::UnaryFormula {
+                                connective: fol::UnaryConnective::Negation,
+                                formula: translate_atom(l.atom).into(),
+                            }
+                            .into(),
+                        },
+                    },
+                    asp::AtomicFormula::Comparison(c) => translate_comparison(c),
                 },
-                asp::Sign::DoubleNegation => Formula::UnaryFormula {
-                    connective: fol::UnaryConnective::Negation,
-                    formula: Formula::UnaryFormula {
-                        connective: fol::UnaryConnective::Negation,
-                        formula: translate_atom(l.atom).into(),
-                    }
-                    .into(),
-                },
-            },
-            asp::AtomicFormula::Comparison(c) => translate_comparison(c),
-        };
-        atomic_formulas.push(formula);
+            };
+            atomic_formulas.push(formula);
+        } else {
+            todo!("unimplemented");
+        }
     }
 
     Formula::conjoin(atomic_formulas)

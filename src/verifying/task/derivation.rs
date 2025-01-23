@@ -5,7 +5,7 @@ use {
         syntax_tree::fol,
         verifying::{
             outline::{ProofOutline, ProofOutlineError, ProofOutlineWarning},
-            problem::{self, Problem},
+            problem::{self, FormulaType, Interpretation, Problem},
             task::Task,
         },
     },
@@ -74,7 +74,7 @@ impl Task for DerivationTask {
             match formula.role {
                 fol::Role::Assumption => {
                     let anf = formula.replace_placeholders(&placeholders);
-                    axioms.push(anf.into_problem_formula(problem::Role::Axiom));
+                    axioms.push(anf.into_problem_formula(problem::Role::Axiom, FormulaType::Tff));
                 }
 
                 _ => todo!(), // user guides should only contain assumptions
@@ -87,7 +87,7 @@ impl Task for DerivationTask {
                 .data
                 .forward_definitions
                 .into_iter()
-                .map(|f| f.into_problem_formula(problem::Role::Axiom)),
+                .map(|f| f.into_problem_formula(problem::Role::Axiom, FormulaType::Tff)),
         );
 
         axioms.extend(
@@ -95,7 +95,7 @@ impl Task for DerivationTask {
                 .data
                 .backward_definitions
                 .into_iter()
-                .map(|f| f.into_problem_formula(problem::Role::Axiom)),
+                .map(|f| f.into_problem_formula(problem::Role::Axiom, FormulaType::Tff)),
         );
 
         // All lemmas are derived sequentially, axiom set grows accordingly
@@ -108,7 +108,7 @@ impl Task for DerivationTask {
         {
             for (j, conjecture) in lemma.conjectures.iter().enumerate() {
                 problems.push(
-                    Problem::with_name(format!("outline_{i}_{j}"))
+                    Problem::with_name(format!("outline_{i}_{j}"), Interpretation::Standard)
                         .add_annotated_formulas(axioms.clone())
                         .add_annotated_formulas(std::iter::once(conjecture.clone()))
                         .rename_conflicting_symbols(),

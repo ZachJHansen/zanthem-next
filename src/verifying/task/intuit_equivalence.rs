@@ -1,9 +1,12 @@
 use {
     crate::{
-        command_line::arguments::{FormulaRepresentationTranslation, TaskDecomposition},
+        command_line::arguments::{FormulaRepresentation, TaskDecomposition},
         convenience::with_warnings::{Result, WithWarnings},
         syntax_tree::{asp, fol},
-        translating::{shorthand::shorthand, tau_star::tau_star},
+        translating::{
+            asp_to_ht::{tau_star::tau_star, Version},
+            shorthand::shorthand,
+        },
         verifying::{
             problem::{AnnotatedFormula, FormulaType, Interpretation, Problem, Role},
             task::Task,
@@ -23,7 +26,7 @@ pub struct IntuitEquivalenceTask {
     pub direction: fol::Direction,
     pub simplify: bool,
     pub break_equivalences: bool,
-    pub translation: FormulaRepresentationTranslation,
+    pub translation: FormulaRepresentation,
 }
 
 impl Task for IntuitEquivalenceTask {
@@ -32,12 +35,18 @@ impl Task for IntuitEquivalenceTask {
 
     fn decompose(self) -> Result<Vec<Problem>, Self::Warning, Self::Error> {
         let mut left = match self.translation {
-            FormulaRepresentationTranslation::TauStar => tau_star(self.left),
-            FormulaRepresentationTranslation::Shorthand => shorthand(self.left),
+            FormulaRepresentation::TauStarV1 => tau_star(self.left, Version::Original),
+            FormulaRepresentation::Shorthand => shorthand(self.left),
+            FormulaRepresentation::TauStarV2 => {
+                tau_star(self.left, Version::AbstractGringoCompliant)
+            }
         };
         let mut right = match self.translation {
-            FormulaRepresentationTranslation::TauStar => tau_star(self.right),
-            FormulaRepresentationTranslation::Shorthand => shorthand(self.right),
+            FormulaRepresentation::TauStarV1 => tau_star(self.right, Version::Original),
+            FormulaRepresentation::Shorthand => shorthand(self.right),
+            FormulaRepresentation::TauStarV2 => {
+                tau_star(self.right, Version::AbstractGringoCompliant)
+            }
         };
 
         if self.simplify {
@@ -51,12 +60,10 @@ impl Task for IntuitEquivalenceTask {
         }
 
         let (ftype, interp) = match self.translation {
-            FormulaRepresentationTranslation::TauStar => {
+            FormulaRepresentation::TauStarV1 | FormulaRepresentation::TauStarV2 => {
                 (FormulaType::Tff, Interpretation::Standard)
             }
-            FormulaRepresentationTranslation::Shorthand => {
-                (FormulaType::Fof, Interpretation::IltpStd)
-            }
+            FormulaRepresentation::Shorthand => (FormulaType::Fof, Interpretation::IltpStd),
         };
 
         let mut problems = Vec::new();

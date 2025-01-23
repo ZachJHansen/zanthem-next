@@ -69,6 +69,7 @@ impl Task for StrongEquivalenceTask {
         let version = match self.formula_representation {
             FormulaRepresentation::TauStarV1 => Original,
             FormulaRepresentation::TauStarV2 => AbstractGringoCompliant,
+            FormulaRepresentation::Shorthand => Original, // Doesn't matter for shorthand?
         };
 
         let mut left = tau_star::tau_star(self.left, version);

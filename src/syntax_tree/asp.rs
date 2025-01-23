@@ -349,6 +349,10 @@ pub struct ConditionalLiteral {
 impl_node!(ConditionalLiteral, Format, ConditionalLiteralParser);
 
 impl ConditionalLiteral {
+    pub fn basic(&self) -> bool {
+        self.conditions.formulas.is_empty()
+    }
+
     pub fn variables(&self) -> IndexSet<Variable> {
         let mut vars = self.head.variables();
         vars.extend(self.conditions.variables());

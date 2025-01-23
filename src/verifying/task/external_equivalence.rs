@@ -498,6 +498,7 @@ impl Task for ExternalEquivalenceTask {
         let version = match self.formula_representation {
             FormulaRepresentation::TauStarV1 => Original,
             FormulaRepresentation::TauStarV2 => AbstractGringoCompliant,
+            FormulaRepresentation::Shorthand => Original,
         };
 
         let left = match self.specification {
