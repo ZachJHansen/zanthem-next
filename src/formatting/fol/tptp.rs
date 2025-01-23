@@ -47,8 +47,8 @@ impl Display for Format<'_, IntegerTerm> {
 
                 Ok(())
             }
-            IntegerTerm::Variable(v) => write!(f, "{v}$i"),
-            IntegerTerm::FunctionConstant(c) => write!(f, "{c}$i"),
+            IntegerTerm::Variable(v) => write!(f, "{v}_i"),
+            IntegerTerm::FunctionConstant(c) => write!(f, "{c}_i"),
             IntegerTerm::UnaryOperation { op, arg } => {
                 let op = Format(op);
                 let arg = Format(arg.as_ref());
@@ -68,8 +68,8 @@ impl Display for Format<'_, SymbolicTerm> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self.0 {
             SymbolicTerm::Symbol(s) => write!(f, "{s}"),
-            SymbolicTerm::FunctionConstant(c) => write!(f, "{c}$s"),
-            SymbolicTerm::Variable(v) => write!(f, "{v}$s"),
+            SymbolicTerm::FunctionConstant(c) => write!(f, "{c}_s"),
+            SymbolicTerm::Variable(v) => write!(f, "{v}_s"),
         }
     }
 }
@@ -79,8 +79,8 @@ impl Display for Format<'_, GeneralTerm> {
         match self.0 {
             GeneralTerm::Infimum => write!(f, "c__infimum__"),
             GeneralTerm::Supremum => write!(f, "c__supremum__"),
-            GeneralTerm::FunctionConstant(c) => write!(f, "{c}$g"),
-            GeneralTerm::Variable(v) => write!(f, "{v}"),
+            GeneralTerm::FunctionConstant(c) => write!(f, "{c}_g"),
+            GeneralTerm::Variable(v) => write!(f, "{v}_g"),
             GeneralTerm::IntegerTerm(t) => write!(f, "f__integer__({})", Format(t)),
             GeneralTerm::SymbolicTerm(t) => write!(f, "f__symbolic__({})", Format(t)),
         }
@@ -139,55 +139,42 @@ impl Display for Format<'_, Relation> {
 
 impl Display for Format<'_, Comparison> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        let guards = &self.0.guards;
-
-        let mut previous_term = &self.0.term;
-        for (counter, g) in guards.iter().enumerate() {
+        for (counter, (lhs, relation, rhs)) in self.0.individuals().enumerate() {
             if counter > 0 {
                 write!(f, " & ")?;
             }
 
-            match (previous_term, &g.term) {
-                (GeneralTerm::IntegerTerm(lhs), GeneralTerm::IntegerTerm(rhs)) => {
-                    match g.relation {
-                        Relation::Equal | Relation::NotEqual => write!(
-                            f,
-                            "{} {} {}",
-                            Format(lhs),
-                            Format(&g.relation).repr_integer(),
-                            Format(rhs)
-                        ),
-                        _ => write!(
-                            f,
-                            "{}({}, {})",
-                            Format(&g.relation).repr_integer(),
-                            Format(lhs),
-                            Format(rhs)
-                        ),
-                    }
-                }
-
-                (GeneralTerm::SymbolicTerm(lhs), GeneralTerm::SymbolicTerm(rhs))
-                    if matches!(g.relation, Relation::Equal | Relation::NotEqual) =>
-                {
-                    write!(f, "{} {} {}", Format(lhs), Format(&g.relation), Format(rhs))
-                }
-
-                (lhs, rhs) => match g.relation {
-                    Relation::Equal | Relation::NotEqual => {
-                        write!(f, "{} {} {}", Format(lhs), Format(&g.relation), Format(rhs))
-                    }
+            match (lhs, rhs) {
+                (GeneralTerm::IntegerTerm(lhs), GeneralTerm::IntegerTerm(rhs)) => match relation {
+                    Relation::Equal | Relation::NotEqual => write!(
+                        f,
+                        "{} {} {}",
+                        Format(lhs),
+                        Format(relation).repr_integer(),
+                        Format(rhs)
+                    ),
                     _ => write!(
                         f,
                         "{}({}, {})",
-                        Format(&g.relation),
+                        Format(relation).repr_integer(),
                         Format(lhs),
                         Format(rhs)
                     ),
                 },
-            }?;
 
-            previous_term = &g.term;
+                (GeneralTerm::SymbolicTerm(lhs), GeneralTerm::SymbolicTerm(rhs))
+                    if matches!(relation, Relation::Equal | Relation::NotEqual) =>
+                {
+                    write!(f, "{} {} {}", Format(lhs), Format(relation), Format(rhs))
+                }
+
+                (lhs, rhs) => match relation {
+                    Relation::Equal | Relation::NotEqual => {
+                        write!(f, "{} {} {}", Format(lhs), Format(relation), Format(rhs))
+                    }
+                    _ => write!(f, "{}({}, {})", Format(relation), Format(lhs), Format(rhs)),
+                },
+            }?;
         }
 
         Ok(())
@@ -220,9 +207,9 @@ impl Display for Format<'_, FunctionConstant> {
         let sort = &self.0.sort;
 
         match sort {
-            Sort::General => write!(f, "{name}$g"),
-            Sort::Integer => write!(f, "{name}$i"),
-            Sort::Symbol => write!(f, "{name}$s"),
+            Sort::General => write!(f, "{name}_g"),
+            Sort::Integer => write!(f, "{name}_i"),
+            Sort::Symbol => write!(f, "{name}_s"),
         }
     }
 }
@@ -233,9 +220,9 @@ impl Display for Format<'_, Variable> {
         let sort = &self.0.sort;
 
         match sort {
-            Sort::General => write!(f, "{name}"),
-            Sort::Integer => write!(f, "{name}$i"),
-            Sort::Symbol => write!(f, "{name}$s"),
+            Sort::General => write!(f, "{name}_g"),
+            Sort::Integer => write!(f, "{name}_i"),
+            Sort::Symbol => write!(f, "{name}_s"),
         }
     }
 }
@@ -297,6 +284,13 @@ impl Precedence for Format<'_, Formula> {
         Associativity::Left
     }
 
+    fn mandatory_parentheses(&self) -> bool {
+        match self.0 {
+            Formula::AtomicFormula(_) | Formula::QuantifiedFormula { .. } => false,
+            Formula::UnaryFormula { .. } | Formula::BinaryFormula { .. } => true,
+        }
+    }
+
     fn fmt_operator(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self.0 {
             Formula::UnaryFormula { connective, .. } => write!(f, "{}", Format(connective)),
@@ -351,7 +345,7 @@ mod tests {
         );
         assert_eq!(
             Format(&IntegerTerm::Variable("A".into())).to_string(),
-            "A$i"
+            "A_i"
         );
         assert_eq!(
             Format(&IntegerTerm::BinaryOperation {
@@ -369,7 +363,7 @@ mod tests {
                 rhs: IntegerTerm::Variable("N".into()).into(),
             })
             .to_string(),
-            "$sum(10, N$i)"
+            "$sum(10, N_i)"
         );
         assert_eq!(
             Format(&IntegerTerm::BinaryOperation {
@@ -382,7 +376,7 @@ mod tests {
                 .into(),
             })
             .to_string(),
-            "$difference($uminus(195), $uminus(N$i))"
+            "$difference($uminus(195), $uminus(N_i))"
         );
         assert_eq!(
             Format(&IntegerTerm::UnaryOperation {
@@ -399,7 +393,7 @@ mod tests {
         assert_eq!(Format(&SymbolicTerm::Symbol("p".into())).to_string(), "p");
         assert_eq!(
             Format(&SymbolicTerm::Variable("X".into())).to_string(),
-            "X$s"
+            "X_s"
         )
     }
 
@@ -409,7 +403,7 @@ mod tests {
         assert_eq!(Format(&GeneralTerm::Supremum).to_string(), "c__supremum__");
         assert_eq!(
             Format(&GeneralTerm::Variable("N1".into())).to_string(),
-            "N1"
+            "N1_g"
         );
         assert_eq!(
             Format(&GeneralTerm::SymbolicTerm(SymbolicTerm::Symbol("p".into()))).to_string(),
@@ -436,7 +430,7 @@ mod tests {
                 ]
             })
             .to_string(),
-            "prime(f__integer__($sum(N1$i, 3)), f__integer__(5))"
+            "prime(f__integer__($sum(N1_i, 3)), f__integer__(5))"
         )
     }
 
@@ -533,7 +527,7 @@ mod tests {
                 ]
             })
             .to_string(),
-            "$less(1, 2) & p__less__(f__integer__(2), X)"
+            "$less(1, 2) & p__less__(f__integer__(2), X_g)"
         );
         assert_eq!(
             Format(&Comparison {
@@ -544,7 +538,7 @@ mod tests {
                 },]
             })
             .to_string(),
-            "$less(1, N$i)"
+            "$less(1, N_i)"
         );
         assert_eq!(
             Format(&Comparison {
@@ -556,7 +550,7 @@ mod tests {
             })
             .to_string(),
             // "f__symbolic__(a) = f__symbolic__(B$s)"
-            "a = B$s"
+            "a = B_s"
         );
         assert_eq!(
             Format(&Comparison {
@@ -567,7 +561,7 @@ mod tests {
                 },]
             })
             .to_string(),
-            "p__less__(f__symbolic__(a), f__symbolic__(B$s))"
+            "p__less__(f__symbolic__(a), f__symbolic__(B_s))"
         );
     }
 
@@ -588,7 +582,7 @@ mod tests {
                 ]
             })
             .to_string(),
-            "![X1$i: $int, N2: general]"
+            "![X1_i: $int, N2_g: general]"
         );
         assert_eq!(
             Format(&Quantification {
@@ -599,7 +593,7 @@ mod tests {
                 },]
             })
             .to_string(),
-            "?[X1$s: symbol]"
+            "?[X1_s: symbol]"
         );
     }
 
@@ -637,7 +631,7 @@ mod tests {
                 .into(),
             })
             .to_string(),
-            "p => q => r"
+            "(p => q) => r"
         );
         assert_eq!(
             Format(&Formula::QuantifiedFormula {
@@ -670,33 +664,77 @@ mod tests {
                 .into()
             })
             .to_string(),
-            "![X$i: $int, Y1: general]: (p & q)"
+            "![X_i: $int, Y1_g: general]: (p & q)"
         );
         assert_eq!(
-Format(&Formula::QuantifiedFormula {
-quantification: Quantification {
-quantifier: Quantifier::Forall,
-variables: vec![Variable {
-name: "Y".into(),
-sort: Sort::General,
-}],
-},
-formula: Formula::BinaryFormula {
-connective: BinaryConnective::Conjunction,
-lhs: Formula::BinaryFormula { connective: BinaryConnective::Implication,
-lhs: Formula::AtomicFormula(AtomicFormula::Atom(Atom { predicate_symbol: "color".into(), terms: vec![GeneralTerm::Variable("Y".to_string())] })).into(),
-rhs: Formula::AtomicFormula(AtomicFormula::Atom(Atom { predicate_symbol: "color".into(), terms: vec![GeneralTerm::Variable("Y".to_string()), GeneralTerm::SymbolicTerm(SymbolicTerm::Symbol("a".into()))] })).into(),
-}.into(),
-rhs: Formula::AtomicFormula(AtomicFormula::Atom(Atom {
-predicate_symbol: "vertex".into(),
-terms: vec![GeneralTerm::SymbolicTerm(SymbolicTerm::Symbol("a".into()))]
-}))
-.into(),
-}
-.into()
-})
-.to_string(),
-"![Y_g: general]: ((color(Y_g) => color(Y_g, f__symbolic__(a))) & vertex(f__symbolic__(a)))"
-);
+            Format(&Formula::QuantifiedFormula {
+                quantification: Quantification {
+                    quantifier: Quantifier::Forall,
+                    variables: vec![
+                        Variable {
+                            name: "X_i".into(),
+                            sort: Sort::Symbol,
+                        },
+                        Variable {
+                            name: "X".into(),
+                            sort: Sort::Integer,
+                        },
+                        Variable {
+                            name: "Y1".into(),
+                            sort: Sort::General,
+                        },
+                    ]
+                },
+                formula: Formula::BinaryFormula {
+                    connective: BinaryConnective::Conjunction,
+                    lhs: Formula::BinaryFormula {
+                        connective: BinaryConnective::Conjunction,
+                        lhs: Formula::AtomicFormula(AtomicFormula::Atom(Atom {
+                            predicate_symbol: "p".into(),
+                            terms: vec![GeneralTerm::IntegerTerm(IntegerTerm::Variable("X".to_string()))],
+                        }))
+                        .into(),
+                        rhs: Formula::AtomicFormula(AtomicFormula::Atom(Atom {
+                            predicate_symbol: "q".into(),
+                            terms: vec![GeneralTerm::Variable("Y1".to_string())],
+                        }))
+                        .into(),
+                    }.into(),
+                    rhs: Formula::AtomicFormula(AtomicFormula::Atom(Atom {
+                        predicate_symbol: "t".into(),
+                        terms: vec![GeneralTerm::SymbolicTerm(SymbolicTerm::Variable("X_i".into()))],
+                    }))
+                    .into(),
+                }.into()
+            })
+            .to_string(),
+            "![X_i_s: symbol, X_i: $int, Y1_g: general]: ((p(f__integer__(X_i)) & q(Y1_g)) & t(f__symbolic__(X_i_s)))"
+        );
+        assert_eq!(
+            Format(&Formula::QuantifiedFormula {
+            quantification: Quantification {
+            quantifier: Quantifier::Forall,
+            variables: vec![Variable {
+            name: "Y".into(),
+            sort: Sort::General,
+            }],
+            },
+            formula: Formula::BinaryFormula {
+            connective: BinaryConnective::Conjunction,
+            lhs: Formula::BinaryFormula { connective: BinaryConnective::Implication,
+            lhs: Formula::AtomicFormula(AtomicFormula::Atom(Atom { predicate_symbol: "color".into(), terms: vec![GeneralTerm::Variable("Y".to_string())] })).into(),
+            rhs: Formula::AtomicFormula(AtomicFormula::Atom(Atom { predicate_symbol: "color".into(), terms: vec![GeneralTerm::Variable("Y".to_string()), GeneralTerm::SymbolicTerm(SymbolicTerm::Symbol("a".into()))] })).into(),
+            }.into(),
+            rhs: Formula::AtomicFormula(AtomicFormula::Atom(Atom {
+            predicate_symbol: "vertex".into(),
+            terms: vec![GeneralTerm::SymbolicTerm(SymbolicTerm::Symbol("a".into()))]
+            }))
+            .into(),
+            }
+            .into()
+            })
+            .to_string(),
+            "![Y_g: general]: ((color(Y_g) => color(Y_g, f__symbolic__(a))) & vertex(f__symbolic__(a)))"
+            );
     }
 }

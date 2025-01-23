@@ -12,6 +12,7 @@ use {
             UserGuideParser, VariableParser,
         },
         simplifying::fol::ht::join_nested_quantifiers,
+        verifying::problem::{self, FormulaType},
         syntax_tree::{asp, impl_node, Node},
         verifying::problem,
     },
@@ -391,6 +392,36 @@ pub struct Comparison {
 impl_node!(Comparison, Format, ComparisonParser);
 
 impl Comparison {
+    pub fn individuals(&self) -> impl Iterator<Item = (&GeneralTerm, &Relation, &GeneralTerm)> {
+        struct Individuals<'a> {
+            lhs: &'a GeneralTerm,
+            guards_iter: std::slice::Iter<'a, Guard>,
+        }
+
+        impl<'a> Iterator for Individuals<'a> {
+            type Item = (&'a GeneralTerm, &'a Relation, &'a GeneralTerm);
+
+            fn next(&mut self) -> Option<Self::Item> {
+                if let Some(Guard {
+                    relation,
+                    term: rhs,
+                }) = self.guards_iter.next()
+                {
+                    let result = Some((self.lhs, relation, rhs));
+                    self.lhs = rhs;
+                    result
+                } else {
+                    None
+                }
+            }
+        }
+
+        Individuals {
+            lhs: &self.term,
+            guards_iter: self.guards.iter(),
+        }
+    }
+
     pub fn substitute(self, var: Variable, term: GeneralTerm) -> Self {
         let lhs = self.term.substitute(var.clone(), term.clone());
 
@@ -983,7 +1014,11 @@ pub struct AnnotatedFormula {
 impl_node!(AnnotatedFormula, Format, AnnotatedFormulaParser);
 
 impl AnnotatedFormula {
-    pub fn into_problem_formula(self, role: problem::Role) -> problem::AnnotatedFormula {
+    pub fn into_problem_formula(
+        self,
+        role: problem::Role,
+        formula_type: FormulaType,
+    ) -> problem::AnnotatedFormula {
         problem::AnnotatedFormula {
             name: if self.name.is_empty() {
                 // TODO: Revisit default naming scheme!
@@ -993,6 +1028,7 @@ impl AnnotatedFormula {
             },
             role,
             formula: self.formula,
+            formula_type,
         }
     }
 

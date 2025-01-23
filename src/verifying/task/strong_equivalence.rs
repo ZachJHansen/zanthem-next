@@ -11,7 +11,7 @@ use {
             gamma::{self, gamma},
         },
         verifying::{
-            problem::{AnnotatedFormula, Problem, Role},
+            problem::{AnnotatedFormula, FormulaType, Interpretation, Problem, Role},
             task::Task,
         },
     },
@@ -98,21 +98,24 @@ impl Task for StrongEquivalenceTask {
             fol::Direction::Universal | fol::Direction::Forward
         ) {
             problems.push(
-                Problem::with_name("forward")
+                Problem::with_name("forward", Interpretation::Standard)
                     .add_theory(transition_axioms.clone(), |i, formula| AnnotatedFormula {
                         name: format!("transition_axiom_{i}"),
                         role: Role::Axiom,
                         formula,
+                        formula_type: FormulaType::Tff,
                     })
                     .add_theory(left.clone(), |i, formula| AnnotatedFormula {
                         name: format!("left_{i}"),
                         role: Role::Axiom,
                         formula,
+                        formula_type: FormulaType::Tff,
                     })
                     .add_theory(right.clone(), |i, formula| AnnotatedFormula {
                         name: format!("right_{i}"),
                         role: Role::Conjecture,
                         formula,
+                        formula_type: FormulaType::Tff,
                     })
                     .rename_conflicting_symbols(),
             );
@@ -122,21 +125,24 @@ impl Task for StrongEquivalenceTask {
             fol::Direction::Universal | fol::Direction::Backward
         ) {
             problems.push(
-                Problem::with_name("backward")
+                Problem::with_name("backward", Interpretation::Standard)
                     .add_theory(transition_axioms, |i, formula| AnnotatedFormula {
                         name: format!("transition_axiom_{i}"),
                         role: Role::Axiom,
                         formula,
+                        formula_type: FormulaType::Tff,
                     })
                     .add_theory(right, |i, formula| AnnotatedFormula {
                         name: format!("right_{i}"),
                         role: Role::Axiom,
                         formula,
+                        formula_type: FormulaType::Tff,
                     })
                     .add_theory(left, |i, formula| AnnotatedFormula {
                         name: format!("left_{i}"),
                         role: Role::Conjecture,
                         formula,
+                        formula_type: FormulaType::Tff,
                     })
                     .rename_conflicting_symbols(),
             );

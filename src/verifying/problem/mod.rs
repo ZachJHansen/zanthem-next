@@ -10,13 +10,32 @@ use {
 };
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
+pub enum FormulaType {
+    Tff,
+    Fof,
+}
+
+impl fmt::Display for FormulaType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            FormulaType::Tff => write!(f, "tff"),
+            FormulaType::Fof => write!(f, "fof"),
+        }
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub enum Interpretation {
     Standard,
+    IltpStd,
 }
 
 impl fmt::Display for Interpretation {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, include_str!("standard_interpretation.p"))
+        match self {
+            Interpretation::Standard => write!(f, include_str!("standard_interpretation.p")),
+            Interpretation::IltpStd => write!(f, include_str!("iltp_std_interpretation.p")),
+        }
     }
 }
 
@@ -40,6 +59,7 @@ pub struct AnnotatedFormula {
     pub name: String,
     pub role: Role,
     pub formula: Formula,
+    pub formula_type: FormulaType,
 }
 
 impl AnnotatedFormula {
@@ -60,6 +80,7 @@ impl AnnotatedFormula {
             name: self.name,
             role: self.role,
             formula: self.formula.rename_conflicting_symbols(possible_conflicts),
+            formula_type: self.formula_type,
         }
     }
 }
@@ -68,8 +89,12 @@ impl fmt::Display for AnnotatedFormula {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let name = &self.name;
         let role = &self.role;
-        let formula = crate::formatting::fol::tptp::Format(&self.formula);
-        writeln!(f, "tff({name}, {role}, {formula}).")
+        let formula = match &self.formula_type {
+            FormulaType::Tff => format!("{}", crate::formatting::fol::tptp::Format(&self.formula)),
+            FormulaType::Fof => format!("{}", crate::formatting::fol::iltp::Format(&self.formula)),
+        };
+        let formula_type = &self.formula_type;
+        writeln!(f, "{formula_type}({name}, {role}, {formula}).")
     }
 }
 
@@ -81,10 +106,10 @@ pub struct Problem {
 }
 
 impl Problem {
-    pub fn with_name<S: Into<String>>(name: S) -> Problem {
+    pub fn with_name<S: Into<String>>(name: S, interpretation: Interpretation) -> Problem {
         Problem {
             name: name.into(),
-            interpretation: Interpretation::Standard,
+            interpretation,
             formulas: vec![],
         }
     }
@@ -99,12 +124,14 @@ impl Problem {
                     name: "unnamed_formula".to_string(),
                     role: anf.role,
                     formula: anf.formula,
+                    formula_type: anf.formula_type,
                 });
             } else if anf.name.starts_with('_') {
                 self.formulas.push(AnnotatedFormula {
                     name: format!("f{}", anf.name),
                     role: anf.role,
                     formula: anf.formula,
+                    formula_type: anf.formula_type,
                 });
             } else {
                 self.formulas.push(anf);
@@ -233,43 +260,46 @@ impl fmt::Display for Problem {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.interpretation)?;
 
-        for (i, predicate) in self.predicates().into_iter().enumerate() {
-            let symbol = predicate.symbol;
-            // let input: String = repeat("general")
-            //     .take(predicate.arity)
-            //     .intersperse(" * ")
-            //     .collect();
-            let input: String =
-                Itertools::intersperse(repeat("general").take(predicate.arity), " * ").collect();
-            if predicate.arity > 0 {
-                writeln!(f, "tff(predicate_{i}, type, {symbol}: ({input}) > $o).")?
-            } else {
-                writeln!(f, "tff(predicate_{i}, type, {symbol}: $o).")?
+        if self.interpretation == Interpretation::Standard {
+            for (i, predicate) in self.predicates().into_iter().enumerate() {
+                let symbol = predicate.symbol;
+                // let input: String = repeat("general")
+                //     .take(predicate.arity)
+                //     .intersperse(" * ")
+                //     .collect();
+                let input: String =
+                    Itertools::intersperse(repeat("general").take(predicate.arity), " * ")
+                        .collect();
+                if predicate.arity > 0 {
+                    writeln!(f, "tff(predicate_{i}, type, {symbol}: ({input}) > $o).")?
+                } else {
+                    writeln!(f, "tff(predicate_{i}, type, {symbol}: $o).")?
+                }
             }
-        }
 
-        for (i, symbol) in self.symbols().into_iter().enumerate() {
-            writeln!(f, "tff(type_symbol_{i}, type, {symbol}: symbol).")?
-        }
+            for (i, symbol) in self.symbols().into_iter().enumerate() {
+                writeln!(f, "tff(type_symbol_{i}, type, {symbol}: symbol).")?
+            }
 
-        for (i, constant) in self.function_constants().into_iter().enumerate() {
-            let name = crate::formatting::fol::tptp::Format(&constant);
-            let sort = match constant.sort {
-                Sort::General => "general",
-                Sort::Integer => "$int",
-                Sort::Symbol => "symbol",
-            };
-            writeln!(f, "tff(type_function_constant_{i}, type, {name}: {sort}).")?
-        }
+            for (i, constant) in self.function_constants().into_iter().enumerate() {
+                let name = crate::formatting::fol::tptp::Format(&constant);
+                let sort = match constant.sort {
+                    Sort::General => "general",
+                    Sort::Integer => "$int",
+                    Sort::Symbol => "symbol",
+                };
+                writeln!(f, "tff(type_function_constant_{i}, type, {name}: {sort}).")?
+            }
 
-        let mut symbols = Vec::from_iter(self.symbols());
-        symbols.sort_unstable();
-        for (i, s) in symbols.windows(2).enumerate() {
-            writeln!(
-                f,
-                "tff(symbol_order_{i}, axiom, p__less__(f__symbolic__({}), f__symbolic__({}))).",
-                s[0], s[1]
-            )?
+            let mut symbols = Vec::from_iter(self.symbols());
+            symbols.sort_unstable();
+            for (i, s) in symbols.windows(2).enumerate() {
+                writeln!(
+                    f,
+                    "tff(symbol_order_{i}, axiom, p__less__(f__symbolic__({}), f__symbolic__({}))).",
+                    s[0], s[1]
+                )?
+            }
         }
 
         for formula in &self.formulas {
@@ -284,6 +314,7 @@ impl fmt::Display for Problem {
 mod tests {
     use {
         super::{AnnotatedFormula, Interpretation, Problem, Role},
+        crate::verifying::problem::FormulaType,
         std::vec,
     };
 
@@ -297,21 +328,25 @@ mod tests {
                     name: "axiom_0".into(),
                     role: Role::Axiom,
                     formula: "p(a)".parse().unwrap(),
+                    formula_type: FormulaType::Tff,
                 },
                 AnnotatedFormula {
                     name: "axiom_1".into(),
                     role: Role::Axiom,
                     formula: "forall X p(X) -> q(X)".parse().unwrap(),
+                    formula_type: FormulaType::Tff,
                 },
                 AnnotatedFormula {
                     name: "conjecture_0".into(),
                     role: Role::Conjecture,
                     formula: "p(a)".parse().unwrap(),
+                    formula_type: FormulaType::Tff,
                 },
                 AnnotatedFormula {
                     name: "conjecture_1".into(),
                     role: Role::Conjecture,
                     formula: "q(a)".parse().unwrap(),
+                    formula_type: FormulaType::Tff,
                 },
             ],
         };
@@ -327,16 +362,19 @@ mod tests {
                             name: "axiom_0".into(),
                             role: Role::Axiom,
                             formula: "p(a)".parse().unwrap(),
+                            formula_type: FormulaType::Tff,
                         },
                         AnnotatedFormula {
                             name: "axiom_1".into(),
                             role: Role::Axiom,
                             formula: "forall X p(X) -> q(X)".parse().unwrap(),
+                            formula_type: FormulaType::Tff,
                         },
                         AnnotatedFormula {
                             name: "conjecture_0".into(),
                             role: Role::Conjecture,
                             formula: "p(a)".parse().unwrap(),
+                            formula_type: FormulaType::Tff,
                         },
                     ],
                 },
@@ -348,16 +386,19 @@ mod tests {
                             name: "axiom_0".into(),
                             role: Role::Axiom,
                             formula: "p(a)".parse().unwrap(),
+                            formula_type: FormulaType::Tff,
                         },
                         AnnotatedFormula {
                             name: "axiom_1".into(),
                             role: Role::Axiom,
                             formula: "forall X p(X) -> q(X)".parse().unwrap(),
+                            formula_type: FormulaType::Tff,
                         },
                         AnnotatedFormula {
                             name: "conjecture_1".into(),
                             role: Role::Conjecture,
                             formula: "q(a)".parse().unwrap(),
+                            formula_type: FormulaType::Tff,
                         },
                     ],
                 }
@@ -375,16 +416,19 @@ mod tests {
                             name: "axiom_0".into(),
                             role: Role::Axiom,
                             formula: "p(a)".parse().unwrap(),
+                            formula_type: FormulaType::Tff,
                         },
                         AnnotatedFormula {
                             name: "axiom_1".into(),
                             role: Role::Axiom,
                             formula: "forall X p(X) -> q(X)".parse().unwrap(),
+                            formula_type: FormulaType::Tff,
                         },
                         AnnotatedFormula {
                             name: "conjecture_0".into(),
                             role: Role::Conjecture,
                             formula: "p(a)".parse().unwrap(),
+                            formula_type: FormulaType::Tff,
                         },
                     ],
                 },
@@ -396,21 +440,25 @@ mod tests {
                             name: "axiom_0".into(),
                             role: Role::Axiom,
                             formula: "p(a)".parse().unwrap(),
+                            formula_type: FormulaType::Tff,
                         },
                         AnnotatedFormula {
                             name: "axiom_1".into(),
                             role: Role::Axiom,
                             formula: "forall X p(X) -> q(X)".parse().unwrap(),
+                            formula_type: FormulaType::Tff,
                         },
                         AnnotatedFormula {
                             name: "conjecture_0".into(),
                             role: Role::Axiom,
                             formula: "p(a)".parse().unwrap(),
+                            formula_type: FormulaType::Tff,
                         },
                         AnnotatedFormula {
                             name: "conjecture_1".into(),
                             role: Role::Conjecture,
                             formula: "q(a)".parse().unwrap(),
+                            formula_type: FormulaType::Tff,
                         },
                     ],
                 }

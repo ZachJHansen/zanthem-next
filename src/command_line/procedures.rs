@@ -8,6 +8,7 @@ use {
         simplifying::fol::ht::{simplify, simplify_shallow},
         syntax_tree::{asp, fol, Node as _},
         translating::{
+            shorthand::shorthand,
             asp_to_ht::{tau_star, Version},
             completion::completion,
             gamma::gamma,
@@ -15,7 +16,9 @@ use {
         verifying::{
             prover::{vampire::Vampire, Prover, Report, Status, Success},
             task::{
-                derivation::DerivationTask, external_equivalence::ExternalEquivalenceTask,
+                external_equivalence::ExternalEquivalenceTask,
+                intuit_equivalence::IntuitEquivalenceTask,
+                derivation::DerivationTask, 
                 strong_equivalence::StrongEquivalenceTask, Task,
             },
         },
@@ -227,6 +230,13 @@ pub fn main() -> Result<()> {
                     };
                     print!("{theory}")
                 }
+
+                Translation::Shorthand => {
+                    let program =
+                        input.map_or_else(asp::Program::from_stdin, asp::Program::from_file)?;
+                    let theory = shorthand(program);
+                    print!("{theory}")
+                }
             }
 
             Ok(())
@@ -247,6 +257,7 @@ pub fn main() -> Result<()> {
             prover_cores,
             save_problems: out_dir,
             files,
+            formula_representation,
         } => {
             let start_time = if !no_timing {
                 Some(Instant::now())
@@ -277,6 +288,7 @@ pub fn main() -> Result<()> {
                 }
                 .decompose()?
                 .report_warnings(),
+
                 Equivalence::External => ExternalEquivalenceTask {
                     specification: match files
                         .specification()
@@ -305,6 +317,26 @@ pub fn main() -> Result<()> {
                     bypass_tightness,
                     simplify: !no_simplify,
                     break_equivalences: !no_eq_break,
+                }
+                .decompose()?
+                .report_warnings(),
+
+                Equivalence::Intuitionistic => IntuitEquivalenceTask {
+                    left: asp::Program::from_file(
+                        files
+                            .left()
+                            .ok_or(anyhow!("no left program was provided"))?,
+                    )?,
+                    right: asp::Program::from_file(
+                        files
+                            .right()
+                            .ok_or(anyhow!("no right program was provided"))?,
+                    )?,
+                    task_decomposition,
+                    direction,
+                    simplify: !no_simplify,
+                    break_equivalences: !no_eq_break,
+                    translation: formula_representation,
                 }
                 .decompose()?
                 .report_warnings(),
