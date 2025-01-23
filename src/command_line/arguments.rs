@@ -94,7 +94,7 @@ pub enum Command {
         equivalence: Equivalence,
 
         /// The ASP-to-HT translation to use
-        #[arg(long, value_enum)]
+        #[arg(long, value_enum, default_value_t)]
         formula_representation: FormulaRepresentation,
 
         /// The decomposition strategy to use
