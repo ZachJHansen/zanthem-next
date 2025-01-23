@@ -128,6 +128,7 @@ pub enum ExternalEquivalenceTaskError {
     OutputPredicateInSpecificationAssumption(Vec<fol::Predicate>),
     PlaceholdersWithIdenticalNamesDifferentSorts(String),
     AssumptionContainsNonInputSymbols(fol::AnnotatedFormula),
+    AssumptionContainsFreeVariables(fol::AnnotatedFormula),
     ProofOutlineError(#[from] ProofOutlineError),
 }
 
@@ -212,6 +213,9 @@ impl Display for ExternalEquivalenceTaskError {
             ExternalEquivalenceTaskError::ProofOutlineError(_) => {
                 writeln!(f, "the given proof outline contains errors")
             }
+            ExternalEquivalenceTaskError::AssumptionContainsFreeVariables(formula) => {
+                writeln!(f, "the following assumption contains free variables: {formula}")
+            },
         }
     }
 }
@@ -378,6 +382,25 @@ impl ExternalEquivalenceTask {
 
         Ok(WithWarnings::flawless(()))
     }
+
+    fn ensure_assumptions_have_no_free_variables(
+        &self,
+        formulas: &Vec<fol::AnnotatedFormula>,
+    ) -> Result<(), ExternalEquivalenceTaskWarning, ExternalEquivalenceTaskError> {
+        for formula in formulas {
+            if matches!(formula.role, fol::Role::Assumption) {
+                if !formula.formula.free_variables().is_empty() {
+                    return Err(
+                        ExternalEquivalenceTaskError::AssumptionContainsFreeVariables(
+                            formula.clone(),
+                        ),
+                    );
+                }
+            }
+        }
+
+        Ok(WithWarnings::flawless(()))
+    }
 }
 
 impl Task for ExternalEquivalenceTask {
@@ -424,6 +447,7 @@ impl Task for ExternalEquivalenceTask {
         self.ensure_rule_heads_do_not_contain_input_predicates(&self.program)?;
         self.ensure_placeholder_name_uniqueness()?;
         self.ensure_assumptions_only_contain_input_symbols(&self.user_guide.formulas())?;
+        self.ensure_assumptions_have_no_free_variables(&self.user_guide.formulas())?;
 
         match self.specification {
             Either::Left(ref program) => {
