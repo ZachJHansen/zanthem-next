@@ -687,7 +687,7 @@ terms: vec![GeneralTerm::SymbolicTerm(SymbolicTerm::Symbol("a".into()))]
 .into()
 })
 .to_string(),
-"![Y_g: general]: ((color(Y_g) => color(Y_g, f__symbolic__(a))) & vertex(f__symbolic__(a)))"
+"![Y: general]: ((color(Y) => color(Y, f__symbolic__(a))) & vertex(f__symbolic__(a)))"
 )
     }
 }
