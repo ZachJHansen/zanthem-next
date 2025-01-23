@@ -377,6 +377,36 @@ pub struct Comparison {
 impl_node!(Comparison, Format, ComparisonParser);
 
 impl Comparison {
+    pub fn individuals(&self) -> impl Iterator<Item = (&GeneralTerm, &Relation, &GeneralTerm)> {
+        struct Individuals<'a> {
+            lhs: &'a GeneralTerm,
+            guards_iter: std::slice::Iter<'a, Guard>,
+        }
+
+        impl<'a> Iterator for Individuals<'a> {
+            type Item = (&'a GeneralTerm, &'a Relation, &'a GeneralTerm);
+
+            fn next(&mut self) -> Option<Self::Item> {
+                if let Some(Guard {
+                    relation,
+                    term: rhs,
+                }) = self.guards_iter.next()
+                {
+                    let result = Some((self.lhs, relation, rhs));
+                    self.lhs = rhs;
+                    result
+                } else {
+                    None
+                }
+            }
+        }
+
+        Individuals {
+            lhs: &self.term,
+            guards_iter: self.guards.iter(),
+        }
+    }
+
     pub fn substitute(self, var: Variable, term: GeneralTerm) -> Self {
         let lhs = self.term.substitute(var.clone(), term.clone());
 
