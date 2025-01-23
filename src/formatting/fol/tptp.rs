@@ -663,5 +663,31 @@ mod tests {
             .to_string(),
             "![X$i: $int, Y1: general]: (p & q)"
         );
+        assert_eq!(
+Format(&Formula::QuantifiedFormula {
+quantification: Quantification {
+quantifier: Quantifier::Forall,
+variables: vec![Variable {
+name: "Y".into(),
+sort: Sort::General,
+}],
+},
+formula: Formula::BinaryFormula {
+connective: BinaryConnective::Conjunction,
+lhs: Formula::BinaryFormula { connective: BinaryConnective::Implication,
+lhs: Formula::AtomicFormula(AtomicFormula::Atom(Atom { predicate_symbol: "color".into(), terms: vec![GeneralTerm::Variable("Y".to_string())] })).into(),
+rhs: Formula::AtomicFormula(AtomicFormula::Atom(Atom { predicate_symbol: "color".into(), terms: vec![GeneralTerm::Variable("Y".to_string()), GeneralTerm::SymbolicTerm(SymbolicTerm::Symbol("a".into()))] })).into(),
+}.into(),
+rhs: Formula::AtomicFormula(AtomicFormula::Atom(Atom {
+predicate_symbol: "vertex".into(),
+terms: vec![GeneralTerm::SymbolicTerm(SymbolicTerm::Symbol("a".into()))]
+}))
+.into(),
+}
+.into()
+})
+.to_string(),
+"![Y_g: general]: ((color(Y_g) => color(Y_g, f__symbolic__(a))) & vertex(f__symbolic__(a)))"
+)
     }
 }
