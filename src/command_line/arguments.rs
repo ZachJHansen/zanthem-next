@@ -164,20 +164,22 @@ pub enum Simplification {
     ShallowHT,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
 pub enum Translation {
+    #[default]
+    TauStarV1,
+    TauStarV2,
+    Shorthand,
     Completion,
     Gamma,
-    Shorthand,
-    TauStarV1,
-    TauStarV2,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
 pub enum FormulaRepresentation {
-    Shorthand,
+    #[default]
     TauStarV1,
     TauStarV2,
+    Shorthand,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
