@@ -8,13 +8,17 @@ use {
         simplifying::fol::ht::{simplify, simplify_shallow},
         syntax_tree::{asp, fol, Node as _},
         translating::{
-            completion::completion, gamma::gamma, shorthand::shorthand, tau_star::tau_star,
+            shorthand::shorthand,
+            asp_to_ht::{tau_star, Version},
+            completion::completion,
+            gamma::gamma,
         },
         verifying::{
             prover::{vampire::Vampire, Prover, Report, Status, Success},
             task::{
                 external_equivalence::ExternalEquivalenceTask,
                 intuit_equivalence::IntuitEquivalenceTask,
+                derivation::DerivationTask, 
                 strong_equivalence::StrongEquivalenceTask, Task,
             },
         },
@@ -22,6 +26,7 @@ use {
     anyhow::{anyhow, Context, Result},
     clap::Parser as _,
     either::Either,
+    std::collections::HashSet,
     std::time::Instant,
 };
 
@@ -35,6 +40,146 @@ pub fn main() -> Result<()> {
                     let is_tight = program.is_tight();
                     println!("{is_tight}");
                 }
+
+                Property::CnfPdg => {
+                    let theory =
+                        input.map_or_else(fol::Theory::from_stdin, fol::Theory::from_file)?;
+                    println!("print vertices and edges");
+                    theory.cnf_pdg(HashSet::new());
+                }
+            }
+
+            Ok(())
+        }
+
+        Command::Derive {
+            outline,
+            user_guide,
+            task_decomposition,
+            no_simplify,
+            no_eq_break,
+            time_limit,
+            no_proof_search,
+            no_timing,
+            out_dir,
+            prover_instances,
+            prover_cores,
+        } => {
+            let start_time = if !no_timing {
+                Some(Instant::now())
+            } else {
+                None
+            };
+
+            println!(
+                "WARNING: Do not specify directions (forward, backward) in any annotated formulas!"
+            );
+
+            let proof_outline = fol::Specification::from_file(outline)?;
+            let user_guide = fol::UserGuide::from_file(user_guide)?;
+
+            let problems = DerivationTask {
+                proof_outline,
+                user_guide,
+                task_decomposition,
+                simplify: !no_simplify,
+                break_equivalences: !no_eq_break,
+            }
+            .decompose()?
+            .report_warnings();
+
+            if let Some(out_dir) = out_dir {
+                for problem in &problems {
+                    let mut path = out_dir.clone();
+                    path.push(format!("{}.p", problem.name));
+                    problem.to_file(path)?;
+                }
+            }
+
+            if !no_proof_search {
+                let prover = Vampire {
+                    time_limit,
+                    time_execution: !no_timing,
+                    instances: prover_instances,
+                    cores: prover_cores,
+                };
+
+                let problems = problems.into_iter().inspect(|problem| {
+                    println!("> Proving {}...", problem.name);
+                    println!("Axioms:");
+                    for axiom in problem.axioms() {
+                        println!("    {}", axiom.formula);
+                    }
+                    println!();
+                    println!("Conjectures:");
+                    for conjecture in problem.conjectures() {
+                        println!("    {}", conjecture.formula);
+                    }
+                    println!();
+                });
+
+                let mut success = true;
+                for result in prover.prove_all(problems) {
+                    match result {
+                        Ok(report) => match report.status() {
+                            Ok(status) => {
+                                println!(
+                                    "> Proving {} ended with a SZS status",
+                                    report.problem.name
+                                );
+
+                                match report.start_time {
+                                    Some(start) => println!(
+                                        "Status: {status} ({} ms)",
+                                        start.elapsed().as_millis()
+                                    ),
+                                    None => println!("Status: {status}"),
+                                }
+
+                                if !matches!(status, Status::Success(Success::Theorem)) {
+                                    success = false;
+                                }
+                            }
+                            Err(error) => {
+                                match report.start_time {
+                                    Some(start) => println!(
+                                        "> Proving {} ended without a SZS status ({} ms)",
+                                        report.problem.name,
+                                        start.elapsed().as_millis()
+                                    ),
+                                    None => println!(
+                                        "> Proving {} ended without a SZS status",
+                                        report.problem.name
+                                    ),
+                                }
+
+                                println!("Output/stdout:");
+                                println!("{}", report.output.stdout);
+                                println!("Output/stderr:");
+                                println!("{}", report.output.stderr);
+                                println!("Error: {error}");
+                                success = false;
+                            }
+                        },
+                        Err(error) => {
+                            println!("> Proving <a problem> ended with an error"); // TODO: Get the name of the problem
+                            println!("Error: {error}");
+                            success = false;
+                        }
+                    }
+                    println!();
+                }
+
+                if success {
+                    print!("> Success! Anthem proved every lemma.")
+                } else {
+                    print!("> Failure! Anthem was unable to prove every lemma.")
+                }
+            }
+
+            match start_time {
+                Some(start) => println!(" ({} ms)", start.elapsed().as_millis()),
+                None => println!(),
             }
 
             Ok(())
@@ -73,10 +218,16 @@ pub fn main() -> Result<()> {
                     print!("{gamma_theory}")
                 }
 
-                Translation::TauStar => {
+                Translation::TauStarV1 | Translation::TauStarV2 => {
                     let program =
                         input.map_or_else(asp::Program::from_stdin, asp::Program::from_file)?;
-                    let theory = tau_star(program);
+                    let theory = match with {
+                        Translation::TauStarV1 => tau_star::tau_star(program, Version::Original),
+                        Translation::TauStarV2 => {
+                            tau_star::tau_star(program, Version::AbstractGringoCompliant)
+                        }
+                        _ => unreachable!(),
+                    };
                     print!("{theory}")
                 }
 
@@ -93,6 +244,7 @@ pub fn main() -> Result<()> {
 
         Command::Verify {
             equivalence,
+            formula_representation,
             task_decomposition,
             direction,
             bypass_tightness,
@@ -130,6 +282,7 @@ pub fn main() -> Result<()> {
                     )?,
                     task_decomposition,
                     direction,
+                    formula_representation,
                     simplify: !no_simplify,
                     break_equivalences: !no_eq_break,
                 }
@@ -158,6 +311,7 @@ pub fn main() -> Result<()> {
                         .proof_outline()
                         .map(fol::Specification::from_file)
                         .unwrap_or_else(|| Ok(fol::Specification::empty()))?,
+                    formula_representation,
                     task_decomposition,
                     direction,
                     bypass_tightness,
@@ -283,6 +437,46 @@ pub fn main() -> Result<()> {
             }
 
             Ok(())
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+
+    use crate::syntax_tree::{asp, fol};
+
+    #[test]
+    fn asp_program_parse_and_format() {
+        for string in [
+            "p(X) :- q(X).\n",
+            "p(Y) :- Y = 1..|-5 + 3|.\n",
+            "q :- p, not not q.\n",
+            "p(|Y + 1|) :- src(Y), Y < -|-1|.\n",
+        ] {
+            let program: asp::Program = string.parse().unwrap();
+            assert_eq!(
+                string,
+                format!("{program}"),
+                "assertion `left == right` failed:\n left:\n{string}\n right:\n{program}"
+            );
+        }
+    }
+
+    #[test]
+    fn fol_formula_parse_and_format() {
+        for string in [
+            "forall X (p(X) <-> exists N$i (q(N$i) and |N$i| = X))",
+            "p(|1 + |3 - 5||)",
+            "p(||3 - 5||)",
+            "p(|-|3 - 5||)",
+        ] {
+            let formula: fol::Formula = string.parse().unwrap();
+            assert_eq!(
+                string,
+                format!("{formula}"),
+                "assertion `left == right` failed:\n left:\n{string}\n right:\n{formula}"
+            );
         }
     }
 }

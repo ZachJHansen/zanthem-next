@@ -1,0 +1,3 @@
+lemma: forall X$ V$ ( tp(X$) and tp(V$) -> not tp(V$) ) -> forall X$ ( not tp(X$) ).
+
+lemma: forall X$ Y$ V$ ( (tp(X$) and tp(Y$)) and tp(V$) -> not tp(V$) ) -> forall X$ Y$ ( not (tp(X$) and tp(Y$)) ).

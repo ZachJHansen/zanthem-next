@@ -1,3 +1,4 @@
+pub mod derivation;
 pub mod external_equivalence;
 pub mod intuit_equivalence;
 pub mod strong_equivalence;

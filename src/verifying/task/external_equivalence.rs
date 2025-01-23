@@ -2,14 +2,20 @@ use {
     crate::{
         analyzing::{private_recursion::PrivateRecursion, tightness::Tightness},
         breaking::fol::ht::break_equivalences_annotated_formula,
-        command_line::arguments::TaskDecomposition,
+        command_line::arguments::{FormulaRepresentation, TaskDecomposition},
         convenience::{
             apply::Apply as _,
             with_warnings::{Result, WithWarnings},
         },
         simplifying::fol::ht::simplify,
         syntax_tree::{asp, fol},
-        translating::{completion::completion, tau_star::tau_star},
+        translating::{
+            asp_to_ht::{
+                tau_star,
+                Version::{AbstractGringoCompliant, Original},
+            },
+            completion::completion,
+        },
         verifying::{
             outline::{GeneralLemma, ProofOutline, ProofOutlineError, ProofOutlineWarning},
             problem::{self, Interpretation, Problem},
@@ -216,6 +222,7 @@ pub struct ExternalEquivalenceTask {
     pub program: asp::Program,
     pub user_guide: fol::UserGuide,
     pub proof_outline: fol::Specification,
+    pub formula_representation: FormulaRepresentation,
     pub task_decomposition: TaskDecomposition,
     pub direction: fol::Direction,
     pub bypass_tightness: bool,
@@ -488,11 +495,17 @@ impl Task for ExternalEquivalenceTask {
             fol::Specification { formulas }
         };
 
+        let version = match self.formula_representation {
+            FormulaRepresentation::TauStarV1 => Original,
+            FormulaRepresentation::TauStarV2 => AbstractGringoCompliant,
+        };
+
         let left = match self.specification {
             Either::Left(program) => {
-                let formula_representation =
-                    completion(tau_star(program).replace_placeholders(&placeholders))
-                        .expect("tau_star did not create a completable theory");
+                let formula_representation = completion(
+                    tau_star::tau_star(program, version).replace_placeholders(&placeholders),
+                )
+                .expect("tau_star did not create a completable theory");
                 if self.simplify {
                     control_translate(simplify(formula_representation))
                 } else {
@@ -503,9 +516,10 @@ impl Task for ExternalEquivalenceTask {
         };
 
         let right = {
-            let formula_representation =
-                completion(tau_star(self.program).replace_placeholders(&placeholders))
-                    .expect("tau_star did not create a completable theory");
+            let formula_representation = completion(
+                tau_star::tau_star(self.program, version).replace_placeholders(&placeholders),
+            )
+            .expect("tau_star did not create a completable theory");
             if self.simplify {
                 control_translate(simplify(formula_representation))
             } else {

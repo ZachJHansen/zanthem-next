@@ -1,0 +1,43 @@
+lemma: forall X (vertex(X) -> exists Y color(X,Y)).
+lemma: forall X ((vertex(X) and forall Y (color(Y) -> not color(X,Y))) -> #false).
+lemma: forall X (not (vertex(X) and forall Y (color(Y) -> not color(X,Y)))).
+lemma: forall X ((not vertex(X)) or not (forall Y (color(Y) -> not color(X,Y)))).
+lemma: forall X (not vertex(X) or exists Y not (color(Y) -> not color(X, Y))).
+lemma: forall X (not vertex(X) or exists Y (color(Y) -> color(X, Y))).
+lemma: forall X ( exists Y ((color(Y) and color(X,Y)) or not vertex(X))).
+lemma: forall X ( 
+            exists Y (
+                not (color(Y) -> not color(X,Y)) or not vertex(X)
+            )
+        ).
+lemma: forall X ( 
+            exists Y (
+                not (not color(Y) or not color(X,Y)) or not vertex(X)
+            )
+        ).
+lemma: forall X ( 
+            exists Y (
+                (color(Y) and color(X,Y)) or not vertex(X)
+            )
+        ).
+lemma: forall X ( 
+            exists Y (
+                ( not (not color(Y) or not color(X,Y)) or not vertex(X))
+            ) 
+        ).
+lemma: forall X ( 
+            exists Y (
+                not ( (not color(Y) or not color(X,Y)) and vertex(X))
+            ) 
+        ).
+%lemma: forall X ( 
+%            exists Y (
+%                not ( (color(Y) -> not color(X,Y)) and vertex(X))
+%            ) 
+%        ).
+
+%lemma: forall X ( 
+%            not forall Y (
+%                ( (color(Y) -> not color(X,Y)) and vertex(X))
+%            ) 
+%        ).

@@ -29,8 +29,8 @@ pub fn simplify_formula(formula: Formula) -> Formula {
         f2 = eliminate_redundant_quantifiers_deep(f2);
         f2 = simplify_empty_quantifiers_deep(simplify_variable_lists_deep(f2));
 
-        f2 = extend_quantifier_scope_deep(f2);
-        f2 = simplify_empty_quantifiers_deep(simplify_variable_lists_deep(f2));
+        //f2 = extend_quantifier_scope_deep(f2);
+        //f2 = simplify_empty_quantifiers_deep(simplify_variable_lists_deep(f2));
 
         f2 = join_nested_quantifiers_deep(f2);
         f2 = simplify_empty_quantifiers_deep(simplify_variable_lists_deep(f2));
@@ -75,6 +75,42 @@ pub fn simplify_formula_shallow(formula: Formula) -> Formula {
         Box::new(simplify_variable_lists),
         Box::new(simplify_empty_quantifiers),
     ])
+}
+
+// Formula F is a special case of
+// conditional literal (#true -> F), and should be simplified as such
+pub fn simplify_conditionals_formula_outer(formula: Formula) -> Formula {
+    match formula.unbox() {
+        // #true -> F => F
+        UnboxedFormula::BinaryFormula {
+            connective: BinaryConnective::Implication,
+            lhs: Formula::AtomicFormula(AtomicFormula::Truth),
+            rhs,
+        } => rhs,
+
+        // F <- #true => F
+        UnboxedFormula::BinaryFormula {
+            connective: BinaryConnective::ReverseImplication,
+            lhs,
+            rhs: Formula::AtomicFormula(AtomicFormula::Truth),
+        } => lhs,
+
+        x => x.rebox(),
+    }
+}
+
+pub fn simplify_conditionals_formula(formula: Formula) -> Formula {
+    formula.apply(&mut simplify_conditionals_formula_outer)
+}
+
+pub fn simplify_conditionals(theory: Theory) -> Theory {
+    Theory {
+        formulas: theory
+            .formulas
+            .into_iter()
+            .map(simplify_conditionals_formula)
+            .collect(),
+    }
 }
 
 pub fn basic_simplify(formula: Formula) -> Formula {

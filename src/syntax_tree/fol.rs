@@ -12,8 +12,9 @@ use {
             UserGuideParser, VariableParser,
         },
         simplifying::fol::ht::join_nested_quantifiers,
-        syntax_tree::{impl_node, Node},
         verifying::problem::{self, FormulaType},
+        syntax_tree::{asp, impl_node, Node},
+        verifying::problem,
     },
     clap::ValueEnum,
     derive_more::derive::IntoIterator,
@@ -24,6 +25,7 @@ use {
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub enum UnaryOperator {
     Negative,
+    AbsoluteValue,
 }
 
 impl_node!(UnaryOperator, Format, UnaryOperatorParser);
@@ -338,6 +340,19 @@ pub enum Relation {
 }
 
 impl_node!(Relation, Format, RelationParser);
+
+impl From<asp::Relation> for Relation {
+    fn from(relation: asp::Relation) -> Self {
+        match relation {
+            asp::Relation::Equal => Relation::Equal,
+            asp::Relation::NotEqual => Relation::NotEqual,
+            asp::Relation::Greater => Relation::Greater,
+            asp::Relation::Less => Relation::Less,
+            asp::Relation::GreaterEqual => Relation::GreaterEqual,
+            asp::Relation::LessEqual => Relation::LessEqual,
+        }
+    }
+}
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub struct Guard {
@@ -891,7 +906,8 @@ impl Formula {
     }
 
     pub fn universal_closure(self) -> Formula {
-        let variables = self.free_variables().into_iter().collect();
+        let mut variables: Vec<Variable> = self.free_variables().into_iter().collect();
+        variables.sort();
         self.quantify(Quantifier::Forall, variables)
     }
 
