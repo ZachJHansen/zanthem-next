@@ -29,8 +29,8 @@ pub fn simplify_formula(formula: Formula) -> Formula {
         f2 = eliminate_redundant_quantifiers_deep(f2);
         f2 = simplify_empty_quantifiers_deep(simplify_variable_lists_deep(f2));
 
-        f2 = extend_quantifier_scope_deep(f2);
-        f2 = simplify_empty_quantifiers_deep(simplify_variable_lists_deep(f2));
+        //f2 = extend_quantifier_scope_deep(f2);
+        //f2 = simplify_empty_quantifiers_deep(simplify_variable_lists_deep(f2));
 
         f2 = join_nested_quantifiers_deep(f2);
         f2 = simplify_empty_quantifiers_deep(simplify_variable_lists_deep(f2));
