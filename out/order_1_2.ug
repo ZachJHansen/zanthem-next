@@ -1,0 +1,21 @@
+input: hp/1.
+input: tp/1.
+input: hsort/2.
+input: tsort/2.
+
+assumption: forall X ( hp(X) -> tp(X) ).
+assumption: forall X Y ( hsort(X,Y) -> tsort(X,Y) ).
+
+assumption: forall V2 X Y (
+    (
+        forall Z (V2 = Y and hp(X) and hp(Y) and 
+                    ((hp(Z) and X < Z and Z < Y -> not tp(Z)) 
+                        and (tp(Z) and X < Z and Z < Y -> not tp(Z))
+                    )
+                ) -> hsort(X, V2)
+    ) and 
+    (
+        forall Z (V2 = Y and tp(X) and tp(Y) and (tp(Z) and X < Z and Z < Y -> not tp(Z))) 
+            -> tsort(X, V2)
+    )
+).

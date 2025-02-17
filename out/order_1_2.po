@@ -1,0 +1,43 @@
+lemma: forall X Y (
+    (
+        forall Z (hp(X) and hp(Y) and 
+                    ((hp(Z) and X < Z and Z < Y -> not tp(Z)) 
+                        and (tp(Z) and X < Z and Z < Y -> not tp(Z))
+                    )
+                ) -> hsort(X, Y)
+    ) and 
+    (
+        forall Z (tp(X) and tp(Y) and (tp(Z) and X < Z and Z < Y -> not tp(Z))) 
+            -> tsort(X, Y)
+    )
+).
+% Simplifying away V2 = Y
+
+lemma: forall X Y (
+    forall Z (tp(X) and tp(Y) and (tp(Z) and X < Z and Z < Y -> not tp(Z))) 
+        -> tsort(X, Y)
+).
+% Breaking assumption into the conjunctive terms
+
+
+lemma: forall X Y (
+    forall Z (tp(X) and tp(Y) and (tp(Z) and X < Z and Z < Y -> #false)) 
+        -> tsort(X, Y)
+).
+
+
+lemma: forall X Y Z ( 
+    ((hp(Y) and X < Y and Y < Z) -> not hp(Y))
+    ->
+    ((hp(Y) and X < Y and Y < Z) -> #false)
+).
+
+lemma: forall X Y Z ( 
+    ((tp(Y) and X < Y and Y < Z) -> not tp(Y))
+    ->
+    ((tp(Y) and X < Y and Y < Z) -> #false)
+).
+
+%lemma: forall X Y Z ((tp(X) and tp(Y) and (tp(Z) and X < Z and Z < Y -> #false)) -> tsort(X, Y)).
+
+%lemma: forall X Y Z ((hp(X) and hp(Y) and ((hp(Z) and X < Z and Z < Y -> #false) and (tp(Z) and X < Z and Z < Y -> #false)) -> hsort(X, Y)) and (tp(X) and tp(Y) and (tp(Z) and X < Z and Z < Y -> #false) -> tsort(X, Y))).

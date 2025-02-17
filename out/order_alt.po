@@ -1,0 +1,34 @@
+lemma: forall X Y (
+    (
+        hp(X) and 
+        hp(Y) and 
+        forall Z (
+            (hp(Z) and X < Z and Z < Y -> #false) and 
+            (tp(Z) and X < Z and Z < Y -> #false)
+        ) -> hsort(X, Y)
+    ) and 
+    (
+        tp(X) and 
+        tp(Y) and 
+        forall Z (tp(Z) and X < Z and Z < Y -> #false) -> tsort(X, Y)
+    )
+).
+
+
+
+%lemma: forall X Y Z (
+%    (
+%        hp(X) and 
+%        hp(Y) and 
+%        (
+%            (hp(Z) and X < Z and Z < Y -> #false) and 
+%            (tp(Z) and X < Z and Z < Y -> #false)
+%        ) -> hsort(X, Y)
+%    ) and 
+%    (
+%        tp(X) and 
+%        tp(Y) and 
+%        (tp(Z) and X < Z and Z < Y -> #false) -> tsort(X, Y)
+%    )
+%).
+% Original form
