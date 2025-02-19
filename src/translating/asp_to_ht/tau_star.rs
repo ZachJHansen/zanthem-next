@@ -164,6 +164,10 @@ mod tests {
         (("p :- s, q : t, r.", vec![]), "(s and (t and r -> q)) -> p"),
         (("p :- s; q : t, r.", vec![]), "(s and (t and r -> q)) -> p"),
         (("p :- s; not not q : t, not r.", vec![]), "(s and (t and not r -> not not q)) -> p"),
+        (
+            ("sort(X,Y) :- p(X); p(Y); not p(Z) : p(Z), X < Z, Z < Y.", vec!["V1".to_string(), "V2".to_string()]), 
+            "forall V1 V2 X Y ( (V1 = X and V2 = Y and (exists Z (Z = X and p(Z)) and exists Z (Z = Y and p(Z)) and forall Z ((exists Z1 (Z1 = Z and p(Z1)) and exists Z1 Z2 (Z1 = X and Z2 = Z and Z1 < Z2) and exists Z1 Z2 (Z1 = Z and Z2 = Y and Z1 < Z2)) -> exists Z1 (Z1 = Z and not p(Z1)) ))) -> sort(V1,V2))"
+        ),
     ] {
         let rule: asp::Rule = src.0.parse().unwrap();
         let src = fol::Theory { formulas: vec![tau_star_rule(&rule, Version::Original, &src.1)] };

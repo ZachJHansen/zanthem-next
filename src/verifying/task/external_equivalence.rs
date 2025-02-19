@@ -214,8 +214,11 @@ impl Display for ExternalEquivalenceTaskError {
                 writeln!(f, "the given proof outline contains errors")
             }
             ExternalEquivalenceTaskError::AssumptionContainsFreeVariables(formula) => {
-                writeln!(f, "the following assumption contains free variables: {formula}")
-            },
+                writeln!(
+                    f,
+                    "the following assumption contains free variables: {formula}"
+                )
+            }
         }
     }
 }

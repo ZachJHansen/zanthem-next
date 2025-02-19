@@ -210,11 +210,16 @@ fn tau_b(f: asp::AtomicFormula, v: Version) -> fol::Formula {
 
 // Translate a conditional literal l with global variables z
 fn tau_b_cl(l: asp::ConditionalLiteral, v: Version, z: &IndexSet<asp::Variable>) -> fol::Formula {
-    let head = l.head;
-    let conditions = l.conditions.formulas;
+    let head = l.head.clone();
+    let conditions = l.conditions.formulas.clone();
 
-    let mut local_vars = head.variables();
-    local_vars.retain(|v| !z.contains(v));
+    // A variable is global in H : L if it occurs in H but not L
+    let body_vars = l.conditions.variables();
+    let mut global_cl_vars = head.variables();
+    global_cl_vars.retain(|v| !body_vars.contains(v));
+
+    let mut local_vars = l.variables();
+    local_vars.retain(|v| !(z.contains(v) || global_cl_vars.contains(v)));
 
     let consequent = match head {
         ConditionalHead::AtomicFormula(a) => tau_b(a.clone(), v),
@@ -326,13 +331,21 @@ mod tests {
             (("q(X)", IndexSet::from_iter(vec![asp::Variable("X".to_string())])), "exists Z (Z = X and q(Z))"),
             (("not asg(V,I) : color(I)", IndexSet::from_iter(vec![asp::Variable("V".to_string())])), "forall I (exists Z (Z = I and color(Z)) -> exists Z Z1 (Z = V and Z1 = I and not asg(Z, Z1)))"),
             (("#false : p(X,Y), q(Y)", IndexSet::from_iter(vec![asp::Variable("X".to_string()), asp::Variable("Y".to_string()),])), "(exists Z Z1 (Z = X and Z1 = Y and p(Z,Z1)) and exists Z (Z = Y and q(Z))) -> #false"),
+            (
+                ("not p(Z) : p(Z), X < Z, Z < Y", IndexSet::from_iter(vec![asp::Variable("X".to_string()), asp::Variable("Y".to_string()),])),
+                "forall Z ((exists Z1 (Z1 = Z and p(Z1)) and exists Z1 Z2 (Z1 = X and Z2 = Z and Z1 < Z2) and exists Z1 Z2 (Z1 = Z and Z2 = Y and Z1 < Z2)) -> exists Z1 (Z1 = Z and not p(Z1)) )"
+            ),
+            (
+                ("#false : p(Z), X < Z, Z < Y", IndexSet::from_iter(vec![asp::Variable("X".to_string()), asp::Variable("Y".to_string()),])),
+                "forall Z ((exists Z1 (Z1 = Z and p(Z1)) and exists Z1 Z2 (Z1 = X and Z2 = Z and Z1 < Z2) and exists Z1 Z2 (Z1 = Z and Z2 = Y and Z1 < Z2)) -> #false )"
+            ),
         ] {
             let src = tau_b_cl(src.0.parse().unwrap(), Version::Original, &src.1);
             let target = target.parse().unwrap();
             assert_eq!(
                 src,
                 target,
-                "{src} != {target}"
+                "{src} !=\n {target}"
             )
         }
 
