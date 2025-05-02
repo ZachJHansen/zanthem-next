@@ -391,14 +391,12 @@ impl ExternalEquivalenceTask {
         formulas: &Vec<fol::AnnotatedFormula>,
     ) -> Result<(), ExternalEquivalenceTaskWarning, ExternalEquivalenceTaskError> {
         for formula in formulas {
-            if matches!(formula.role, fol::Role::Assumption) {
-                if !formula.formula.free_variables().is_empty() {
-                    return Err(
-                        ExternalEquivalenceTaskError::AssumptionContainsFreeVariables(
-                            formula.clone(),
-                        ),
-                    );
-                }
+            if matches!(formula.role, fol::Role::Assumption)
+                && !formula.formula.free_variables().is_empty()
+            {
+                return Err(
+                    ExternalEquivalenceTaskError::AssumptionContainsFreeVariables(formula.clone()),
+                );
             }
         }
 
