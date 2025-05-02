@@ -16,18 +16,42 @@ use {
         verifying::{
             prover::{vampire::Vampire, Prover, Report, Status, Success},
             task::{
-                derivation::DerivationTask, external_equivalence::ExternalEquivalenceTask,
+                derivation::DerivationTask,
+                external_equivalence::ExternalEquivalenceTask,
                 intuit_equivalence::IntuitEquivalenceTask,
-                strong_equivalence::StrongEquivalenceTask, Task,
+                strong_equivalence::{StrongEquivalenceCounterModelTask, StrongEquivalenceTask},
+                Task,
             },
         },
     },
-    anyhow::{anyhow, Context, Result},
+    anyhow::{anyhow, Context, Error, Result},
     clap::Parser as _,
     either::Either,
-    std::collections::HashSet,
-    std::time::Instant,
+    std::{collections::HashSet, fs, path::PathBuf, process, time::Instant},
 };
+
+fn convert_to_smt2(path: PathBuf) -> Result<(), Error> {
+    let fname = path.display().to_string();
+
+    let child = process::Command::new("./cvc5-tptp-to-smt2")
+        .args([
+            "-o",
+            "raw-benchmark",
+            "--parse-only",
+            "--lang=tptp",
+            "--output-lang=smt2",
+            &fname,
+        ])
+        .stdout(process::Stdio::piped())
+        .stderr(process::Stdio::piped())
+        .spawn()?;
+
+    let output = child.wait_with_output()?;
+
+    fs::write(path.with_extension("smt2"), output.stdout).expect("Unable to write file");
+
+    Ok(())
+}
 
 pub fn main() -> Result<()> {
     match Arguments::parse().command {
@@ -266,85 +290,121 @@ pub fn main() -> Result<()> {
             let files =
                 Files::sort(files).context("unable to sort the given files by their function")?;
 
-            let problems = match equivalence {
-                Equivalence::Strong => StrongEquivalenceTask {
-                    left: asp::Program::from_file(
-                        files
-                            .left()
-                            .ok_or(anyhow!("no left program was provided"))?,
-                    )?,
-                    right: asp::Program::from_file(
-                        files
-                            .right()
-                            .ok_or(anyhow!("no right program was provided"))?,
-                    )?,
-                    task_decomposition,
-                    direction,
-                    formula_representation,
-                    simplify: !no_simplify,
-                    break_equivalences: !no_eq_break,
-                }
-                .decompose()?
-                .report_warnings(),
-
-                Equivalence::External => ExternalEquivalenceTask {
-                    specification: match files
-                        .specification()
-                        .ok_or(anyhow!("no specification was provided"))?
-                    {
-                        Either::Left(program) => Either::Left(asp::Program::from_file(program)?),
-                        Either::Right(specification) => {
-                            Either::Right(fol::Specification::from_file(specification)?)
+            let (problems, counter) = match equivalence {
+                Equivalence::Strong => (
+                    StrongEquivalenceTask {
+                        left: asp::Program::from_file(
+                            files
+                                .left()
+                                .ok_or(anyhow!("no left program was provided"))?,
+                        )?,
+                        right: asp::Program::from_file(
+                            files
+                                .right()
+                                .ok_or(anyhow!("no right program was provided"))?,
+                        )?,
+                        task_decomposition,
+                        direction,
+                        formula_representation,
+                        simplify: !no_simplify,
+                        break_equivalences: !no_eq_break,
+                    }
+                    .decompose()?
+                    .report_warnings(),
+                    Some(
+                        StrongEquivalenceCounterModelTask {
+                            left: asp::Program::from_file(
+                                files
+                                    .left()
+                                    .ok_or(anyhow!("no left program was provided"))?,
+                            )?,
+                            right: asp::Program::from_file(
+                                files
+                                    .right()
+                                    .ok_or(anyhow!("no right program was provided"))?,
+                            )?,
+                            formula_representation,
+                            simplify: !no_simplify,
                         }
-                    },
-                    program: asp::Program::from_file(
-                        files.program().ok_or(anyhow!("no program was provided"))?,
-                    )?,
-                    user_guide: fol::UserGuide::from_file(
-                        files
-                            .user_guide()
-                            .ok_or(anyhow!("no user guide was provided"))?,
-                    )?,
-                    proof_outline: files
-                        .proof_outline()
-                        .map(fol::Specification::from_file)
-                        .unwrap_or_else(|| Ok(fol::Specification::empty()))?,
-                    formula_representation,
-                    task_decomposition,
-                    direction,
-                    bypass_tightness,
-                    simplify: !no_simplify,
-                    break_equivalences: !no_eq_break,
-                }
-                .decompose()?
-                .report_warnings(),
+                        .decompose()?
+                        .report_warnings(),
+                    ),
+                ),
 
-                Equivalence::Intuitionistic => IntuitEquivalenceTask {
-                    left: asp::Program::from_file(
-                        files
-                            .left()
-                            .ok_or(anyhow!("no left program was provided"))?,
-                    )?,
-                    right: asp::Program::from_file(
-                        files
-                            .right()
-                            .ok_or(anyhow!("no right program was provided"))?,
-                    )?,
-                    task_decomposition,
-                    direction,
-                    simplify: !no_simplify,
-                    break_equivalences: !no_eq_break,
-                    translation: formula_representation,
-                }
-                .decompose()?
-                .report_warnings(),
+                Equivalence::External => (
+                    ExternalEquivalenceTask {
+                        specification: match files
+                            .specification()
+                            .ok_or(anyhow!("no specification was provided"))?
+                        {
+                            Either::Left(program) => {
+                                Either::Left(asp::Program::from_file(program)?)
+                            }
+                            Either::Right(specification) => {
+                                Either::Right(fol::Specification::from_file(specification)?)
+                            }
+                        },
+                        program: asp::Program::from_file(
+                            files.program().ok_or(anyhow!("no program was provided"))?,
+                        )?,
+                        user_guide: fol::UserGuide::from_file(
+                            files
+                                .user_guide()
+                                .ok_or(anyhow!("no user guide was provided"))?,
+                        )?,
+                        proof_outline: files
+                            .proof_outline()
+                            .map(fol::Specification::from_file)
+                            .unwrap_or_else(|| Ok(fol::Specification::empty()))?,
+                        formula_representation,
+                        task_decomposition,
+                        direction,
+                        bypass_tightness,
+                        simplify: !no_simplify,
+                        break_equivalences: !no_eq_break,
+                    }
+                    .decompose()?
+                    .report_warnings(),
+                    None,
+                ),
+
+                Equivalence::Intuitionistic => (
+                    IntuitEquivalenceTask {
+                        left: asp::Program::from_file(
+                            files
+                                .left()
+                                .ok_or(anyhow!("no left program was provided"))?,
+                        )?,
+                        right: asp::Program::from_file(
+                            files
+                                .right()
+                                .ok_or(anyhow!("no right program was provided"))?,
+                        )?,
+                        task_decomposition,
+                        direction,
+                        simplify: !no_simplify,
+                        break_equivalences: !no_eq_break,
+                        translation: formula_representation,
+                    }
+                    .decompose()?
+                    .report_warnings(),
+                    None,
+                ),
             };
 
             if let Some(out_dir) = out_dir {
                 for problem in &problems {
                     let mut path = out_dir.clone();
                     path.push(format!("{}.p", problem.name));
-                    problem.to_file(path)?;
+                    problem.to_file(path.clone())?;
+                }
+
+                if let Some(ref problems) = counter {
+                    let counter_problem = problems[0].clone();
+                    let mut path = out_dir.clone();
+                    path.push(format!("{}.p", counter_problem.name));
+                    counter_problem.to_file(path.clone())?;
+                    convert_to_smt2(path)?;
                 }
             }
 
