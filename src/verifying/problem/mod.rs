@@ -285,7 +285,11 @@ impl fmt::Display for Problem {
                     Itertools::intersperse(repeat("general").take(predicate.arity), " * ")
                         .collect();
                 if predicate.arity > 0 {
-                    writeln!(f, "tff(predicate_{i}, type, {symbol}: ({input}) > $o).")?
+                    if predicate.arity == 1 {
+                        writeln!(f, "tff(predicate_{i}, type, {symbol}: {input} > $o).")?
+                    } else {
+                        writeln!(f, "tff(predicate_{i}, type, {symbol}: ({input}) > $o).")?
+                    }
                 } else {
                     writeln!(f, "tff(predicate_{i}, type, {symbol}: $o).")?
                 }

@@ -80,7 +80,7 @@ head_eoi = _{ head ~ EOI }
     choice_head = { "{" ~ atom ~ "}" }
     falsity = { "#false"? }
 
-body_literal = _{ conditional_literal | experimental_literal }
+body_literal = _{ experimental_literal | conditional_literal }
 
 body = { (body_literal ~ (("," | ";") ~ body_literal)*)? }
 body_eoi = _{ body ~ EOI }
