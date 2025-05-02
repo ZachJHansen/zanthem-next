@@ -1,6 +1,6 @@
 use crate::{
     syntax_tree::{
-        asp::{self, ConditionalHead},
+        asp::{self, BodyLiteral, ConditionalHead},
         fol::{self, Guard},
     },
     translating::asp_to_ht::basics::choose_fresh_variable_names,
@@ -208,7 +208,162 @@ fn tau_b(f: asp::AtomicFormula, v: Version) -> fol::Formula {
     }
 }
 
-// Translate a conditional literal l with global variables z
+fn experimental_consequent(head: asp::ConditionalHead, v: Version) -> fol::Formula {
+    match head.clone() {
+        ConditionalHead::AtomicFormula(a) => match a {
+            asp::AtomicFormula::Literal(literal) => {
+                let arity = literal.atom.terms.len();
+                let taken_vars: IndexSet<fol::Variable> =
+                    IndexSet::from_iter(head.variables().into_iter().map(|v| v.into()));
+                let consequent_vars = choose_fresh_variable_names(&taken_vars, "V", arity);
+                let vars: Vec<fol::Variable> = consequent_vars
+                    .clone()
+                    .into_iter()
+                    .map(|name| fol::Variable {
+                        name,
+                        sort: fol::Sort::General,
+                    })
+                    .collect();
+                let new_atom = fol::Formula::AtomicFormula(fol::AtomicFormula::Atom(fol::Atom {
+                    predicate_symbol: literal.atom.predicate_symbol,
+                    terms: consequent_vars
+                        .into_iter()
+                        .map(fol::GeneralTerm::Variable)
+                        .collect(),
+                }));
+
+                let inner = fol::Formula::BinaryFormula {
+                    connective: fol::BinaryConnective::Implication,
+                    lhs: match v {
+                        Version::Original => val_original::valtz(literal.atom.terms, vars.clone()),
+                        Version::AbstractGringoCompliant => {
+                            val_agc::valtz(literal.atom.terms, vars.clone())
+                        }
+                    }
+                    .into(),
+                    rhs: match literal.sign {
+                        asp::Sign::NoSign => new_atom,
+                        asp::Sign::Negation => fol::Formula::UnaryFormula {
+                            connective: fol::UnaryConnective::Negation,
+                            formula: new_atom.into(),
+                        },
+                        asp::Sign::DoubleNegation => fol::Formula::UnaryFormula {
+                            connective: fol::UnaryConnective::Negation,
+                            formula: fol::Formula::UnaryFormula {
+                                connective: fol::UnaryConnective::Negation,
+                                formula: new_atom.into(),
+                            }
+                            .into(),
+                        },
+                    }
+                    .into(),
+                };
+
+                fol::Formula::QuantifiedFormula {
+                    quantification: fol::Quantification {
+                        quantifier: fol::Quantifier::Forall,
+                        variables: vars,
+                    },
+                    formula: inner.into(),
+                }
+            }
+
+            asp::AtomicFormula::Comparison(comparison) => {
+                let taken_vars: IndexSet<fol::Variable> =
+                    IndexSet::from_iter(head.variables().into_iter().map(|v| v.into()));
+                let consequent_vars = choose_fresh_variable_names(&taken_vars, "V", 2);
+                let vars: Vec<fol::Variable> = consequent_vars
+                    .clone()
+                    .into_iter()
+                    .map(|name| fol::Variable {
+                        name,
+                        sort: fol::Sort::General,
+                    })
+                    .collect();
+
+                let new_comp =
+                    fol::Formula::AtomicFormula(fol::AtomicFormula::Comparison(fol::Comparison {
+                        term: fol::GeneralTerm::Variable(consequent_vars[0].clone()),
+                        guards: vec![fol::Guard {
+                            relation: fol::Relation::from(comparison.relation),
+                            term: fol::GeneralTerm::Variable(consequent_vars[1].clone()),
+                        }],
+                    }));
+
+                let inner = fol::Formula::BinaryFormula {
+                    connective: fol::BinaryConnective::Implication,
+                    lhs: match v {
+                        Version::Original => {
+                            val_original::valtz(vec![comparison.lhs, comparison.rhs], vars.clone())
+                        }
+                        Version::AbstractGringoCompliant => {
+                            val_agc::valtz(vec![comparison.lhs, comparison.rhs], vars.clone())
+                        }
+                    }
+                    .into(),
+                    rhs: new_comp.into(),
+                };
+
+                fol::Formula::QuantifiedFormula {
+                    quantification: fol::Quantification {
+                        quantifier: fol::Quantifier::Forall,
+                        variables: vars,
+                    },
+                    formula: inner.into(),
+                }
+            }
+        },
+        ConditionalHead::Falsity => fol::Formula::AtomicFormula(fol::AtomicFormula::Falsity),
+    }
+}
+
+// Translate a conditional literal l of the second kind with global variables z
+fn tau_b_cl_experimental(
+    l: asp::ExperimentalLiteral,
+    v: Version,
+    z: &IndexSet<asp::Variable>,
+) -> fol::Formula {
+    let head = l.head.clone();
+    let conditions = l.conditions.formulas.clone();
+
+    let mut local_vars = l.variables();
+    local_vars.retain(|v| !z.contains(v));
+
+    let consequent = experimental_consequent(head, v);
+
+    let mut formulas = vec![];
+    for c in conditions.iter() {
+        formulas.push(tau_b(c.clone(), v));
+    }
+    let antecedent = fol::Formula::conjoin(formulas);
+
+    let inner_formula = fol::Formula::BinaryFormula {
+        connective: fol::BinaryConnective::Implication,
+        lhs: antecedent.into(),
+        rhs: consequent.into(),
+    };
+
+    if local_vars.is_empty() {
+        inner_formula
+    } else {
+        let mut variables = vec![];
+        for v in local_vars.iter() {
+            variables.push(fol::Variable {
+                name: v.0.clone(),
+                sort: fol::Sort::General,
+            });
+        }
+        fol::Formula::QuantifiedFormula {
+            quantification: fol::Quantification {
+                quantifier: fol::Quantifier::Forall,
+                variables,
+            },
+            formula: inner_formula.into(),
+        }
+    }
+}
+
+// Translate a conditional literal l of the first kind with global variables z
 fn tau_b_cl(l: asp::ConditionalLiteral, v: Version, z: &IndexSet<asp::Variable>) -> fol::Formula {
     let head = l.head.clone();
     let conditions = l.conditions.formulas.clone();
@@ -265,7 +420,12 @@ fn tau_b_cl(l: asp::ConditionalLiteral, v: Version, z: &IndexSet<asp::Variable>)
 pub(crate) fn tau_body(b: asp::Body, v: Version, z: IndexSet<asp::Variable>) -> fol::Formula {
     let mut formulas = Vec::<fol::Formula>::new();
     for f in b.formulas.iter() {
-        formulas.push(tau_b_cl(f.clone(), v, &z));
+        match f {
+            BodyLiteral::ConditionalLiteral(cl) => formulas.push(tau_b_cl(cl.clone(), v, &z)),
+            BodyLiteral::ExperimentalLiteral(el) => {
+                formulas.push(tau_b_cl_experimental(el.clone(), v, &z))
+            }
+        }
     }
     fol::Formula::conjoin(formulas)
 }

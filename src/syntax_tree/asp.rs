@@ -3,9 +3,10 @@ use {
         formatting::asp::default::Format,
         parsing::asp::pest::{
             AtomParser, AtomicFormulaParser, BinaryOperatorParser, BodyParser, ComparisonParser,
-            ConditionalBodyParser, ConditionalHeadParser, ConditionalLiteralParser, HeadParser,
-            LiteralParser, PrecomputedTermParser, PredicateParser, ProgramParser, RelationParser,
-            RuleParser, SignParser, TermParser, UnaryOperatorParser, VariableParser,
+            ConditionalBodyParser, ConditionalHeadParser, ConditionalLiteralParser,
+            ExperimentalLiteralParser, HeadParser, LiteralParser, PrecomputedTermParser,
+            PredicateParser, ProgramParser, RelationParser, RuleParser, SignParser, TermParser,
+            UnaryOperatorParser, VariableParser,
         },
         syntax_tree::{impl_node, Node},
     },
@@ -386,6 +387,44 @@ impl ConditionalLiteral {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
+pub struct ExperimentalLiteral {
+    pub head: ConditionalHead,
+    pub conditions: ConditionalBody,
+}
+
+impl_node!(ExperimentalLiteral, Format, ExperimentalLiteralParser);
+
+impl ExperimentalLiteral {
+    pub fn variables(&self) -> IndexSet<Variable> {
+        let mut vars = self.head.variables();
+        vars.extend(self.conditions.variables());
+        vars
+    }
+
+    pub fn function_constants(&self) -> IndexSet<String> {
+        let mut constants = self.head.function_constants();
+        constants.extend(self.conditions.function_constants());
+        constants
+    }
+
+    pub fn global_variables(&self) -> IndexSet<Variable> {
+        IndexSet::new()
+    }
+
+    pub fn predicates(&self) -> IndexSet<Predicate> {
+        let mut predicates = self.head.predicates();
+        predicates.extend(self.conditions.predicates());
+        predicates
+    }
+
+    pub fn positive_predicates(&self) -> IndexSet<Predicate> {
+        let mut predicates = self.head.positive_predicates();
+        predicates.extend(self.conditions.positive_predicates());
+        predicates
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub enum Head {
     Basic(Atom),
     Choice(Atom),
@@ -436,10 +475,53 @@ impl Head {
     }
 }
 
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+pub enum BodyLiteral {
+    ConditionalLiteral(ConditionalLiteral),
+    ExperimentalLiteral(ExperimentalLiteral),
+}
+
+impl BodyLiteral {
+    pub fn predicates(&self) -> IndexSet<Predicate> {
+        match self {
+            BodyLiteral::ConditionalLiteral(l) => l.predicates(),
+            BodyLiteral::ExperimentalLiteral(l) => l.predicates(),
+        }
+    }
+
+    pub fn positive_predicates(&self) -> IndexSet<Predicate> {
+        match self {
+            BodyLiteral::ConditionalLiteral(l) => l.positive_predicates(),
+            BodyLiteral::ExperimentalLiteral(l) => l.positive_predicates(),
+        }
+    }
+
+    pub fn variables(&self) -> IndexSet<Variable> {
+        match self {
+            BodyLiteral::ConditionalLiteral(l) => l.variables(),
+            BodyLiteral::ExperimentalLiteral(l) => l.variables(),
+        }
+    }
+
+    pub fn function_constants(&self) -> IndexSet<String> {
+        match self {
+            BodyLiteral::ConditionalLiteral(l) => l.function_constants(),
+            BodyLiteral::ExperimentalLiteral(l) => l.function_constants(),
+        }
+    }
+
+    pub fn global_variables(&self) -> IndexSet<Variable> {
+        match self {
+            BodyLiteral::ConditionalLiteral(l) => l.global_variables(),
+            BodyLiteral::ExperimentalLiteral(l) => l.global_variables(),
+        }
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq, Hash, IntoIterator)]
 pub struct Body {
     #[into_iterator(owned, ref, ref_mut)]
-    pub formulas: Vec<ConditionalLiteral>,
+    pub formulas: Vec<BodyLiteral>,
 }
 
 impl_node!(Body, Format, BodyParser);
@@ -478,8 +560,8 @@ impl Body {
     }
 }
 
-impl FromIterator<ConditionalLiteral> for Body {
-    fn from_iter<T: IntoIterator<Item = ConditionalLiteral>>(iter: T) -> Self {
+impl FromIterator<BodyLiteral> for Body {
+    fn from_iter<T: IntoIterator<Item = BodyLiteral>>(iter: T) -> Self {
         Body {
             formulas: iter.into_iter().collect(),
         }
@@ -584,7 +666,9 @@ mod tests {
             Atom, AtomicFormula, Body, Comparison, Head, PrecomputedTerm, Program, Relation, Rule,
             Term,
         },
-        crate::syntax_tree::asp::{ConditionalBody, ConditionalHead, ConditionalLiteral},
+        crate::syntax_tree::asp::{
+            BodyLiteral, ConditionalBody, ConditionalHead, ConditionalLiteral,
+        },
         indexmap::IndexSet,
     };
 
@@ -598,7 +682,7 @@ mod tests {
                     terms: vec![],
                 }),
                 body: Body {
-                    formulas: vec![ConditionalLiteral {
+                    formulas: vec![BodyLiteral::ConditionalLiteral(ConditionalLiteral {
                         head: ConditionalHead::AtomicFormula(AtomicFormula::Comparison(
                             Comparison {
                                 lhs: Term::PrecomputedTerm(PrecomputedTerm::Symbol("a".into())),
@@ -607,7 +691,7 @@ mod tests {
                             },
                         )),
                         conditions: ConditionalBody { formulas: vec![] },
-                    }],
+                    })],
                 },
             }],
         };

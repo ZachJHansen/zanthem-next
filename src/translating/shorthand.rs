@@ -1,5 +1,5 @@
 use crate::syntax_tree::{
-    asp::{self, Program, Rule},
+    asp::{self, BodyLiteral, Program, Rule},
     fol::{self, Formula, Theory},
 };
 
@@ -54,33 +54,38 @@ pub fn body_translate(body: asp::Body) -> Formula {
     let mut atomic_formulas = Vec::new();
 
     for literal in body.formulas {
-        if literal.basic() {
-            let formula = match literal.head {
-                asp::ConditionalHead::Falsity => {
-                    Formula::AtomicFormula(fol::AtomicFormula::Falsity)
+        match literal {
+            BodyLiteral::ConditionalLiteral(literal) => {
+                if literal.basic() {
+                    let formula = match literal.head {
+                        asp::ConditionalHead::Falsity => {
+                            Formula::AtomicFormula(fol::AtomicFormula::Falsity)
+                        }
+                        asp::ConditionalHead::AtomicFormula(f) => match f {
+                            asp::AtomicFormula::Literal(l) => match l.sign {
+                                asp::Sign::NoSign => translate_atom(l.atom),
+                                asp::Sign::Negation => Formula::UnaryFormula {
+                                    connective: fol::UnaryConnective::Negation,
+                                    formula: translate_atom(l.atom).into(),
+                                },
+                                asp::Sign::DoubleNegation => Formula::UnaryFormula {
+                                    connective: fol::UnaryConnective::Negation,
+                                    formula: Formula::UnaryFormula {
+                                        connective: fol::UnaryConnective::Negation,
+                                        formula: translate_atom(l.atom).into(),
+                                    }
+                                    .into(),
+                                },
+                            },
+                            asp::AtomicFormula::Comparison(c) => translate_comparison(c),
+                        },
+                    };
+                    atomic_formulas.push(formula);
+                } else {
+                    todo!("unimplemented");
                 }
-                asp::ConditionalHead::AtomicFormula(f) => match f {
-                    asp::AtomicFormula::Literal(l) => match l.sign {
-                        asp::Sign::NoSign => translate_atom(l.atom),
-                        asp::Sign::Negation => Formula::UnaryFormula {
-                            connective: fol::UnaryConnective::Negation,
-                            formula: translate_atom(l.atom).into(),
-                        },
-                        asp::Sign::DoubleNegation => Formula::UnaryFormula {
-                            connective: fol::UnaryConnective::Negation,
-                            formula: Formula::UnaryFormula {
-                                connective: fol::UnaryConnective::Negation,
-                                formula: translate_atom(l.atom).into(),
-                            }
-                            .into(),
-                        },
-                    },
-                    asp::AtomicFormula::Comparison(c) => translate_comparison(c),
-                },
-            };
-            atomic_formulas.push(formula);
-        } else {
-            todo!("unimplemented");
+            }
+            _ => todo!("unimplemented"),
         }
     }
 

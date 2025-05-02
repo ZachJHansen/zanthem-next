@@ -639,6 +639,15 @@ pub struct Variable {
 
 impl_node!(Variable, Format, VariableParser);
 
+impl From<asp::Variable> for Variable {
+    fn from(value: asp::Variable) -> Self {
+        Variable {
+            name: value.0,
+            sort: Sort::General,
+        }
+    }
+}
+
 impl TryFrom<GeneralTerm> for Variable {
     type Error = GeneralTerm;
 

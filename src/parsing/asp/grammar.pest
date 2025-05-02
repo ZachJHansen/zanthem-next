@@ -71,13 +71,18 @@ conditional_body_eoi = _{ conditional_body ~ EOI }
 conditional_literal = { conditional_head ~ (":" ~ conditional_body)? }
 conditional_literal_eoi = _{ conditional_literal ~ EOI }
 
+experimental_literal = { conditional_head ~ "::" ~ conditional_body }
+experimental_literal_eoi = _{ experimental_literal ~ EOI }
+
 head = { basic_head | choice_head | falsity }
 head_eoi = _{ head ~ EOI }
     basic_head = { atom }
     choice_head = { "{" ~ atom ~ "}" }
     falsity = { "#false"? }
 
-body = { (conditional_literal ~ (("," | ";") ~ conditional_literal)*)? }
+body_literal = _{ conditional_literal | experimental_literal }
+
+body = { (body_literal ~ (("," | ";") ~ body_literal)*)? }
 body_eoi = _{ body ~ EOI }
 
 rule = { (!"." ~ head ~ (":-" ~ body)?) ~ "." }

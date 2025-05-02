@@ -3,9 +3,10 @@ use {
         formatting::{Associativity, Precedence},
         syntax_tree::{
             asp::{
-                Atom, AtomicFormula, BinaryOperator, Body, Comparison, ConditionalBody,
-                ConditionalHead, ConditionalLiteral, Head, Literal, PrecomputedTerm, Predicate,
-                Program, Relation, Rule, Sign, Term, UnaryOperator, Variable,
+                Atom, AtomicFormula, BinaryOperator, Body, BodyLiteral, Comparison,
+                ConditionalBody, ConditionalHead, ConditionalLiteral, ExperimentalLiteral, Head,
+                Literal, PrecomputedTerm, Predicate, Program, Relation, Rule, Sign, Term,
+                UnaryOperator, Variable,
             },
             Node,
         },
@@ -239,6 +240,16 @@ impl Display for Format<'_, ConditionalLiteral> {
     }
 }
 
+impl Display for Format<'_, ExperimentalLiteral> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", Format(&self.0.head))?;
+        if !self.0.conditions.formulas.is_empty() {
+            write!(f, " : {}", Format(&self.0.conditions))?;
+        }
+        Ok(())
+    }
+}
+
 impl Display for Format<'_, Head> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self.0 {
@@ -251,7 +262,10 @@ impl Display for Format<'_, Head> {
 
 impl Display for Format<'_, Body> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        let mut iter = self.0.formulas.iter().map(Format);
+        let mut iter = self.0.formulas.iter().map(|literal| match literal {
+            BodyLiteral::ConditionalLiteral(cl) => format!("{}", Format(cl)),
+            BodyLiteral::ExperimentalLiteral(el) => format!("{}", Format(el)),
+        });
         if let Some(formula) = iter.next() {
             write!(f, "{formula}")?;
             for formula in iter {
@@ -277,7 +291,7 @@ mod tests {
     use crate::{
         formatting::asp::default::Format,
         syntax_tree::asp::{
-            Atom, AtomicFormula, BinaryOperator, Body, Comparison, ConditionalBody,
+            Atom, AtomicFormula, BinaryOperator, Body, BodyLiteral, Comparison, ConditionalBody,
             ConditionalHead, ConditionalLiteral, Head, Literal, PrecomputedTerm, Program, Relation,
             Rule, Sign, Term, UnaryOperator, Variable,
         },
@@ -531,7 +545,7 @@ mod tests {
         assert_eq!(
             Format(&Body {
                 formulas: vec![
-                    ConditionalLiteral {
+                    BodyLiteral::ConditionalLiteral(ConditionalLiteral {
                         head: ConditionalHead::AtomicFormula(AtomicFormula::Literal(Literal {
                             sign: Sign::NoSign,
                             atom: Atom {
@@ -540,8 +554,8 @@ mod tests {
                             }
                         })),
                         conditions: ConditionalBody { formulas: vec![] },
-                    },
-                    ConditionalLiteral {
+                    }),
+                    BodyLiteral::ConditionalLiteral(ConditionalLiteral {
                         head: ConditionalHead::AtomicFormula(AtomicFormula::Comparison(
                             Comparison {
                                 relation: Relation::Less,
@@ -550,7 +564,7 @@ mod tests {
                             }
                         )),
                         conditions: ConditionalBody { formulas: vec![] },
-                    },
+                    }),
                 ]
             })
             .to_string(),
@@ -581,7 +595,7 @@ mod tests {
                             terms: vec![]
                         }),
                         body: Body {
-                            formulas: vec![ConditionalLiteral {
+                            formulas: vec![BodyLiteral::ConditionalLiteral(ConditionalLiteral {
                                 head: ConditionalHead::AtomicFormula(AtomicFormula::Literal(
                                     Literal {
                                         sign: Sign::Negation,
@@ -592,7 +606,7 @@ mod tests {
                                     }
                                 )),
                                 conditions: ConditionalBody { formulas: vec![] },
-                            }]
+                            })]
                         }
                     }
                 ]
