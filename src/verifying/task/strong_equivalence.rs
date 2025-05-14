@@ -92,15 +92,11 @@ impl Task for StrongEquivalenceCounterModelTask {
             right = crate::simplifying::fol::classic::simplify(right);
         }
 
-        // not ( gamma(tau-star(P1)) <-> gamma(tau-star(P2)) )
-        let f = fol::Formula::UnaryFormula {
-            connective: fol::UnaryConnective::Negation,
-            formula: fol::Formula::BinaryFormula {
-                connective: fol::BinaryConnective::Equivalence,
-                lhs: Box::new(left.into()),
-                rhs: Box::new(right.into()),
-            }
-            .into(),
+        // gamma(tau-star(P1)) <-> gamma(tau-star(P2))
+        let f = fol::Formula::BinaryFormula {
+            connective: fol::BinaryConnective::Equivalence,
+            lhs: Box::new(left.into()),
+            rhs: Box::new(right.into()),
         };
 
         let conjecture = fol::Theory { formulas: vec![f] };

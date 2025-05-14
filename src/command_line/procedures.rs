@@ -33,6 +33,7 @@ use {
 fn convert_to_smt2(path: PathBuf) -> Result<(), Error> {
     let fname = path.display().to_string();
 
+    // ./cvc5-tptp-to-smt2 -o raw-benchmark --parse-only --lang=tptp --output-lang=smt2 fname
     let child = process::Command::new("./cvc5-tptp-to-smt2")
         .args([
             "-o",
