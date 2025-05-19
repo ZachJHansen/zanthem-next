@@ -1,0 +1,3 @@
+lemma: forall X ((vertex(X) and not exists Z (color(Z) and color(X, Z))) -> #false).
+lemma: forall X ( not (vertex(X) and not exists Z (color(Z) and color(X, Z))) ).
+lemma: forall X ( not vertex(X) or exists Z (color(Z) and color(X, Z)) ).
