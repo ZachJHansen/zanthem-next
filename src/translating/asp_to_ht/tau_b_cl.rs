@@ -259,12 +259,16 @@ fn experimental_consequent(head: asp::ConditionalHead, v: Version) -> fol::Formu
                     .into(),
                 };
 
-                fol::Formula::QuantifiedFormula {
-                    quantification: fol::Quantification {
-                        quantifier: fol::Quantifier::Forall,
-                        variables: vars,
-                    },
-                    formula: inner.into(),
+                if vars.is_empty() {
+                    inner
+                } else {
+                    fol::Formula::QuantifiedFormula {
+                        quantification: fol::Quantification {
+                            quantifier: fol::Quantifier::Forall,
+                            variables: vars,
+                        },
+                        formula: inner.into(),
+                    }
                 }
             }
 

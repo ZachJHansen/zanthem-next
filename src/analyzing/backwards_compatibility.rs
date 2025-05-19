@@ -134,6 +134,7 @@ mod tests {
             "a :- #false :: q(X+1), not r(X); b.",
             "a :- b; 1 = 1 :: q(X+1), not r(X).",
             "a :- #false :: q(X+1); p(X) :: q(X).",
+            "p :- t :: q.",
         ] {
             let rule: Rule = rule.parse().unwrap();
             assert!(rule.is_provably_backwards_compatible())

@@ -54,6 +54,11 @@ pub(crate) fn choose_fresh_variable_names(
     variant: &str,
     arity: usize,
 ) -> Vec<String> {
+
+    if arity < 1 {
+        return vec![];
+    }
+
     let mut taken_vars = Vec::<String>::new();
     for var in variables.iter() {
         taken_vars.push(var.name.to_string());
