@@ -84,6 +84,13 @@ impl Task for StrongEquivalenceCounterModelTask {
             right = crate::simplifying::fol::ht::simplify(right);
         }
 
+        // tau-star(P1) <-> tau-star(P2)
+        let classical = fol::Formula::BinaryFormula {
+            connective: fol::BinaryConnective::Equivalence,
+            lhs: Box::new(left.clone().into()),
+            rhs: Box::new(right.clone().into()),
+        };
+
         left = gamma(left);
         right = gamma(right);
 
@@ -100,6 +107,9 @@ impl Task for StrongEquivalenceCounterModelTask {
         };
 
         let conjecture = fol::Theory { formulas: vec![f] };
+        let classical_conjecture = fol::Theory {
+            formulas: vec![classical],
+        };
 
         let mut problems = Vec::new();
         problems.push(
@@ -111,6 +121,17 @@ impl Task for StrongEquivalenceCounterModelTask {
                     formula_type: FormulaType::Tff,
                 })
                 .add_theory(conjecture, |i, formula| AnnotatedFormula {
+                    name: format!("conjecture_{i}"),
+                    role: Role::Conjecture,
+                    formula,
+                    formula_type: FormulaType::Tff,
+                })
+                .rename_conflicting_symbols()
+                .create_unique_formula_names(),
+        );
+        problems.push(
+            Problem::with_name("classical_countermodel", Interpretation::Standard)
+                .add_theory(classical_conjecture, |i, formula| AnnotatedFormula {
                     name: format!("conjecture_{i}"),
                     role: Role::Conjecture,
                     formula,

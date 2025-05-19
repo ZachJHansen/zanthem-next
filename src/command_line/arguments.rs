@@ -155,6 +155,7 @@ pub enum Command {
 pub enum Property {
     Tightness,
     CnfPdg,
+    BackwardsCompatibility,
 }
 
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]

@@ -1,6 +1,6 @@
 use {
     crate::{
-        analyzing::tightness::Tightness,
+        analyzing::{backwards_compatibility::BackwardsCompatibility, tightness::Tightness},
         command_line::{
             arguments::{Arguments, Command, Equivalence, Property, Simplification, Translation},
             files::Files,
@@ -24,35 +24,37 @@ use {
             },
         },
     },
-    anyhow::{anyhow, Context, Error, Result},
+    anyhow::{anyhow, Context, Result},
+    //anyhow::Error,
     clap::Parser as _,
     either::Either,
-    std::{collections::HashSet, fs, path::PathBuf, process, time::Instant},
+    std::{collections::HashSet, time::Instant},
+    //std::{fs, path::PathBuf, process},
 };
 
-fn convert_to_smt2(path: PathBuf) -> Result<(), Error> {
-    let fname = path.display().to_string();
+// fn convert_to_smt2(path: PathBuf) -> Result<(), Error> {
+//     let fname = path.display().to_string();
 
-    // ./cvc5-tptp-to-smt2 -o raw-benchmark --parse-only --lang=tptp --output-lang=smt2 fname
-    let child = process::Command::new("./cvc5-tptp-to-smt2")
-        .args([
-            "-o",
-            "raw-benchmark",
-            "--parse-only",
-            "--lang=tptp",
-            "--output-lang=smt2",
-            &fname,
-        ])
-        .stdout(process::Stdio::piped())
-        .stderr(process::Stdio::piped())
-        .spawn()?;
+//     // ./cvc5-tptp-to-smt2 -o raw-benchmark --parse-only --lang=tptp --output-lang=smt2 fname
+//     let child = process::Command::new("./cvc5-tptp-to-smt2")
+//         .args([
+//             "-o",
+//             "raw-benchmark",
+//             "--parse-only",
+//             "--lang=tptp",
+//             "--output-lang=smt2",
+//             &fname,
+//         ])
+//         .stdout(process::Stdio::piped())
+//         .stderr(process::Stdio::piped())
+//         .spawn()?;
 
-    let output = child.wait_with_output()?;
+//     let output = child.wait_with_output()?;
 
-    fs::write(path.with_extension("smt2"), output.stdout).expect("Unable to write file");
+//     fs::write(path.with_extension("smt2"), output.stdout).expect("Unable to write file");
 
-    Ok(())
-}
+//     Ok(())
+// }
 
 pub fn main() -> Result<()> {
     match Arguments::parse().command {
@@ -64,12 +66,22 @@ pub fn main() -> Result<()> {
                     let is_tight = program.is_tight();
                     println!("{is_tight}");
                 }
-
                 Property::CnfPdg => {
                     let theory =
                         input.map_or_else(fol::Theory::from_stdin, fol::Theory::from_file)?;
                     println!("print vertices and edges");
                     theory.cnf_pdg(HashSet::new());
+                }
+                Property::BackwardsCompatibility => {
+                    let program =
+                        input.map_or_else(asp::Program::from_stdin, asp::Program::from_file)?;
+                    if program.is_provably_backwards_compatible() {
+                        println!(
+                            "program is backwards-compatible with respect to conditional literals"
+                        );
+                    } else {
+                        println!("program contains conditional literals which may not be backwards-compatible");
+                    }
                 }
             }
 
@@ -401,12 +413,21 @@ pub fn main() -> Result<()> {
                 }
 
                 if let Some(ref problems) = counter {
-                    let counter_problem = problems[0].clone();
-                    let mut path = out_dir.clone();
-                    path.push(format!("{}.p", counter_problem.name));
-                    counter_problem.to_file(path.clone())?;
-                    convert_to_smt2(path)?;
+                    let _ignore = problems;
                 }
+                // if let Some(ref problems) = counter {
+                //     let counter_problem = problems[0].clone();
+                //     let mut path = out_dir.clone();
+                //     path.push(format!("{}.p", counter_problem.name));
+                //     counter_problem.to_file(path.clone())?;
+                //     convert_to_smt2(path)?;
+
+                //     let classical_counter = problems[1].clone();
+                //     let mut path = out_dir.clone();
+                //     path.push(format!("{}.p", classical_counter.name));
+                //     classical_counter.to_file(path.clone())?;
+                //     convert_to_smt2(path)?;
+                // }
             }
 
             if !no_proof_search {
