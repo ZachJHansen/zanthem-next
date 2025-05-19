@@ -54,7 +54,6 @@ pub(crate) fn choose_fresh_variable_names(
     variant: &str,
     arity: usize,
 ) -> Vec<String> {
-
     if arity < 1 {
         return vec![];
     }

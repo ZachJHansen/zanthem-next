@@ -169,8 +169,11 @@ mod tests {
             "forall V1 V2 X Y ( (V1 = X and V2 = Y and (exists Z (Z = X and p(Z)) and exists Z (Z = Y and p(Z)) and forall Z ((exists Z1 (Z1 = Z and p(Z1)) and exists Z1 Z2 (Z1 = X and Z2 = Z and Z1 < Z2) and exists Z1 Z2 (Z1 = Z and Z2 = Y and Z1 < Z2)) -> exists Z1 (Z1 = Z and not p(Z1)) ))) -> sort(V1,V2))"
         ),
         (
-            
             ("p :- t :: q.", vec![]), "(q -> (#true -> t)) -> p", 
+        ),
+        (
+            (":- vtx(V); not asg(V,C) :: col(C).", vec!["V1".to_string()]),
+            ("forall V ((exists Z (Z = V and vtx(Z)) and forall C (exists Z (Z = C and col(Z)) -> forall V1 V2 (V1 = V and V2 = C -> not asg(V1,V2)) ) ) -> #false)"),
         ),
     ] {
         let rule: asp::Rule = src.0.parse().unwrap();
