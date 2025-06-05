@@ -1,5 +1,6 @@
 use crate::syntax_tree::asp::{
-    AtomicFormula, Body, BodyLiteral, Comparison, ConditionalHead, ConditionalLiteral, ExperimentalLiteral, Program, Rule, Term
+    AtomicFormula, Body, BodyLiteral, Comparison, ConditionalHead, ConditionalLiteral,
+    ExperimentalLiteral, Program, Rule, Term,
 };
 
 impl From<ExperimentalLiteral> for ConditionalLiteral {
@@ -81,7 +82,6 @@ fn backwards_compatible(r1: &Rule, r2: &Rule, l: &ExperimentalLiteral) -> bool {
                 AtomicFormula::Comparison(Comparison { lhs, rhs, .. }) => {
                     //comparison.lhs.is_precomputed() && comparison.rhs.is_precomputed()
                     !(lhs.contains_arithmetic_operations() || rhs.contains_arithmetic_operations())
-
                 }
             },
             ConditionalHead::Falsity => true,
@@ -136,6 +136,7 @@ mod tests {
             "a :- b; 1 = 1 :: q(X+1), not r(X).",
             "a :- #false :: q(X+1); p(X) :: q(X).",
             "p :- t :: q.",
+            "p(X, Y ) :- X < Y :: q(X, Y ).",
         ] {
             let rule: Rule = rule.parse().unwrap();
             assert!(rule.is_provably_backwards_compatible())
@@ -144,7 +145,7 @@ mod tests {
         for rule in [
             ":- X = 1..3 :: q(X).",
             "p(X) :- t(X,Y) :: not q(X).",
-            "a :- b; 1 = X :: q(X+1), not r(X).",
+            "a :- b; 1 = X+1 :: q(X+1), not r(X).",
             "a :- #false :: q(X+1); p(|X|) :: q(X).",
         ] {
             let rule: Rule = rule.parse().unwrap();
