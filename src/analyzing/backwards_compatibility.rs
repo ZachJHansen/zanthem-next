@@ -1,6 +1,5 @@
 use crate::syntax_tree::asp::{
-    AtomicFormula, Body, BodyLiteral, ConditionalHead, ConditionalLiteral, ExperimentalLiteral,
-    Program, Rule, Term,
+    AtomicFormula, Body, BodyLiteral, Comparison, ConditionalHead, ConditionalLiteral, ExperimentalLiteral, Program, Rule, Term
 };
 
 impl From<ExperimentalLiteral> for ConditionalLiteral {
@@ -79,8 +78,10 @@ fn backwards_compatible(r1: &Rule, r2: &Rule, l: &ExperimentalLiteral) -> bool {
                     }
                     !arithmetic
                 }
-                AtomicFormula::Comparison(comparison) => {
-                    comparison.lhs.is_precomputed() && comparison.rhs.is_precomputed()
+                AtomicFormula::Comparison(Comparison { lhs, rhs, .. }) => {
+                    //comparison.lhs.is_precomputed() && comparison.rhs.is_precomputed()
+                    !(lhs.contains_arithmetic_operations() || rhs.contains_arithmetic_operations())
+
                 }
             },
             ConditionalHead::Falsity => true,
