@@ -207,6 +207,7 @@ mod tests {
         ("p(X/2) :- X=4.", "forall V1 X (exists I$i J$i Q$i R$i (I$i = J$i * Q$i + R$i and (I$i = X and J$i = 2) and (J$i != 0 and R$i >= 0 and R$i < J$i) and V1 = Q$i) and exists Z Z1 (Z = X and Z1 = 4 and Z = Z1) -> p(V1))."),
         ("p :- X = 1..3 : q(X).", "forall X (exists Z (Z = X and q(Z)) -> exists Z Z1 (Z = X and exists I$i J$i K$i (I$i = 1 and J$i = 3 and Z1 = K$i and I$i <= K$i <= J$i) and Z = Z1)) -> p."),
         ("p :- X = 1..3 :: q(X).", "forall X (exists Z (Z = X and q(Z)) -> forall V V1 (V = X and exists I$i J$i K$i (I$i = 1 and J$i = 3 and V1 = K$i and I$i <= K$i <= J$i) -> V = V1)) -> p."),
+        ("r(X) :- p(X,Y) : q(X,Y).", "forall V1 X (V1 = X and forall Y (exists Z Z1 (Z = X and Z1 = Y and q(Z, Z1)) -> exists Z Z1 (Z = X and Z1 = Y and p(Z, Z1))) -> r(V1))."),
     ] {
         let left = tau_star(src.parse().unwrap(), Version::Original,);
         let right = target.parse().unwrap();
